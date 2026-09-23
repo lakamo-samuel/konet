@@ -1,0 +1,1 @@
+import {Button} from "@/components/ui/button";export default function NotFound(){return <main className="workspace-page"><div className="empty-state"><span className="eyebrow">404</span><h1>That page isn’t here.</h1><p>Check the address or return to discovery.</p><Button href="/discover">Discover talent</Button></div></main>}

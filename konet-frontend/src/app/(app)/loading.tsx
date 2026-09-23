@@ -1,0 +1,1 @@
+export default function Loading(){return <div className="content-width app-section" aria-busy="true"><div className="skeleton heading-skeleton"/><div className="skeleton-grid">{[1,2,3,4].map(n=><div className="skeleton card-skeleton" key={n}/>)}</div></div>}

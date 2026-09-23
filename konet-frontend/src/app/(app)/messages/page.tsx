@@ -1,0 +1,6 @@
+import Link from "next/link";
+import {Avatar} from "@/components/ui/avatar";
+import {getConversationsForUser} from "@/data/repositories/message.repository";
+import {getProviderById} from "@/data/repositories/provider.repository";
+export const metadata={title:"Messages"};
+export default async function Page(){const [conversations,aisha]=await Promise.all([getConversationsForUser("samuel"),getProviderById("aisha")]);return <section className="content-width app-section messages-page"><div className="page-heading"><span className="eyebrow">Messages</span><h1>Your conversations</h1><p>Keep service details, quotes, and job decisions in one place.</p></div><div className="messages-inbox"><div className="inbox-toolbar"><div><strong>Inbox</strong><span>{conversations.length} conversation</span></div><label><span className="sr-only">Search messages</span><input placeholder="Search conversations"/></label></div>{conversations.map(conversation=><Link className="conversation-card" href={`/messages/${conversation.id}`} key={conversation.id}><Avatar src={aisha?.avatar||""} name="Aisha Bello" size={52}/><div><div className="conversation-card-top"><strong>Aisha Bello</strong><time>1:25 PM</time></div><p>Aisha sent a quote for your birthday photography request.</p><span>Birthday photography</span></div><b aria-label="Unread message">1</b></Link>)}</div></section>}

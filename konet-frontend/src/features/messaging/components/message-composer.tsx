@@ -1,0 +1,3 @@
+"use client";
+import {useState} from "react";
+export function MessageComposer(){const [messages,setMessages]=useState<string[]>([]);const [text,setText]=useState("");return <><div className="local-messages" aria-live="polite">{messages.map((message,index)=><p className="message-bubble outgoing" key={index}>{message}</p>)}</div><form className="message-composer" onSubmit={e=>{e.preventDefault();if(text.trim()){setMessages([...messages,text.trim()]);setText("")}}}><input aria-label="Message" value={text} onChange={e=>setText(e.target.value)} placeholder="Write a message"/><button className="send-button" aria-label="Send message">↑</button></form></>}

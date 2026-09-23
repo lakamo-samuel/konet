@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: konet
+      POSTGRES_USER: konet
+      POSTGRES_PASSWORD: konet
+    ports: ["5432:5432"]
+    volumes: ["konet_postgres:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U konet -d konet"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  api:
+    build: .
+    env_file: .env.example
+    ports: ["4000:4000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    environment:
+      DATABASE_URL: postgresql://konet:konet@postgres:5432/konet
+volumes: {konet_postgres: {}}

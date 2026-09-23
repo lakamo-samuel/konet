@@ -1,0 +1,2 @@
+import{Controller,Get,Inject,ServiceUnavailableException}from"@nestjs/common";import{ApiTags}from"@nestjs/swagger";import{sql}from"drizzle-orm";import{DATABASE,Database}from"../../database/database.module";
+@ApiTags("health")@Controller({path:"health",version:"1"})export class HealthController{constructor(@Inject(DATABASE)private db:Database){}@Get()async check(){try{await this.db.execute(sql`select 1`);return{status:"ok",database:"up",timestamp:new Date().toISOString()}}catch{throw new ServiceUnavailableException({status:"error",database:"down"})}}}

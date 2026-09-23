@@ -1,0 +1,2 @@
+import type {Metadata} from "next";import Link from "next/link";import {AuthForm} from "@/features/auth/components/auth-form";
+export const metadata:Metadata={title:"Reset password"};export default function ForgotPasswordPage(){return <div className="auth-panel"><span className="eyebrow">ACCOUNT RECOVERY</span><h2>Reset your password.</h2><p>Enter the email connected to your Konet account.</p><AuthForm mode="forgot-password"/><p><Link href="/sign-in">Return to sign in</Link></p></div>}

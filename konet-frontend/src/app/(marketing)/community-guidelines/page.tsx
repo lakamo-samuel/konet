@@ -1,0 +1,1 @@
+export const metadata={title:"Community guidelines"};export default function Page(){return <article className="legal-page"><span className="eyebrow">Community</span><h1>Work with respect and clarity.</h1><p>Use accurate profiles, communicate professionally, agree on scope before work starts, respect campus safety, and review only your real experience.</p></article>}

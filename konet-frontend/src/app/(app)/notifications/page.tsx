@@ -1,0 +1,5 @@
+import Link from "next/link";
+import Icon from "@/components/ui/icon";
+import {getNotificationsForUser} from "@/data/repositories/notification.repository";
+export const metadata={title:"Notifications"};
+export default async function Page(){const items=await getNotificationsForUser("samuel");return <section className="content-width app-section notifications-page"><div className="page-heading notification-heading"><div><span className="eyebrow">Your activity</span><h1>Notifications</h1><p>Quotes, payments, job progress, reviews, and verification updates.</p></div><span className="badge">{items.filter(item=>!item.read).length} unread</span></div><div className="notification-feed">{items.map(item=><Link className={`notification-card ${item.read?"":"unread"}`} href={item.href} key={item.id}><span className="notification-kind"><Icon name={item.type==="quote"?"briefcase":"verified"}/></span><div><span className="notification-meta">{item.type} · {new Date(item.createdAt).toLocaleDateString("en-NG",{day:"numeric",month:"short"})}</span><strong>{item.title}</strong><p>{item.body}</p></div><span className="notification-arrow">›</span></Link>)}</div></section>}
