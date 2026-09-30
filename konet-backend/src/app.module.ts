@@ -1,9 +1,10 @@
-import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
+import { Module, RequestMethod } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { APP_GUARD } from "@nestjs/core";
 import { LoggerModule } from "nestjs-pino";
-import { validateEnvironment } from "./config/env";
+import { buildLoggerParams } from "./config/logger";
+import { readEnvironment, validateEnvironment } from "./config/env";
 import { DatabaseModule } from "./database/database.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { HealthModule } from "./modules/health/health.module";
@@ -14,15 +15,13 @@ import { VerificationsModule } from "./modules/verifications/verifications.modul
 import { FavoritesModule } from "./modules/favorites/favorites.module";
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
-    LoggerModule.forRoot({
-      pinoHttp: {
-        redact: [
-          "req.headers.authorization",
-          "req.headers.cookie",
-          "res.headers.set-cookie",
-        ],
-      },
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment, cache: true }),
+    LoggerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        ...buildLoggerParams(readEnvironment((key) => config.get(key))),
+        forRoutes: [{ path: "{*path}", method: RequestMethod.ALL }],
+      }),
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     DatabaseModule,

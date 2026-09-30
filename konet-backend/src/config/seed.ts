@@ -17,7 +17,7 @@ import {
   services,
   universities,
   users,
-} from "./schema";
+} from "../database/schema";
 
 async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
