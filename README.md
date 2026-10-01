@@ -117,7 +117,7 @@ The NestJS app is assembled in `konet-backend/src/app.module.ts`. Controllers ha
 | Health | `GET /health` | Database health |
 | Auth | `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`; `GET /auth/me` | Accounts, access tokens, refresh sessions |
 | Universities | `GET /universities`, `/universities/:id` | Active universities and campuses |
-| Verification | `GET, POST /me/student-verification` | Record a student verification submission and its pending state |
+| Verification | `GET, POST /me/student-verification`; email challenges; `admin/student-verifications` | Automatic university email ownership verification and admin/reviewer document decisions |
 | Providers | `GET /providers`, `/providers/:id`; `POST /me/provider-profile` | Discovery and provider creation |
 | Catalog | `GET /categories`, `/services`, `/services/:id` | Public categories and active services |
 | Marketplace | `POST /services`, `GET /me/services`, `PATCH, DELETE /me/services/:id`; `POST, GET /requests`; `POST /quotes`, `/quotes/:id/accept`; `GET /jobs`; `POST /jobs/:id/start`, `/jobs/:id/mark-complete`, `/jobs/:id/confirm-completion` | Service management and hiring |
@@ -127,7 +127,7 @@ The NestJS app is assembled in `konet-backend/src/app.module.ts`. Controllers ha
 
 Protected endpoints require `Authorization: Bearer <access token>`. Login and registration return an access token and set an HttpOnly refresh cookie scoped to `/api/v1/auth`; refresh rotates the stored hashed token. The API validates DTOs, applies ownership checks, and rejects invalid job transitions. CORS origins come from `FRONTEND_URL`.
 
-The API accepts verification submissions but this repository has no reviewer/admin approval route or automatic verification decision flow. The forgot-password endpoint does not provide a complete email reset flow. These are integration requirements before the product can operate end to end.
+The API implements automatic university email verification, private scanned Cloudinary evidence, and admin/reviewer document decisions. Configure Cloudinary and Resend and connect the frontend to these APIs; see [verification setup](docs/backend-verification.md). Password recovery uses the encrypted Resend outbox; see [account setup](docs/backend-accounts.md). Provider onboarding/review and payment-provider integration remain pending.
 
 ## Planned stack and requirements
 
@@ -266,7 +266,7 @@ Useful checks: `npm run typecheck`, `npm run lint`, and `npm run build` in eithe
 | Requests, quotes, jobs | Key forms use shared mock commands and server reads | Map backend endpoints and reconcile job and payment statuses |
 | Messaging, notifications, reviews | Frontend reads and commands use the shared mock source | Map backend endpoints; add delivery/update behavior as needed |
 | Payments and earnings | Checkout retains its card-details layout but has no live gateway; earnings read mock transactions | Integrate provider tokenization or hosted fields, signed webhooks, settlement/release/refund handling; raw card data must never reach Konet servers |
-| Password recovery | API has a forgot-password entry point; frontend redirects to a sent screen | Implement token delivery, reset verification, and password update |
+| Password recovery | API queues reset email, verifies single-use links, and updates passwords; frontend still redirects to a demo sent screen | Configure Resend, apply the migration, and connect frontend recovery/reset forms |
 
 The frontend's domain types and demo job statuses are currently different from the backend schema. When connecting the two, map API fields and states explicitly or converge on a shared contract.
 

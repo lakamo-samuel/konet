@@ -1,12 +1,15 @@
 import { plainToInstance, Transform, Type } from "class-transformer";
 import {
   IsBoolean,
+  IsEmail,
+  Matches,
   IsIn,
   IsInt,
   IsOptional,
   IsString,
   IsUrl,
   Min,
+  Max,
   MinLength,
   validateSync,
 } from "class-validator";
@@ -54,6 +57,31 @@ class Environment {
   @IsString()
   STORAGE_LOCAL_PATH = "./uploads";
 
+  @IsOptional()
+  @IsString()
+  RESEND_API_KEY?: string;
+
+  @IsOptional()
+  @IsEmail()
+  EMAIL_FROM?: string;
+
+  @IsOptional()
+  @Matches(/^[a-f\d]{64}$/i)
+  EMAIL_OUTBOX_KEY?: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  PASSWORD_RESET_URL?: string;
+
+  @IsOptional() @Matches(/^[a-zA-Z0-9_-]+$/) CLOUDINARY_CLOUD_NAME?: string;
+  @IsOptional() @IsString() CLOUDINARY_API_KEY?: string;
+  @IsOptional() @IsString() CLOUDINARY_API_SECRET?: string;
+  @Transform(toBoolean)
+  @IsOptional()
+  @IsBoolean()
+  CLOUDINARY_MALWARE_SCAN_ENABLED?: boolean;
+  @Type(() => Number) @IsInt() @Min(1) EVIDENCE_RETENTION_DAYS = 30;
+
   @IsString()
   SERVICE_NAME = "konet-api";
 
@@ -75,8 +103,12 @@ class Environment {
 
 export type EnvironmentConfig = InstanceType<typeof Environment>;
 
-export function validateEnvironment(values: Record<string, unknown>): EnvironmentConfig {
-  const parsed = plainToInstance(Environment, values, { enableImplicitConversion: true });
+export function validateEnvironment(
+  values: Record<string, unknown>,
+): EnvironmentConfig {
+  const parsed = plainToInstance(Environment, values, {
+    enableImplicitConversion: true,
+  });
   const errors = validateSync(parsed, { skipMissingProperties: false });
   if (errors.length) {
     throw new Error(
@@ -85,6 +117,39 @@ export function validateEnvironment(values: Record<string, unknown>): Environmen
         .join("; ")}`,
     );
   }
+  if (parsed.JWT_ACCESS_SECRET === parsed.JWT_REFRESH_SECRET)
+    throw new Error("JWT access and refresh secrets must be different.");
+  const storageConfigured = [
+    parsed.CLOUDINARY_CLOUD_NAME,
+    parsed.CLOUDINARY_API_KEY,
+    parsed.CLOUDINARY_API_SECRET,
+  ].filter(Boolean).length;
+  if (storageConfigured !== 0 && storageConfigured !== 3)
+    throw new Error(
+      "Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET together.",
+    );
+  const emailConfigured = [
+    parsed.RESEND_API_KEY,
+    parsed.EMAIL_FROM,
+    parsed.EMAIL_OUTBOX_KEY,
+  ].filter(Boolean).length;
+  if (emailConfigured !== 0 && emailConfigured !== 3)
+    throw new Error(
+      "Set RESEND_API_KEY, EMAIL_FROM, and EMAIL_OUTBOX_KEY together.",
+    );
+  if (
+    parsed.NODE_ENV === "production" &&
+    parsed.PASSWORD_RESET_URL &&
+    !parsed.PASSWORD_RESET_URL.startsWith("https://")
+  )
+    throw new Error("Production password reset URL must use HTTPS.");
+  if (
+    parsed.NODE_ENV === "production" &&
+    emailConfigured &&
+    !parsed.PASSWORD_RESET_URL &&
+    !parsed.FRONTEND_URL.startsWith("https://")
+  )
+    throw new Error("Production recovery links must use HTTPS.");
   return parsed;
 }
 
@@ -94,6 +159,15 @@ export function resolveSwaggerEnabled(env: EnvironmentConfig): boolean {
 }
 
 const KNOWN_KEYS = [
+  "CLOUDINARY_CLOUD_NAME",
+  "CLOUDINARY_API_KEY",
+  "CLOUDINARY_API_SECRET",
+  "CLOUDINARY_MALWARE_SCAN_ENABLED",
+  "EVIDENCE_RETENTION_DAYS",
+  "RESEND_API_KEY",
+  "EMAIL_FROM",
+  "EMAIL_OUTBOX_KEY",
+  "PASSWORD_RESET_URL",
   "NODE_ENV",
   "PORT",
   "DATABASE_URL",
@@ -110,11 +184,14 @@ const KNOWN_KEYS = [
   "SHUTDOWN_TIMEOUT_MS",
 ] as const;
 
-export function readEnvironment(get: (key: string) => unknown): EnvironmentConfig {
+export function readEnvironment(
+  get: (key: string) => unknown,
+): EnvironmentConfig {
   const source: Record<string, unknown> = {};
   for (const key of KNOWN_KEYS) {
     const value = get(key);
-    if (value !== undefined && value !== null && value !== "") source[key] = value;
+    if (value !== undefined && value !== null && value !== "")
+      source[key] = value;
   }
   return validateEnvironment(source);
 }

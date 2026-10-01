@@ -1,2 +1,22 @@
-import{Controller,Get,Inject,NotFoundException,Param}from"@nestjs/common";import{ApiTags}from"@nestjs/swagger";import{eq}from"drizzle-orm";import{DATABASE,Database}from"../../database/database.module";import{campuses,universities}from"../../database/schema";
-@ApiTags("universities")@Controller({path:"universities",version:"1"})export class UniversitiesController{constructor(@Inject(DATABASE)private db:Database){}private async withCampuses(university:typeof universities.$inferSelect){return{...university,campuses:await this.db.select().from(campuses).where(eq(campuses.universityId,university.id))}}@Get()async list(){const rows=await this.db.select().from(universities).where(eq(universities.isActive,true));return Promise.all(rows.map(row=>this.withCampuses(row)))}@Get(":id")async one(@Param("id")id:string){const[university]=await this.db.select().from(universities).where(eq(universities.id,id)).limit(1);if(!university)throw new NotFoundException("University not found");return this.withCampuses(university)}}
+import { Controller, Get, Param, ParseUUIDPipe } from "@nestjs/common";
+import { ApiTags } from "@nestjs/swagger";
+import { UniversitiesService } from "./universities.service";
+@ApiTags("universities")
+@Controller({ path: "universities", version: "1" })
+export class UniversitiesController {
+  constructor(private service: UniversitiesService) {}
+  @Get() list() {
+    return this.service.list();
+  }
+  @Get(":id") one(@Param("id", new ParseUUIDPipe()) id: string) {
+    return this.service.one(id);
+  }
+  @Get(":id/campuses") campuses(@Param("id", new ParseUUIDPipe()) id: string) {
+    return this.service.publicCampuses(id);
+  }
+  @Get(":id/verification-methods") methods(
+    @Param("id", new ParseUUIDPipe()) id: string,
+  ) {
+    return this.service.verificationMethods(id);
+  }
+}

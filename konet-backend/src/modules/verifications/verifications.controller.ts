@@ -1,59 +1,49 @@
-import { Body, Controller, Get, Inject, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  HttpCode,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import { IsIn, IsOptional, IsString, MinLength } from "class-validator";
-import { createHash } from "crypto";
-import { desc, eq } from "drizzle-orm";
+import { Throttle } from "@nestjs/throttler";
 import {
   AuthUser,
   CurrentUser,
 } from "../../common/decorators/current-user.decorator";
 import { AuthGuard } from "../../common/guards/auth.guard";
-import { DATABASE, Database } from "../../database/database.module";
-import { studentVerifications, users } from "../../database/schema";
-class SubmitVerificationDto {
-  @IsIn(["university_email", "student_id", "manual_document"]) method!: string;
-  @IsOptional() @IsString() @MinLength(3) studentNumber?: string;
-  @IsOptional() @IsString() evidenceObjectKey?: string;
-}
+import {
+  ConfirmChallengeInput,
+  EmailChallengeInput,
+  StudentVerificationInput,
+} from "../contracts/contract.dto";
+import { VerificationsService } from "./verifications.service";
 @ApiTags("verification")
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 @Controller({ path: "me/student-verification", version: "1" })
 export class VerificationsController {
-  constructor(@Inject(DATABASE) private db: Database) {}
-  @Get() list(@CurrentUser() u: AuthUser) {
-    return this.db
-      .select({
-        id: studentVerifications.id,
-        method: studentVerifications.method,
-        status: studentVerifications.status,
-        submittedAt: studentVerifications.submittedAt,
-        decidedAt: studentVerifications.decidedAt,
-      })
-      .from(studentVerifications)
-      .where(eq(studentVerifications.userId, u.userId))
-      .orderBy(desc(studentVerifications.createdAt));
+  constructor(private service: VerificationsService) {}
+  @Get() list(@CurrentUser() user: AuthUser) {
+    return this.service.history(user.userId);
   }
-  @Post() submit(@CurrentUser() u: AuthUser, @Body() d: SubmitVerificationDto) {
-    return this.db.transaction(async (tx) => {
-      const [v] = await tx
-        .insert(studentVerifications)
-        .values({
-          userId: u.userId,
-          method: d.method,
-          studentNumberHash: d.studentNumber
-            ? createHash("sha256")
-                .update(d.studentNumber.trim().toLowerCase())
-                .digest("hex")
-            : undefined,
-          evidenceObjectKey: d.evidenceObjectKey,
-        })
-        .returning();
-      await tx
-        .update(users)
-        .set({ studentVerificationStatus: "pending", updatedAt: new Date() })
-        .where(eq(users.id, u.userId));
-      return v;
-    });
+  @Post() submit(
+    @CurrentUser() user: AuthUser,
+    @Body() input: StudentVerificationInput,
+  ) {
+    return this.service.submit(user.userId, input);
+  }
+  @Post("email-challenges")
+  @HttpCode(202)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  challenge(@CurrentUser() user: AuthUser, @Body() input: EmailChallengeInput) {
+    return this.service.challenge(user.userId, input);
+  }
+  @Post("email-challenges/confirm")
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  confirm(@CurrentUser() user: AuthUser, @Body() input: ConfirmChallengeInput) {
+    return this.service.confirm(user.userId, input);
   }
 }

@@ -1,2 +1,103 @@
-import {Body,Controller,Get,HttpCode,Post,Req,Res,UseGuards} from "@nestjs/common";import {ApiBearerAuth,ApiTags} from "@nestjs/swagger";import type {Request,Response} from "express";import {AuthGuard} from "../../common/guards/auth.guard";import {CurrentUser,AuthUser} from "../../common/decorators/current-user.decorator";import {AuthService} from "./auth.service";import {ForgotPasswordDto,LoginDto,RegisterDto} from "./dto/auth.dto";
-@ApiTags("auth") @Controller({path:"auth",version:"1"}) export class AuthController{constructor(private service:AuthService){}private setRefresh(res:Response,result:{refreshToken:string;refreshExpiresAt:Date}){res.cookie("konet_refresh",result.refreshToken,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/api/v1/auth",expires:result.refreshExpiresAt})}@Post("register")async register(@Body() dto:RegisterDto,@Req() req:Request,@Res({passthrough:true}) res:Response){const result=await this.service.register(dto,req.headers["user-agent"]);this.setRefresh(res,result);const {refreshToken:_,refreshExpiresAt:__,...body}=result;return body}@Post("login") @HttpCode(200) async login(@Body() dto:LoginDto,@Req() req:Request,@Res({passthrough:true}) res:Response){const result=await this.service.login(dto,req.headers["user-agent"]);this.setRefresh(res,result);const {refreshToken:_,refreshExpiresAt:__,...body}=result;return body}@Post("refresh") @HttpCode(200) async refresh(@Req() req:Request,@Res({passthrough:true}) res:Response){const result=await this.service.refresh(req.cookies?.konet_refresh??"",req.headers["user-agent"]);this.setRefresh(res,result);const {refreshToken:_,refreshExpiresAt:__,...body}=result;return body}@Post("logout") @HttpCode(204) async logout(@Req() req:Request,@Res({passthrough:true}) res:Response){await this.service.logout(req.cookies?.konet_refresh);res.clearCookie("konet_refresh",{path:"/api/v1/auth"})}@Post("forgot-password") @HttpCode(202) forgot(@Body() dto:ForgotPasswordDto){return this.service.forgotPassword(dto.email)}@Get("me") @ApiBearerAuth() @UseGuards(AuthGuard) me(@CurrentUser() user:AuthUser){return this.service.me(user.userId)}}
+import { Throttle } from "@nestjs/throttler";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import type { Request, Response } from "express";
+import { AuthGuard } from "../../common/guards/auth.guard";
+import {
+  CurrentUser,
+  AuthUser,
+} from "../../common/decorators/current-user.decorator";
+import { AuthService } from "./auth.service";
+import {
+  ForgotPasswordDto,
+  LoginDto,
+  RegisterDto,
+  ResetPasswordDto,
+} from "./dto/auth.dto";
+@ApiTags("auth")
+@Controller({ path: "auth", version: "1" })
+export class AuthController {
+  constructor(private service: AuthService) {}
+  private setRefresh(
+    res: Response,
+    result: { refreshToken: string; refreshExpiresAt: Date },
+  ) {
+    res.cookie("konet_refresh", result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/api/v1/auth",
+      expires: result.refreshExpiresAt,
+    });
+  }
+  @Post("register") async register(
+    @Body() dto: RegisterDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.service.register(dto, req.headers["user-agent"]);
+    this.setRefresh(res, result);
+    const { refreshToken: _, refreshExpiresAt: __, ...body } = result;
+    return body;
+  }
+  @Post("login") @HttpCode(200) async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.service.login(dto, req.headers["user-agent"]);
+    this.setRefresh(res, result);
+    const { refreshToken: _, refreshExpiresAt: __, ...body } = result;
+    return body;
+  }
+  @Post("refresh") @HttpCode(200) async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.service.refresh(
+      req.cookies?.konet_refresh ?? "",
+      req.headers["user-agent"],
+    );
+    this.setRefresh(res, result);
+    const { refreshToken: _, refreshExpiresAt: __, ...body } = result;
+    return body;
+  }
+  @Post("logout") @HttpCode(204) async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.service.logout(req.cookies?.konet_refresh);
+    res.clearCookie("konet_refresh", { path: "/api/v1/auth" });
+  }
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post("forgot-password")
+  @HttpCode(202)
+  forgot(@Body() dto: ForgotPasswordDto) {
+    return this.service.forgotPassword(dto.email);
+  }
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Post("reset-password")
+  @HttpCode(200)
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.service.resetPassword(dto.token, dto.password);
+    res.clearCookie("konet_refresh", { path: "/api/v1/auth" });
+    return result;
+  }
+  @Get("me") @ApiBearerAuth() @UseGuards(AuthGuard) me(
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.me(user.userId);
+  }
+}

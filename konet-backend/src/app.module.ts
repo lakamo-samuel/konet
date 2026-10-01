@@ -13,6 +13,7 @@ import { UniversitiesModule } from "./modules/universities/universities.module";
 import { MarketplaceModule } from "./modules/marketplace/marketplace.module";
 import { VerificationsModule } from "./modules/verifications/verifications.module";
 import { FavoritesModule } from "./modules/favorites/favorites.module";
+import { ContractsModule } from "./modules/contracts/contracts.module";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment, cache: true }),
@@ -32,6 +33,7 @@ import { FavoritesModule } from "./modules/favorites/favorites.module";
     MarketplaceModule,
     VerificationsModule,
     FavoritesModule,
+    ContractsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

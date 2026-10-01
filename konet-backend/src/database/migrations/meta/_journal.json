@@ -8,6 +8,27 @@
       "when": 1789519719497,
       "tag": "0000_rapid_chameleon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790863948726,
+      "tag": "0001_deep_mentallo",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790865208169,
+      "tag": "0002_typical_norrin_radd",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790867088729,
+      "tag": "0003_big_champions",
+      "breakpoints": true
     }
   ]
 }

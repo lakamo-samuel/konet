@@ -14,7 +14,9 @@
     "test:journey": "node test/live-journey.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/database/migrate.ts",
-    "db:seed": "tsx src/config/seed.ts"
+    "db:seed": "tsx src/config/seed.ts",
+    "docs:export": "npm run build && node scripts/export-openapi.cjs",
+    "staff:role": "npm run build && node scripts/staff-role.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",
@@ -29,6 +31,7 @@
     "argon2": "^0.44.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.1",
     "drizzle-orm": "^0.44.5",
