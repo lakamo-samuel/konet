@@ -1,6 +1,6 @@
 # Backend requirements: features, functions, and technical design
 
-**Status:** planning document. The [project README](../README.md) describes what exists today. Items marked **proposed** need a product decision and implementation; listing a service here does not mean it is integrated.
+**Status:** planning document. The [project README](../README.md) describes what exists today. The first release is scoped to Nigerian universities and NGN. The product target is client-approved provider payout. Provider selection, merchant eligibility, and the legal money-holding arrangement remain open; listing a service here does not mean it is integrated.
 
 ## Product boundary
 
@@ -64,7 +64,7 @@ Konet serves verified university students who hire other students for services. 
 
 | Need | Proposal | Decision/constraint |
 | --- | --- | --- |
-| Payment collection and transfers | Paystack for an NGN-first pilot | Verify account eligibility, settlement timing, transfer access, fees, and whether the desired hold model is supported. Paystack splits send funds according to split configuration; they are not automatically escrow. |
+| Payment collection and transfers | Paystack as a candidate for an NGN-first pilot | Verify merchant eligibility, settlement timing, transfer access, fees, and support for client-approved delayed payout. Split payments alone do not meet that requirement. |
 | University email | One-time email link/code plus approved per-university domains | Must provide a manual review path for universities without reliable student domains. |
 | Transactional email | Resend or another production email provider | Choose based on sending domain, deliverability, pricing, and data handling. |
 | File storage | S3-compatible private bucket with `@aws-sdk/client-s3` and presigned URLs | Choose hosting region/provider and retention policy. |
@@ -72,9 +72,50 @@ Konet serves verified university students who hire other students for services. 
 | API contract | Nest Swagger/OpenAPI with generated TypeScript client | Prevent frontend/backend status and field drift. |
 | Monitoring | Sentry plus structured Pino logs and OpenTelemetry | Choose hosting and data retention before integration. |
 
-### Payment decision to make before coding
+### Agreed payment target and remaining provider decision
 
-Paystack supports hosted collection, signed webhooks, transaction verification, and transfers. Its split payments automatically allocate settlement to subaccounts, which is a different behavior from releasing a provider only after client approval. The team must confirm with the provider and legal counsel which supported money flow meets Konet's promise. Until then, use the phrase **protected payment workflow** as a design goal, not a live escrow claim.
+The first release targets **client-approved provider payout** in NGN: the client pays before work, the provider completes the job, the client confirms satisfactory completion, and only then is provider payout initiated. A dispute must suspend release until an authorized resolution. The team still needs a provider and merchant arrangement that actually supports this sequence. Paystack supports hosted collection, signed webhooks, transaction verification, and transfers, but its split payments automatically allocate settlement; a split alone cannot enforce client approval before payout. Confirm the money flow, reserve/settlement timing, chargeback exposure, and legal terms with the chosen provider before presenting the flow as **escrow**. Until then, “protected payment workflow” is a design goal, not a live claim.
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant API as Konet API
+    participant PSP as Payment provider
+    actor Provider
+    Client->>API: Accept quote
+    API-->>Client: Job awaiting payment
+    Client->>API: Start hosted checkout
+    API->>PSP: Initialize collection with unique reference
+    PSP-->>API: Signed collection event
+    API->>PSP: Verify reference, amount, currency
+    API-->>Provider: Job may begin after confirmed funds
+    Provider->>API: Mark work complete
+    Client->>API: Confirm completion or dispute
+    alt Client confirms
+        API->>PSP: Initiate provider payout once
+        PSP-->>API: Signed transfer result
+        API-->>Provider: Payout confirmed
+    else Dispute opened
+        API-->>Provider: Payout paused pending decision
+    end
+```
+
+### Payment records and invariants to add
+
+- `payment_attempts`: one row per provider collection attempt, with job, provider reference, amount, currency, status, and timestamps. A retry creates a new attempt without a second job.
+- `payment_events`: immutable signed event ID, source, payload hash, event type, processing outcome, and received time. Enforce uniqueness on provider event ID and idempotent processing.
+- `payout_accounts`: provider-owned recipient reference and verification state; avoid storing full bank details unless necessary.
+- `payouts`: job/payment, recipient, gross amount, fee, net amount, provider transfer reference, state, approval source, and timestamps. Enforce at most one successful payout per job.
+- `refunds` and `dispute_decisions`: amounts, references, actor, reason, state, and audit trail. Reconciliation must account for partial/failed outcomes.
+- Persist balance-affecting state changes in transactions with explicit constraints. A client confirmation may authorize payout, but only a verified transfer result marks it paid. A chargeback or dispute blocks further automated release.
+
+### Backend delivery order
+
+1. Finish account recovery, university verification challenge/review, admin roles, evidence storage, and audit trail.
+2. Define shared OpenAPI responses, pagination, money/status enums, and generate the frontend client.
+3. Complete provider approval and catalog management, then connect authenticated requests, quotes, jobs, and messaging.
+4. Select a provider after validating delayed payout capabilities and terms; implement sandbox collection, signed webhooks, reconciliation, and transfer/refund flows.
+5. Add dispute resolution, operational alerts, backups, and end-to-end tests before a live payment pilot.
 
 ### References
 

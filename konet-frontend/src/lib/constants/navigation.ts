@@ -1,2 +1,2 @@
-export const primaryNavigation=[{href:"/discover",label:"Discover"},{href:"/search",label:"Search"},{href:"/jobs",label:"Jobs"},{href:"/messages",label:"Messages"}] as const;
-export const mobileNavigation=[{href:"/discover",label:"Home",icon:"home"},{href:"/search",label:"Search",icon:"search"},{href:"/jobs",label:"Jobs",icon:"briefcase"},{href:"/messages",label:"Messages",icon:"message"},{href:"/profile",label:"Profile",icon:"user"}] as const;
+export const primaryNavigation=[{href:"/discover",label:"Discover"},{href:"/jobs",label:"Jobs"},{href:"/messages",label:"Messages"}] as const;
+export const mobileNavigation=[{href:"/discover",label:"Discover",icon:"search"},{href:"/jobs",label:"Jobs",icon:"briefcase"},{href:"/messages",label:"Messages",icon:"message"},{href:"/notifications",label:"Alerts",icon:"bell"},{href:"/profile",label:"Profile",icon:"user"}] as const;

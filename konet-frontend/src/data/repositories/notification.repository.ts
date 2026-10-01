@@ -1,2 +1,2 @@
-import {notifications} from "@/data/mock/jobs";
-export async function getNotificationsForUser(userId:string){return notifications.filter(item=>item.userId===userId);}
+import { serverQuery } from "@/data/access/server";
+export const getNotificationsForUser = (userId: string) => serverQuery("notifications", { userId });

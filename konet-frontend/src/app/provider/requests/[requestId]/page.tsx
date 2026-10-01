@@ -1,1 +1,15 @@
-import {notFound} from "next/navigation";import {getRequestById} from "@/data/repositories/job.repository";import {Button} from "@/components/ui/button";type Props={params:Promise<{requestId:string}>};export const metadata={title:"Respond to request"};export default async function Page({params}:Props){const request=await getRequestById((await params).requestId);if(!request)notFound();return <section className="provider-page narrow"><div className="page-heading"><span className="eyebrow">Service request</span><h1>{request.service}</h1><p>{request.requestedDate} at {request.requestedTime} · {request.location}</p></div><article className="surface-panel"><h2>Client brief</h2><p>{request.details}</p><p><strong>Budget:</strong> ₦{request.budgetMin.toLocaleString()}–₦{request.budgetMax.toLocaleString()}</p></article><form className="surface-panel form-stack"><h2>Send a quote</h2><label className="field">Total price<input type="number" min={request.budgetMin} required defaultValue={18000}/></label><label className="field">Scope and deliverables<textarea rows={5} required defaultValue="2-hour session&#10;15 edited photographs&#10;Delivery within 48 hours"/></label><label className="field">Note to client<textarea rows={3}/></label><Button type="submit">Send quote</Button></form></section>}
+import { notFound } from "next/navigation";
+import { getRequestById } from "@/data/repositories/job.repository";
+import { getCurrentUser } from "@/data/repositories/user.repository";
+import { QuoteForm } from "@/features/quotes/components/quote-form";
+import { formatNaira } from "@/lib/formatters/currency";
+type Props = { params: Promise<{ requestId: string }> };
+export const metadata = { title: "Respond to request" };
+export default async function Page({ params }: Props) {
+  const [request, user] = await Promise.all([getRequestById((await params).requestId), getCurrentUser()]);
+  if (!request || request.providerId !== user.providerProfileId) notFound();
+  return <section className="provider-page narrow"><div className="page-heading"><span className="eyebrow">Service request</span><h1>{request.service}</h1><p>{request.requestedDate} at {request.requestedTime} · {request.location}</p></div>
+    <article className="surface-panel"><h2>Client brief</h2><p>{request.details}</p><p><strong>Budget:</strong> {formatNaira(request.budgetMin)}–{formatNaira(request.budgetMax)}</p></article>
+    {request.status === "pending" ? <QuoteForm requestId={request.id} minimum={request.budgetMin} /> : <div className="surface-panel mt-5"><p className="text-[var(--muted)]">This request has already been {request.status}.</p></div>}
+  </section>;
+}

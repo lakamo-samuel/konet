@@ -1,12 +1,39 @@
 import Link from "next/link";
-import {notFound} from "next/navigation";
-import {Avatar} from "@/components/ui/avatar";
-import {Badge} from "@/components/ui/badge";
-import {Button} from "@/components/ui/button";
-import {getConversationById,getMessagesByConversation} from "@/data/repositories/message.repository";
-import {getConversationsForUser} from "@/data/repositories/message.repository";
-import {getProviderById} from "@/data/repositories/provider.repository";
-import {MessageComposer} from "@/features/messaging/components/message-composer";
-type Props={params:Promise<{conversationId:string}>};
-export const metadata={title:"Conversation"};
-export default async function Page({params}:Props){const id=(await params).conversationId;const [conversation,messages,conversations,aisha]=await Promise.all([getConversationById(id),getMessagesByConversation(id),getConversationsForUser("samuel"),getProviderById("aisha")]);if(!conversation)notFound();return <section className="content-width app-section messages-page"><div className="messages-layout"><aside className="conversation-list"><div className="conversation-list-heading"><div><strong>Messages</strong><span>{conversations.length}</span></div><Link href="/messages">View inbox</Link></div>{conversations.map(item=><Link className={`conversation-preview ${item.id===id?"selected":""}`} href={`/messages/${item.id}`} key={item.id}><Avatar src={aisha?.avatar||""} name="Aisha Bello" size={42}/><div><strong>Aisha Bello</strong><p>Quote sent · Birthday photography</p></div></Link>)}</aside><main className="conversation"><header className="conversation-header"><Avatar src={aisha?.avatar||""} name="Aisha Bello" size={44}/><div><strong>Aisha Bello</strong><span>Usually responds within 15 minutes</span></div><Badge>Student verified</Badge></header><div className="conversation-context"><div><span>Active job</span><strong>Birthday photography</strong><small>Saturday, 14 September · ₦18,000 protected</small></div><Button href="/jobs/job-birthday" variant="secondary">View job</Button></div><div className="message-history"><div className="message-date">Today</div>{messages.map(message=>message.system?<div className="system-message" key={message.id}>{message.body}</div>:<div className={`message-row ${message.senderId==="samuel"?"mine":""}`} key={message.id}><p className={`message-bubble ${message.senderId==="samuel"?"outgoing":""}`}>{message.body}</p><time>{new Date(message.createdAt).toLocaleTimeString("en-NG",{hour:"numeric",minute:"2-digit"})}</time></div>)}<MessageComposer/></div></main></div></section>}
+import { notFound } from "next/navigation";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { getConversationById, getConversationsForUser, getMessagesByConversation } from "@/data/repositories/message.repository";
+import { getJobById } from "@/data/repositories/job.repository";
+import { getUserById } from "@/data/repositories/user.repository";
+import { getSession } from "@/lib/auth/session";
+import { MessageThread } from "@/features/messaging/components/message-thread";
+
+type Props = { params: Promise<{ conversationId: string }> };
+export const metadata = { title: "Conversation" };
+export default async function Page({ params }: Props) {
+  const { conversationId } = await params;
+  const session = await getSession();
+  const userId = session?.userId ?? "";
+  const [conversation, conversations] = await Promise.all([getConversationById(conversationId), getConversationsForUser(userId)]);
+  if (!conversation || !conversation.participantIds.includes(userId)) notFound();
+  const otherId = conversation.participantIds.find(id => id !== userId) ?? "";
+  const [other, messages, job] = await Promise.all([getUserById(otherId), getMessagesByConversation(conversationId), conversation.jobId ? getJobById(conversation.jobId) : Promise.resolve(null)]);
+  const otherName = other?.name ?? "Konet member";
+  const sidebar = await Promise.all(conversations.map(async item => {
+    const participant = await getUserById(item.participantIds.find(id => id !== userId) ?? "");
+    return { id: item.id, name: participant?.name ?? "Konet member", avatar: participant?.avatar ?? "" };
+  }));
+  return <section className="content-width app-section messages-page !max-w-7xl">
+    <div className="mb-5"><Link href="/messages" className="text-sm font-semibold text-[var(--clay)] hover:underline">← Back to inbox</Link></div>
+    <div className="grid min-h-[620px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] lg:h-[min(760px,calc(100vh-170px))] lg:grid-cols-[280px_minmax(0,1fr)]">
+      <aside className="hidden border-r border-[var(--border)] lg:block"><div className="border-b border-[var(--border)] p-5"><h2 className="text-lg font-bold">Messages</h2><p className="text-sm text-[var(--muted)]">{conversations.length} conversation{conversations.length === 1 ? "" : "s"}</p></div>
+        {sidebar.map(item => <Link href={`/messages/${item.id}`} key={item.id} aria-current={item.id === conversationId ? "page" : undefined} className={`flex items-center gap-3 border-b border-[var(--border)] p-4 text-[var(--ink)] hover:bg-[var(--canvas)] ${item.id === conversationId ? "bg-[var(--canvas)]" : ""}`}><Avatar src={item.avatar} name={item.name} size={42} /><strong className="truncate text-sm">{item.name}</strong></Link>)}
+      </aside>
+      <main className="flex min-h-0 flex-col"><header className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] p-4 sm:p-5"><Avatar src={other?.avatar ?? ""} name={otherName} size={44} /><div className="min-w-0 flex-1"><h1 className="truncate font-bold">{otherName}</h1><p className="text-xs text-[var(--muted)]">Service conversation</p></div>{other?.studentVerification === "verified" && <Badge>Student verified</Badge>}</header>
+        {job && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--canvas)] px-4 py-3 sm:px-5"><div><span className="text-xs font-bold uppercase tracking-wide text-[var(--clay)]">Active job</span><strong className="block text-sm">{job.service}</strong></div><Button href={`/jobs/${job.id}`} variant="secondary">View job</Button></div>}
+        <MessageThread conversationId={conversationId} userId={userId} initialMessages={messages} />
+      </main>
+    </div>
+  </section>;
+}

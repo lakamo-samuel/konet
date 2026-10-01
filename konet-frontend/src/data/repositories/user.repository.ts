@@ -1,3 +1,3 @@
-import {currentUser,users} from "@/data/mock/users";
-export async function getCurrentUser(){return currentUser;}
-export async function getUserById(id:string){return users.find(item=>item.id===id)??null;}
+import { serverQuery } from "@/data/access/server";
+export const getCurrentUser = () => serverQuery("currentUser", {});
+export const getUserById = (id: string) => serverQuery("user", { id });

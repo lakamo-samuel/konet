@@ -1,1 +1,9 @@
-import {Button} from "@/components/ui/button";export const metadata={title:"Settings"};export default function Page(){return <section className="workspace-page narrow"><div className="page-heading"><span className="eyebrow">Account</span><h1>Settings</h1><p>Manage profile details, campus, and communication preferences.</p></div><form className="surface-panel form-stack"><label className="field">Full name<input defaultValue="Samuel Adeyemi"/></label><label className="field">Email<input type="email" defaultValue="samuel@st.futminna.edu.ng"/></label><label className="field">Campus<select defaultValue="Bosso"><option>Bosso</option><option>Gidan Kwano</option></select></label><label className="check-row"><input type="checkbox" defaultChecked/> Email me about quotes and job updates</label><Button type="submit">Save changes</Button></form></section>}
+import { getCurrentUser } from "@/data/repositories/user.repository";
+import { getUniversityById } from "@/data/repositories/university.repository";
+import { AccountSettingsForm } from "@/features/settings/components/account-settings-form";
+export const metadata = { title: "Settings" };
+export default async function Page() {
+  const user = await getCurrentUser();
+  const university = await getUniversityById(user.universityId);
+  return <section className="workspace-page narrow"><div className="page-heading"><span className="eyebrow">Account</span><h1>Settings</h1><p>Manage your profile details and campus.</p></div><AccountSettingsForm user={user} campuses={university?.campuses ?? [user.campus]} /></section>;
+}

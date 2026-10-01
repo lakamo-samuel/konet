@@ -1,1 +1,8 @@
-import {ProviderCard} from "@/features/providers/components/provider-card";import {SearchForm} from "@/features/discovery/components/search-form";import {searchProviders} from "@/data/repositories/provider.repository";import {getUniversities} from "@/data/repositories/university.repository";export const metadata={title:"Search"};export default async function Page({searchParams}:{searchParams:Promise<{q?:string;campus?:string}>}){const {q="",campus=""}=await searchParams;const universities=await getUniversities();const providers=await searchProviders({query:q,universityId:campus});return <section className="content-width app-section"><div className="page-heading"><span className="eyebrow">Search talent</span><h1>{q?`Results for “${q}”`:"Explore student providers"}</h1><p>Compare clear profiles, trust signals, work history, and starting prices.</p></div><SearchForm universities={universities} defaultQuery={q} defaultCampus={campus}/><div className="results-toolbar"><strong>{providers.length} provider{providers.length===1?"":"s"}</strong><span>Best match</span></div>{providers.length?<div className="provider-grid">{providers.map(p=><ProviderCard key={p.id} provider={p} university={universities.find(u=>u.id===p.universityId)!}/>)}</div>:<div className="empty-state"><h2>No providers match yet</h2><p>Try a broader service or search across every campus.</p></div>}</section>}
+import { redirect } from "next/navigation";
+export default async function Page({searchParams}:{searchParams:Promise<{q?:string;campus?:string}>}){
+  const {q, campus}=await searchParams;
+  const params=new URLSearchParams();
+  if(q) params.set("q",q);
+  if(campus) params.set("campus",campus);
+  redirect(`/discover${params.size?`?${params.toString()}`:""}`);
+}

@@ -2,7 +2,7 @@
 
 Konet is a student service marketplace. A student can discover another student's services, send a brief, receive a quote, hire the provider, discuss the job, confirm delivery, and review the work. Providers can build a profile, publish services, respond to requests, and manage jobs. The product is designed around university identity, provider trust, and protected payments.
 
-> **Current state:** This repository contains a working API foundation and a largely prototype frontend. The frontend uses mock data for most user, job, messaging, and transaction screens. Its forms currently change local UI state or demo cookies; they do not persist these actions through the API. The API's payment gateway is deliberately unconfigured, so no real payment is collected or held. Treat the diagrams below as the intended end-to-end product flow, with implementation status called out in [Current implementation and gaps](#current-implementation-and-gaps).
+> **Current state:** This repository contains a working API foundation and a largely prototype frontend. The frontend uses a shared mock data source for app screens and most actions, with a central switch for future HTTP integration. It does not yet persist these actions through the backend API. The API's payment gateway is deliberately unconfigured, so no real payment is collected or held. Treat the diagrams below as the intended end-to-end product flow, with implementation status called out in [Current implementation and gaps](#current-implementation-and-gaps).
 
 ## Contents
 
@@ -65,23 +65,24 @@ Typical provider journey:
 ```mermaid
 flowchart LR
     Browser[Browser] --> Next[Next.js App Router frontend :3000]
-    Next --> Repo[Frontend repositories]
-    Repo -->|Some public GET requests when KONET_API_URL is set| API[NestJS REST API :4000]
-    Repo -->|Otherwise and for most app views| Mock[Local mock data]
+    Next --> Access[Frontend data access layer]
+    Access -->|KONET_DATA_SOURCE=http| API[NestJS REST API :4000]
+    Access -->|KONET_DATA_SOURCE=mock| Mock[Local mock state]
     API --> Drizzle[Drizzle ORM]
     Drizzle --> PG[(PostgreSQL)]
     API --> Gateway[PaymentGateway interface]
     Gateway --> Unconfigured[Unconfigured gateway: 503]
 ```
 
-The frontend and backend are separate npm projects in this repository. The frontend does not yet share an authenticated session or write path with the API. `KONET_API_URL` enables server-side public reads for universities, providers, and services; it does not make the entire frontend API backed. The API uses PostgreSQL as its source of truth.
+The frontend and backend are separate npm projects in this repository. The frontend uses a same-origin Next route for browser queries and commands. `KONET_DATA_SOURCE=mock` is the working default; `http` selects the backend adapter. Only public catalog endpoint mappings are defined so far. Missing mappings fail explicitly, and the live authentication and payment contracts remain to be integrated. The API uses PostgreSQL as its source of truth.
 
 ### Stack
 
 | Layer | Technology | Purpose |
 | --- | --- | --- |
 | Frontend | Next.js 16 App Router, React 19, TypeScript | Pages, layouts, server rendering, client forms |
-| Styling | CSS and Tailwind CSS 4 tooling | Global and component styling |
+| Styling | Tailwind CSS 4 and existing CSS | New shared controls and key screens use Tailwind utilities; legacy pages still use CSS |
+| Frontend data and icons | Axios, TanStack React Query, Lucide React | Same-origin requests, cache updates, consistent icons |
 | Backend | NestJS 11, TypeScript | Versioned REST API and modular domain services |
 | Validation and API docs | class-validator, class-transformer, Swagger | DTO validation and `/api/docs` |
 | Database | PostgreSQL 17, Drizzle ORM and migrations | Persistent records and constraints |
@@ -97,15 +98,15 @@ The frontend and backend are separate npm projects in this repository. The front
 | --- | --- | --- |
 | Marketing | `/`, `/about`, `/how-it-works`, `/for-providers`, legal/trust pages | Explain product and trust model |
 | Account | `/sign-up`, `/sign-in`, `/forgot-password`, `/verify-student` | Demo account and verification flow |
-| Discovery | `/discover`, `/search`, `/providers/[providerId]` | Browse and evaluate providers |
+| Discovery | `/discover`, `/providers/[providerId]` | Browse, search, filter, and evaluate providers; `/search` redirects to Discover |
 | Hiring | `/requests/[requestId]`, `/quotes/[quoteId]`, `/checkout/[jobId]`, `/jobs`, `/jobs/[jobId]` | Request to job journey |
 | Collaboration | `/messages`, `/messages/[conversationId]`, `/notifications`, `/reviews/[jobId]` | Messages, updates, feedback |
 | Client profile | `/profile`, `/profile/verification`, `/settings` | Identity and preferences |
 | Provider | `/provider/onboarding/*`, `/provider/dashboard`, `/provider/services/*`, `/provider/requests/*`, `/provider/portfolio`, `/provider/earnings`, `/provider/settings` | Provider setup and operations |
 
-`src/data/repositories` is the read boundary. The university and provider repositories call `src/lib/api/server.ts` when `KONET_API_URL` is configured, then map API responses into `src/types/domain.ts`. Other repositories still return `src/data/mock` records. The `src/features` directory contains interactive forms and actions; `src/components` contains reusable layout and UI pieces.
+`src/data/access` contains typed query and command contracts, the in-memory mock adapter, the Axios HTTP adapter, validation, and the endpoint registry. `src/data/repositories` exposes server reads for pages. Browser actions call `src/app/api/frontend/route.ts` through `src/data/access/client.ts`; TanStack Query hooks live in `src/lib/query`. When backend endpoints are ready, complete `src/data/access/endpoints.ts` and set `KONET_DATA_SOURCE=http`. The `src/features` directory contains interactive forms and actions; `src/components` contains reusable layout and UI pieces.
 
-`src/proxy.ts` redirects visitors away from protected client and provider pages based on demo cookies (`konet_session`, `konet_student_verified`, `konet_provider`). These cookies are currently written by frontend demo forms and are **not** the API's JWT authentication or authoritative verification state. Do not use them as proof of identity or payment in production.
+`src/proxy.ts` redirects visitors away from protected client and provider pages based on demo cookies (`konet_session`, `konet_student_verified`, `konet_provider`). In mock mode these cookies are set at the same-origin data boundary; they are **not** the API's JWT authentication or authoritative verification state. Do not use them as proof of identity or payment in production.
 
 ## Backend and API
 
@@ -130,7 +131,7 @@ The API accepts verification submissions but this repository has no reviewer/adm
 
 ## Planned stack and requirements
 
-The [backend requirements document](docs/backend-requirements.md) contains the proposed feature requirements, functional acceptance rules, and technical requirements for verification, hiring, payments, operations, and launch. It is a design draft; the stack table above remains the list of what is installed now.
+The [backend requirements](docs/backend-requirements.md) and [frontend requirements](docs/frontend-requirements.md) define proposed features, functional acceptance rules, technical design, and delivery order. They are design drafts; the stack table above remains the list of what is installed now. The first release is scoped to Nigerian universities and NGN, with client-approved provider payout as the target payment flow.
 
 | Area | Proposed addition | Why / decision still needed |
 | --- | --- | --- |
@@ -142,9 +143,9 @@ The [backend requirements document](docs/backend-requirements.md) contains the p
 | Backend email | Email provider such as Resend | University address proof, recovery links, notifications |
 | Backend evidence | Private S3-compatible storage and presigned uploads | Student evidence and portfolio assets with controlled access |
 | Backend async jobs | BullMQ + Redis when needed | Email delivery, payment event processing, reconciliation |
-| Payment provider | Paystack candidate for NGN-first pilot | Confirm account eligibility and a real delayed release model before promising escrow |
+| Payment provider | Paystack candidate for NGN-first pilot | Confirm merchant eligibility and a real client-approved delayed payout model before promising escrow |
 
-University verification should use a delivered one-time code/link for approved university email domains, plus manual document review for campuses without dependable student email. A submitted form is only `pending`; backend approval sets `verified`. For payments, a hosted checkout, signed webhook, server-side verification, idempotent ledger, and provider payout records are required. Payment splits alone do not establish escrow. These are proposed design choices, not existing integrations. See the [requirements document](docs/backend-requirements.md) for acceptance rules and source links.
+University verification should use a delivered one-time code/link for approved university email domains, plus manual document review for campuses without dependable student email. A submitted form is only `pending`; backend approval sets `verified`. The payment target is collection before work and provider payout only after client confirmation or an authorized dispute decision. Hosted checkout, signed webhooks, server-side verification, an idempotent ledger, and payout records are required. Payment splits alone do not establish escrow. These are design choices, not existing integrations; see the [backend](docs/backend-requirements.md) and [frontend](docs/frontend-requirements.md) requirements for detail.
 
 ## Database schema
 
@@ -240,11 +241,12 @@ Requirements: Node.js and npm compatible with Next.js 16/NestJS 11, plus Docker 
    npm run dev
    ```
 
-Open the frontend at `http://localhost:3000`, API health at `http://localhost:4000/api/v1/health`, and Swagger at `http://localhost:4000/api/docs`. To view the self-contained frontend demo with local university/provider data, omit `KONET_API_URL` from `.env.local`. With `KONET_API_URL=http://localhost:4000/api/v1`, supported public reads use the API and require the seeded database.
+Open the frontend at `http://localhost:3000`, API health at `http://localhost:4000/api/v1/health`, and Swagger at `http://localhost:4000/api/docs`. The default `KONET_DATA_SOURCE=mock` runs the frontend against in-memory records. `KONET_DATA_SOURCE=http` uses `KONET_API_URL`, but the live endpoint registry is incomplete and will reject unmapped operations until their contracts are implemented.
 
 | Variable | Project | Purpose |
 | --- | --- | --- |
-| `KONET_API_URL` | Frontend | Optional server-side public API base URL |
+| `KONET_DATA_SOURCE` | Frontend | `mock` (default) or `http` for the backend adapter |
+| `KONET_API_URL` | Frontend | Backend API base URL when the source is `http` |
 | `DATABASE_URL` | Backend | PostgreSQL connection string |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Backend | Different secrets, at least 32 characters each |
 | `FRONTEND_URL` | Backend | Allowed browser origin(s), comma separated |
@@ -258,12 +260,12 @@ Useful checks: `npm run typecheck`, `npm run lint`, and `npm run build` in eithe
 
 | Capability | Current state | Needed for an end-to-end product |
 | --- | --- | --- |
-| Public discovery | Frontend can read universities/providers/services from API when configured; otherwise uses mock data | Keep frontend and API domain types aligned, complete filtering and portfolio/review API reads |
-| Auth and verification | API auth/session and submission endpoints exist; frontend uses demo cookies and local success screens | Connect forms to API, add secure frontend session handling, real verification review and decision flow |
-| Provider onboarding | API can create a profile for a verified student; frontend onboarding is a demo | Persist profile, evidence, portfolio, and services; add approval operations |
-| Requests, quotes, jobs | API has protected write routes and transactional quote acceptance; frontend views/forms mostly use mock records | Wire forms and pages to authenticated API reads/writes and reconcile statuses |
-| Messaging, notifications, reviews | API persistence exists; frontend content/actions are largely local/mock | Load and write real records, add delivery/update behavior as needed |
-| Payments and earnings | Payment row and gateway interface exist; frontend checkout simulates success | Integrate gateway, signed webhooks, settlement/release/refund handling; never collect raw card fields in this UI |
+| Public discovery | Unified Discover page reads the mock source; public HTTP mappings exist | Confirm backend response shapes and complete remaining catalog mappings |
+| Auth and verification | Frontend forms use shared commands and mock session cookies | Map backend auth endpoints, add secure token/refresh handling, and use authoritative verification decisions |
+| Provider onboarding | Full-page steps save an in-memory draft | Add real file upload, persistence, and approval operations |
+| Requests, quotes, jobs | Key forms use shared mock commands and server reads | Map backend endpoints and reconcile job and payment statuses |
+| Messaging, notifications, reviews | Frontend reads and commands use the shared mock source | Map backend endpoints; add delivery/update behavior as needed |
+| Payments and earnings | Checkout retains its card-details layout but has no live gateway; earnings read mock transactions | Integrate provider tokenization or hosted fields, signed webhooks, settlement/release/refund handling; raw card data must never reach Konet servers |
 | Password recovery | API has a forgot-password entry point; frontend redirects to a sent screen | Implement token delivery, reset verification, and password update |
 
 The frontend's domain types and demo job statuses are currently different from the backend schema. When connecting the two, map API fields and states explicitly or converge on a shared contract.
@@ -272,11 +274,12 @@ The frontend's domain types and demo job statuses are currently different from t
 
 - Frontend page or route: `konet-frontend/src/app/`
 - Frontend interaction: `konet-frontend/src/features/`
-- Frontend reads and demo fixtures: `konet-frontend/src/data/repositories/`, `src/data/mock/`
-- Frontend API configuration and session demo: `konet-frontend/src/lib/api/server.ts`, `src/lib/auth/session.ts`, `src/proxy.ts`
+- Frontend endpoint registry and source switch: `konet-frontend/src/data/access/endpoints.ts`, `src/data/access/server.ts`
+- Frontend browser query/command boundary: `konet-frontend/src/app/api/frontend/route.ts`, `src/lib/query/hooks.ts`
+- Frontend fixtures and session: `konet-frontend/src/data/mock/`, `src/lib/auth/session.ts`, `src/proxy.ts`
 - Backend HTTP surface: `konet-backend/src/modules/*/*.controller.ts`
 - Backend domain rules: `konet-backend/src/modules/*/*.service.ts`, `src/modules/marketplace/job-state-machine.ts`
 - Database tables and migrations: `konet-backend/src/database/schema/`, `src/database/migrations/`
 - Payment integration seam: `konet-backend/src/infrastructure/payments/`
 
-See the backend's own [README](konet-backend/README.md) for its shorter operational summary. The frontend's [README](konet-frontend/README.md) is currently the generated Next.js starter document; this root README is the project-wide guide.
+See the backend's own [README](konet-backend/README.md) for its shorter operational summary. The frontend's [README](konet-frontend/README.md) is currently the generated Next.js starter document; this root README is the project-wide guide. The planned frontend experience is detailed in the [frontend requirements](docs/frontend-requirements.md).

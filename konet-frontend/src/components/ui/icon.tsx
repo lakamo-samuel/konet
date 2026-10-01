@@ -1,5 +1,92 @@
-import type { CSSProperties } from 'react';
-const paths: Record<string, React.ReactNode> = {
- search: <><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></>, arrow: <><path d="M4 12h16m-6-6 6 6-6 6"/></>, chevron: <path d="m8 10 4 4 4-4"/>, close: <path d="m6 6 12 12M6 18 18 6"/>, check: <path d="m5 12 4 4L19 6"/>, verified: <><path d="m12 2 3 2 4 .8.8 4 2 3-2 3-.8 4-4 .8-3 2-3-2-4-.8-.8-4-2-3 2-3 .8-4 4-.8Z"/><path d="m8 12 3 3 5-6"/></>, pin: <><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2"/></>, star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2-5.5-2.9-5.5 2.9 1-6.2L3 9.6l6.2-.9Z"/>, heart: <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>, grid: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>, camera: <><path d="M8 5 9 3h6l1 2h4v15H4V5Z"/><circle cx="12" cy="12" r="4"/></>, scissors: <><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="m8 8 12 12M8 16 20 4"/></>, sparkles: <><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4m-2-2h4"/></>, pen: <><path d="m12 3 9 9-8 8-10 1 1-10Z"/><path d="m3 21 7-7m4-11 7 7"/><circle cx="12" cy="12" r="2"/></>, code: <><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-15-2 18"/></>, book: <><path d="M12 5c-3-2-7-2-10-1v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1v15"/></>, shirt: <path d="m8 3-6 4 3 5 3-2v11h8V10l3 2 3-5-6-4c0 4-8 4-8 0Z"/>, tool: <path d="M14 3a6 6 0 0 0-7 8L2 17a3 3 0 0 0 5 5l6-6a6 6 0 0 0 8-7l-4 4-5-5Z"/>, shield: <><path d="m12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6Z"/><path d="m8 12 3 3 5-6"/></>, lock: <><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4m-4 5v2"/></>, clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>, bell: <><path d="M18 8a6 6 0 0 0-12 0c0 9-3 9-3 9h18s-3 0-3-9m-11 12h4"/></>, user: <><circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></>, briefcase: <><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V3h8v4M3 12c6 4 12 4 18 0m-9 1v4"/></>, message: <path d="M21 11a9 9 0 0 1-9 9H3l1-5a9 9 0 1 1 17-4Z"/>, home: <><path d="m2 10 10-8 10 8M5 9v12h14V9m-10 12v-8h6v8"/></>, filter: <><path d="M3 6h18M3 12h18M3 18h18"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></>, plus: <path d="M12 5v14M5 12h14"/>, upload: <><path d="M12 16V3m-5 5 5-5 5 5M3 16v5h18v-5"/></>, send: <path d="m22 2-7 20-4-9-9-4 20-7ZM11 13 22 2"/>, paperclip: <path d="m8 12 7-7a3 3 0 0 1 4 4L9 19a5 5 0 0 1-7-7L13 1m-7 13 8-8"/>, back: <path d="M20 12H4m6-6-6 6 6 6"/>, logout: <><path d="M9 3H3v18h6m5-15 6 6-6 6m-7-6h13"/></>, mail: <><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 5 10 8L22 5"/></>, eye: <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></>
+import type { CSSProperties } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BadgeCheck,
+  Bell,
+  BookOpen,
+  BriefcaseBusiness,
+  Camera,
+  Check,
+  ChevronDown,
+  Clock3,
+  Code2,
+  Eye,
+  Grid2X2,
+  Heart,
+  House,
+  LockKeyhole,
+  LogOut,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Paperclip,
+  PenLine,
+  Plus,
+  Scissors,
+  Search,
+  Send,
+  ShieldCheck,
+  Shirt,
+  SlidersHorizontal,
+  Sparkles,
+  Star,
+  Upload,
+  UserRound,
+  Wrench,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+
+const icons: Record<string, LucideIcon> = {
+  arrow: ArrowRight,
+  back: ArrowLeft,
+  bell: Bell,
+  book: BookOpen,
+  briefcase: BriefcaseBusiness,
+  camera: Camera,
+  check: Check,
+  chevron: ChevronDown,
+  clock: Clock3,
+  close: X,
+  code: Code2,
+  eye: Eye,
+  filter: SlidersHorizontal,
+  grid: Grid2X2,
+  heart: Heart,
+  home: House,
+  lock: LockKeyhole,
+  logout: LogOut,
+  mail: Mail,
+  message: MessageCircle,
+  paperclip: Paperclip,
+  pen: PenLine,
+  pin: MapPin,
+  plus: Plus,
+  scissors: Scissors,
+  search: Search,
+  send: Send,
+  shield: ShieldCheck,
+  shirt: Shirt,
+  sparkles: Sparkles,
+  star: Star,
+  tool: Wrench,
+  upload: Upload,
+  user: UserRound,
+  verified: BadgeCheck,
 };
-export default function Icon({name, size = 20, style, className = ''}: {name: string; size?: number; style?: CSSProperties; className?: string}) { return <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={style}>{paths[name] || paths.grid}</svg>; }
+
+export default function Icon({
+  name,
+  size = 20,
+  style,
+  className = "",
+}: {
+  name: string;
+  size?: number;
+  style?: CSSProperties;
+  className?: string;
+}) {
+  const Component = icons[name] ?? Grid2X2;
+  return <Component aria-hidden="true" className={className} size={size} style={style} strokeWidth={1.8} />;
+}

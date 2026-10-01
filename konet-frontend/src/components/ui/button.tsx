@@ -1,3 +1,3 @@
 import Link from "next/link";import type {ButtonHTMLAttributes,ReactNode} from "react";
 type Props={children:ReactNode;variant?:"primary"|"secondary"|"quiet"|"dark";href?:string;className?:string}&ButtonHTMLAttributes<HTMLButtonElement>;
-export function Button({children,variant="primary",href,className="",...props}:Props){const classes=`button ${variant} ${className}`;return href?<Link className={classes} href={href}>{children}</Link>:<button className={classes} {...props}>{children}</button>}
+export function Button({children,variant="primary",href,className="",...props}:Props){const classes=`button ${variant} !min-h-11 !rounded-xl !px-5 !py-2.5 !text-sm !font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--clay)] disabled:cursor-not-allowed disabled:opacity-50 ${className}`;return href?<Link className={classes} href={href}>{children}</Link>:<button className={classes} {...props}>{children}</button>}

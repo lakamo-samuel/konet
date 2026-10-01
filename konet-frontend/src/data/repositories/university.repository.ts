@@ -1,1 +1,3 @@
-import {universities} from "@/data/mock/universities";import{apiGet,hasApi}from"@/lib/api/server";import type{University}from"@/types/domain";type ApiUniversity={id:string;name:string;shortName:string;city:string;state:string;campuses?:Array<{name:string}>};const map=(u:ApiUniversity):University=>({...u,campuses:u.campuses?.map(c=>c.name)??[]});export async function getUniversities(){return hasApi()?(await apiGet<ApiUniversity[]>("/universities")).map(map):universities}export async function getUniversityById(id:string){if(!hasApi())return universities.find(item=>item.id===id)??null;try{return map(await apiGet<ApiUniversity>(`/universities/${id}`))}catch{return null}}
+import { serverQuery } from "@/data/access/server";
+export const getUniversities = () => serverQuery("universities", {});
+export const getUniversityById = (id: string) => serverQuery("university", { id });

@@ -1,1 +1,11 @@
-import {Button} from "@/components/ui/button";export const metadata={title:"Provider settings"};export default function Page(){return <section className="provider-page narrow"><div className="page-heading"><span className="eyebrow">Provider profile</span><h1>Settings</h1></div><form className="surface-panel form-stack"><label className="field">Professional title<input defaultValue="Portrait & Event Photographer"/></label><label className="field">Response time<select defaultValue="15"><option value="15">Within 15 minutes</option><option value="60">Within 1 hour</option><option value="day">Within a day</option></select></label><label className="check-row"><input type="checkbox" defaultChecked/> Available for new requests</label><Button type="submit">Save provider settings</Button></form></section>}
+import { notFound } from "next/navigation";
+import { getCurrentUser } from "@/data/repositories/user.repository";
+import { getProviderById } from "@/data/repositories/provider.repository";
+import { ProviderSettingsForm } from "@/features/settings/components/provider-settings-form";
+export const metadata = { title: "Provider settings" };
+export default async function Page() {
+  const user = await getCurrentUser();
+  const provider = user.providerProfileId ? await getProviderById(user.providerProfileId) : null;
+  if (!provider) notFound();
+  return <section className="provider-page narrow"><div className="page-heading"><span className="eyebrow">Provider profile</span><h1>Settings</h1></div><ProviderSettingsForm provider={provider} /></section>;
+}

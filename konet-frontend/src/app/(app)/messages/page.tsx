@@ -1,6 +1,24 @@
-import Link from "next/link";
-import {Avatar} from "@/components/ui/avatar";
-import {getConversationsForUser} from "@/data/repositories/message.repository";
-import {getProviderById} from "@/data/repositories/provider.repository";
-export const metadata={title:"Messages"};
-export default async function Page(){const [conversations,aisha]=await Promise.all([getConversationsForUser("samuel"),getProviderById("aisha")]);return <section className="content-width app-section messages-page"><div className="page-heading"><span className="eyebrow">Messages</span><h1>Your conversations</h1><p>Keep service details, quotes, and job decisions in one place.</p></div><div className="messages-inbox"><div className="inbox-toolbar"><div><strong>Inbox</strong><span>{conversations.length} conversation</span></div><label><span className="sr-only">Search messages</span><input placeholder="Search conversations"/></label></div>{conversations.map(conversation=><Link className="conversation-card" href={`/messages/${conversation.id}`} key={conversation.id}><Avatar src={aisha?.avatar||""} name="Aisha Bello" size={52}/><div><div className="conversation-card-top"><strong>Aisha Bello</strong><time>1:25 PM</time></div><p>Aisha sent a quote for your birthday photography request.</p><span>Birthday photography</span></div><b aria-label="Unread message">1</b></Link>)}</div></section>}
+import { getConversationsForUser, getMessagesByConversation } from "@/data/repositories/message.repository";
+import { getUserById } from "@/data/repositories/user.repository";
+import { getJobById } from "@/data/repositories/job.repository";
+import { getSession } from "@/lib/auth/session";
+import { InboxList } from "@/features/messaging/components/inbox-list";
+
+export const metadata = { title: "Messages" };
+export default async function Page() {
+  const session = await getSession();
+  const userId = session?.userId ?? "";
+  const conversations = await getConversationsForUser(userId);
+  const items = await Promise.all(conversations.map(async conversation => {
+    const otherId = conversation.participantIds.find(id => id !== userId) ?? "";
+    const [other, messages, job] = await Promise.all([
+      getUserById(otherId), getMessagesByConversation(conversation.id),
+      conversation.jobId ? getJobById(conversation.jobId) : Promise.resolve(null),
+    ]);
+    return { id: conversation.id, name: other?.name ?? "Konet member", avatar: other?.avatar ?? "", preview: messages.at(-1)?.body ?? "Start the conversation", service: job?.service ?? "Service conversation", updatedAt: conversation.updatedAt };
+  }));
+  return <section className="content-width app-section messages-page !max-w-6xl">
+    <div className="mb-8"><span className="eyebrow">Messages</span><h1 className="mt-2 text-4xl font-bold tracking-tight md:text-5xl">Your conversations</h1><p className="mt-2 text-[var(--muted)]">Keep service details, quotes, and job decisions in one place.</p></div>
+    <InboxList items={items} />
+  </section>;
+}

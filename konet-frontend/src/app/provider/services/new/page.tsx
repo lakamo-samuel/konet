@@ -1,1 +1,4 @@
-import {Button} from "@/components/ui/button";export const metadata={title:"New service"};export default function Page(){return <section className="provider-page narrow"><h1>Add a service</h1><form className="surface-panel form-stack"><label className="field">Service name<input required/></label><label className="field">Description<textarea rows={5} required/></label><label className="field">Starting price<input type="number" required min={500}/></label><Button type="submit">Publish service</Button></form></section>}
+import { getCurrentUser } from "@/data/repositories/user.repository";
+import { ServiceEditor } from "@/features/services/components/service-editor";
+export const metadata = { title: "New service" };
+export default async function Page() { const user = await getCurrentUser(); return <section className="provider-page narrow"><div className="page-heading"><span className="eyebrow">Your offer</span><h1>Add a service</h1><p>Give clients enough detail to decide if your service fits their project.</p></div>{user.providerProfileId && <ServiceEditor providerId={user.providerProfileId} />}</section>; }
