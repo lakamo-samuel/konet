@@ -8,9 +8,9 @@ The collaboration API now implements participant-only jobs, conversations, text 
 
 The provider starts a scheduled, funded job through `POST /jobs/{id}/start` and submits completed work through `POST /jobs/{id}/mark-complete`. Submission requires all milestones to be complete. The client confirms through `POST /jobs/{id}/confirm-completion`. These actions return HTTP 200 and support retries while the job remains in the target state. Every transition locks the job, records an audit event and notifies the other participant atomically.
 
-Starting work and confirming completion require a funded/held payment record. There is no client endpoint that schedules or funds a job. Payment gateway verification will supply this transition in F8. Client confirmation records job completion and leaves the payment unchanged; it does not release money.
+Starting work and confirming completion require a funded/held payment record. There is no client endpoint that schedules or funds a job. Paystack server-side verification supplies this transition. Client confirmation records completion, queues one durable payout and sets payment to release_pending. Only verified transfer success marks funds released. Disputed jobs cannot be completed by a participant.
 
-`POST /jobs/{id}/cancel` takes a reason. Either participant may cancel an `awaiting_payment` job whose payment is pending or failed. Funded jobs cannot be cancelled through this action until the refund workflow exists. Concurrent retries produce one cancellation and one audit event.
+`POST /jobs/{id}/cancel` takes a reason. Either participant may cancel an `awaiting_payment` job whose payment is pending or failed. Funded jobs require the finance-authorized full refund workflow; participant cancellation cannot return collected funds. Concurrent retries produce one cancellation and one audit event.
 
 ## Milestones
 

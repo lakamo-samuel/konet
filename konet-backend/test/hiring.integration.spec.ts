@@ -1,3 +1,4 @@
+import { SettlementService } from "../src/modules/marketplace/settlement.service";
 import { ConfigService } from "@nestjs/config";
 import { createHmac } from "node:crypto";
 import { PaystackGateway } from "../src/infrastructure/payments/paystack.gateway";
@@ -57,6 +58,12 @@ describeDatabase("hiring PostgreSQL API integration", () => {
     assertConfigured: () => {},
     initialize: jest.fn(),
     verify: jest.fn(),
+    listBanks: jest.fn(),
+    resolveRecipient: jest.fn(),
+    transfer: jest.fn(),
+    verifyTransfer: jest.fn(),
+    createRefund: jest.fn(),
+    verifyRefund: jest.fn(),
     verifyWebhook: signatureGateway.verifyWebhook.bind(signatureGateway),
   };
   beforeAll(async () => {
@@ -112,6 +119,18 @@ describeDatabase("hiring PostgreSQL API integration", () => {
       checkoutUrl: "https://checkout.paystack.com/test-checkout",
     }));
     gateway.verify.mockReset();
+    gateway.listBanks
+      .mockReset()
+      .mockResolvedValue([{ code: "058", name: "Verified Bank" }]);
+    gateway.resolveRecipient.mockReset().mockResolvedValue({
+      accountName: "Verified Bank Name",
+      recipientCode: "RCP_test",
+    });
+    gateway.transfer.mockReset().mockResolvedValue({ status: "pending" });
+    gateway.verifyTransfer.mockReset();
+    gateway.createRefund.mockReset().mockResolvedValue({ id: "987654" });
+    gateway.verifyRefund.mockReset();
+    app.get(ConfigService).set("PAYSTACK_TRANSFERS_ENABLED", false);
     await pool.query(
       "DROP TRIGGER IF EXISTS hiring_test_payment_failure ON payments",
     );
@@ -222,6 +241,328 @@ describeDatabase("hiring PostgreSQL API integration", () => {
         .length,
     };
   }
+  async function fundedJob() {
+    const data = await initializedPayment();
+    gateway.verify.mockResolvedValue(data.result);
+    await api("post", `jobs/${data.j.id}/payment/verify`).expect(200);
+    return data;
+  }
+  async function queuedPayout() {
+    const data = await fundedJob();
+    await api("post", "me/payout-accounts", provider.token)
+      .send({ bankCode: "058", accountNumber: "0123456789" })
+      .expect(201);
+    await api("post", `jobs/${data.j.id}/start`, provider.token).expect(200);
+    await api("post", `jobs/${data.j.id}/mark-complete`, provider.token).expect(
+      200,
+    );
+    await api("post", `jobs/${data.j.id}/confirm-completion`).expect(200);
+    const [payout] = await db.select().from(schema.payouts);
+    return { ...data, payout };
+  }
+  const transferResult = (
+    p: typeof schema.payouts.$inferSelect,
+    status = "success",
+  ) => ({
+    reference: p.reference,
+    amountMinor: p.amountMinor,
+    currency: p.currency,
+    recipientCode: p.recipientCode,
+    status,
+  });
+  async function finance() {
+    await db
+      .insert(schema.userRoles)
+      .values({ userId: outsider.id, role: "finance" });
+  }
+  it("resolves payout bank accounts, masks private fields and permits one active account", async () => {
+    await api("post", "me/payout-accounts")
+      .send({ bankCode: "058", accountNumber: "0123456789" })
+      .expect(403);
+    expect((await api("get", "payout-banks").expect(200)).body[0].code).toBe(
+      "058",
+    );
+    const input = { bankCode: "058", accountNumber: "0123456789" };
+    const account = (
+      await api("post", "me/payout-accounts", provider.token)
+        .send(input)
+        .expect(201)
+    ).body;
+    expect(account.accountNumberLast4).toBe("6789");
+    expect(account.accountName).toBe("Verified Bank Name");
+    expect(JSON.stringify(account)).not.toContain("RCP_test");
+    expect(account).not.toHaveProperty("fingerprint");
+    expect(account).not.toHaveProperty("accountNumber");
+    expect(
+      (await api("post", "me/payout-accounts", provider.token).send(input)).body
+        .id,
+    ).toBe(account.id);
+    expect(gateway.resolveRecipient).toHaveBeenCalledTimes(1);
+    await api("post", "me/payout-accounts", provider.token)
+      .send({ ...input, accountNumber: "1234567890" })
+      .expect(409);
+    await api(
+      "delete",
+      `me/payout-accounts/${account.id}`,
+      provider.token,
+    ).expect(204);
+    expect(
+      (await api("get", "me/payout-accounts", provider.token)).body,
+    ).toHaveLength(0);
+  });
+  it("queues one payout on client confirmation and releases only after verified transfer success", async () => {
+    const { j, payout } = await queuedPayout();
+    const worker = app.get(SettlementService);
+    await api("post", `jobs/${j.id}/confirm-completion`).expect(200);
+    expect(await db.select().from(schema.payouts)).toHaveLength(1);
+    expect((await db.select().from(schema.payments))[0].status).toBe(
+      "release_pending",
+    );
+    await worker.processPayout(payout.id);
+    expect(gateway.transfer).not.toHaveBeenCalled();
+    app.get(ConfigService).set("PAYSTACK_TRANSFERS_ENABLED", true);
+    gateway.verifyTransfer.mockResolvedValue(transferResult(payout));
+    const account = (await db.select().from(schema.payoutAccounts))[0];
+    await api(
+      "delete",
+      `me/payout-accounts/${account.id}`,
+      provider.token,
+    ).expect(409);
+    await Promise.all([
+      worker.processPayout(payout.id),
+      worker.processPayout(payout.id),
+    ]);
+    expect(gateway.transfer).toHaveBeenCalledTimes(1);
+    expect((await db.select().from(schema.payments))[0].status).toBe(
+      "released",
+    );
+    expect((await api("get", `jobs/${j.id}/payout`)).body.status).toBe(
+      "succeeded",
+    );
+    await api("get", `jobs/${j.id}/payout`, outsider.token).expect(404);
+    const earnings = (await api("get", "me/earnings", provider.token)).body;
+    expect(earnings.paidOutMinor).toBe(payout.amountMinor);
+    expect(earnings.pendingMinor).toBe(0);
+  });
+  it("verifies an ambiguous transfer without initiating it again", async () => {
+    const { payout } = await queuedPayout();
+    const worker = app.get(SettlementService);
+    app.get(ConfigService).set("PAYSTACK_TRANSFERS_ENABLED", true);
+    gateway.transfer.mockRejectedValueOnce(
+      new Error("Ambiguous transfer timeout"),
+    );
+    await expect(worker.processPayout(payout.id)).rejects.toThrow();
+    gateway.verifyTransfer.mockResolvedValue(transferResult(payout));
+    await worker.processPayout(payout.id);
+    expect(gateway.transfer).toHaveBeenCalledTimes(1);
+    expect((await db.select().from(schema.payments))[0].status).toBe(
+      "released",
+    );
+  });
+  it("rejects mismatched transfer evidence and restricts payout retry to confirmed failure and finance staff", async () => {
+    const { payout } = await queuedPayout();
+    const worker = app.get(SettlementService);
+    app.get(ConfigService).set("PAYSTACK_TRANSFERS_ENABLED", true);
+    gateway.verifyTransfer.mockResolvedValue({
+      ...transferResult(payout),
+      amountMinor: 1,
+    });
+    await expect(worker.processPayout(payout.id)).rejects.toMatchObject({
+      code: "TRANSFER_VERIFICATION_MISMATCH",
+    });
+    expect((await db.select().from(schema.payments))[0].status).toBe(
+      "release_pending",
+    );
+    gateway.verifyTransfer.mockResolvedValue(transferResult(payout, "failed"));
+    await worker.processPayout(payout.id);
+    await api("post", `admin/payouts/${payout.id}/retry`, provider.token)
+      .send({ reason: "Retry transfer" })
+      .expect(403);
+    await finance();
+    await api("post", `admin/payouts/${payout.id}/retry`, outsider.token)
+      .send({ reason: "Confirmed failure" })
+      .expect(202);
+    gateway.verifyTransfer.mockResolvedValue(transferResult(payout));
+    await worker.processPayout(payout.id);
+    expect(gateway.transfer).toHaveBeenCalledTimes(2);
+    expect(gateway.transfer.mock.calls[0][0].reference).toBe(
+      gateway.transfer.mock.calls[1][0].reference,
+    );
+  });
+  it("freezes disputed or suspended-provider payouts and prevents client dispute resolution", async () => {
+    const { j, payout } = await queuedPayout();
+    const worker = app.get(SettlementService);
+    app.get(ConfigService).set("PAYSTACK_TRANSFERS_ENABLED", true);
+    await db.insert(schema.disputes).values({
+      jobId: j.id,
+      openedByUserId: client.id,
+      reason: "Review",
+      description: "Trusted dispute fixture",
+      status: "open",
+    });
+    await worker.processPayout(payout.id);
+    expect(gateway.transfer).not.toHaveBeenCalled();
+    await db
+      .update(schema.jobs)
+      .set({ status: "disputed" })
+      .where(eq(schema.jobs.id, j.id));
+    await api("post", `jobs/${j.id}/confirm-completion`).expect(409);
+  });
+  it("authorizes only full refunds for finance staff, reserves once and verifies completion", async () => {
+    const { j, payment, result } = await fundedJob();
+    const input = {
+      amountMinor: payment.amountMinor,
+      reason: "Service cancelled before work",
+    };
+    await api("post", `admin/payments/${payment.id}/refunds`, outsider.token)
+      .send(input)
+      .expect(403);
+    await finance();
+    await api("post", `admin/payments/${payment.id}/refunds`, outsider.token)
+      .send({ ...input, amountMinor: 1 })
+      .expect(422);
+    const attempts = await Promise.all([
+      api("post", `admin/payments/${payment.id}/refunds`, outsider.token).send(
+        input,
+      ),
+      api("post", `admin/payments/${payment.id}/refunds`, outsider.token).send(
+        input,
+      ),
+    ]);
+    expect(attempts.map((r) => r.status)).toEqual([202, 202]);
+    expect(attempts[0].body.id).toBe(attempts[1].body.id);
+    const [refund] = await db.select().from(schema.refunds);
+    expect((await api("get", `jobs/${j.id}`)).body.status).toBe("cancelled");
+    await api("post", `jobs/${j.id}/start`, provider.token).expect(409);
+    gateway.verifyRefund.mockResolvedValue({
+      id: "987654",
+      transactionId: result.transactionId,
+      amountMinor: refund.amountMinor,
+      currency: "NGN",
+      status: "processed",
+      merchantNote: `konet-refund:${refund.id}`,
+    });
+    const worker = app.get(SettlementService);
+    await Promise.all([
+      worker.processRefund(refund.id),
+      worker.processRefund(refund.id),
+    ]);
+    expect(gateway.createRefund).toHaveBeenCalledTimes(1);
+    expect((await db.select().from(schema.payments))[0].status).toBe(
+      "refunded",
+    );
+    expect((await api("get", `jobs/${j.id}/refunds`)).body[0].status).toBe(
+      "succeeded",
+    );
+    await api("get", `jobs/${j.id}/refunds`, outsider.token).expect(404);
+  });
+  it("does not repeat an ambiguous refund and recovers through a signed verified refund webhook", async () => {
+    const { payment, result } = await fundedJob();
+    await finance();
+    const refund = (
+      await api("post", `admin/payments/${payment.id}/refunds`, outsider.token)
+        .send({ amountMinor: payment.amountMinor, reason: "Cancelled service" })
+        .expect(202)
+    ).body;
+    gateway.createRefund.mockRejectedValueOnce(
+      new Error("Ambiguous refund timeout"),
+    );
+    const worker = app.get(SettlementService);
+    await expect(worker.processRefund(refund.id)).rejects.toThrow();
+    await worker.processRefund(refund.id);
+    expect(gateway.createRefund).toHaveBeenCalledTimes(1);
+    gateway.verifyRefund.mockResolvedValue({
+      id: "987654",
+      transactionId: result.transactionId,
+      amountMinor: refund.amountMinor,
+      currency: "NGN",
+      status: "processed",
+      merchantNote: `konet-refund:${refund.id}`,
+    });
+    const raw = JSON.stringify({
+      event: "refund.processed",
+      data: { id: 987654 },
+    });
+    const signature = createHmac("sha512", signingKey)
+      .update(raw)
+      .digest("hex");
+    await request(app.getHttpServer())
+      .post("/api/v1/webhooks/payments/paystack")
+      .set("Content-Type", "application/json")
+      .set("x-paystack-signature", signature)
+      .send(raw)
+      .expect(200);
+    expect((await db.select().from(schema.payments))[0].status).toBe(
+      "refunded",
+    );
+  });
+  it("serializes competing client payout authorization and staff refund reservation", async () => {
+    const { j, payment } = await fundedJob();
+    await finance();
+    await api("post", `jobs/${j.id}/start`, provider.token).expect(200);
+    await api("post", `jobs/${j.id}/mark-complete`, provider.token).expect(200);
+    const results = await Promise.all([
+      api("post", `jobs/${j.id}/confirm-completion`),
+      api("post", `admin/payments/${payment.id}/refunds`, outsider.token).send({
+        amountMinor: payment.amountMinor,
+        reason: "Cancel before payout",
+      }),
+    ]);
+    expect(results.filter((r) => [200, 202].includes(r.status))).toHaveLength(
+      1,
+    );
+    expect(results.filter((r) => r.status === 409)).toHaveLength(1);
+    expect(
+      (await db.select().from(schema.payouts)).length +
+        (await db.select().from(schema.refunds)).length,
+    ).toBe(1);
+  });
+  it("verifies signed transfer reversals and prevents another automatic payout", async () => {
+    const { payout } = await queuedPayout();
+    const worker = app.get(SettlementService);
+    app.get(ConfigService).set("PAYSTACK_TRANSFERS_ENABLED", true);
+    gateway.verifyTransfer.mockResolvedValue(transferResult(payout));
+    await worker.processPayout(payout.id);
+    gateway.verifyTransfer.mockResolvedValue(
+      transferResult(payout, "reversed"),
+    );
+    const raw = JSON.stringify({
+      event: "transfer.reversed",
+      data: { id: 111222, reference: payout.reference },
+    });
+    const signature = createHmac("sha512", signingKey)
+      .update(raw)
+      .digest("hex");
+    const post = () =>
+      request(app.getHttpServer())
+        .post("/api/v1/webhooks/payments/paystack")
+        .set("Content-Type", "application/json")
+        .set("x-paystack-signature", signature)
+        .send(raw);
+    await post().expect(200);
+    await post().expect(200);
+    expect((await db.select().from(schema.payments))[0].status).toBe(
+      "disputed",
+    );
+    await finance();
+    await api("post", `admin/payouts/${payout.id}/retry`, outsider.token)
+      .send({ reason: "Unsafe reversal retry" })
+      .expect(409);
+    expect(gateway.transfer).toHaveBeenCalledTimes(1);
+  });
+  it("blocks refunds after payout authorization and prevents staff self-refunds", async () => {
+    const { payment } = await queuedPayout();
+    await finance();
+    await api("post", `admin/payments/${payment.id}/refunds`, outsider.token)
+      .send({ amountMinor: payment.amountMinor, reason: "Too late" })
+      .expect(409);
+    await db
+      .insert(schema.userRoles)
+      .values({ userId: client.id, role: "finance" });
+    await api("post", `admin/payments/${payment.id}/refunds`)
+      .send({ amountMinor: payment.amountMinor, reason: "My own refund" })
+      .expect(403);
+  });
   async function initializedPayment() {
     const j = await acceptedJob();
     const checkout = (await api("post", `jobs/${j.id}/payments`).expect(201))
@@ -620,7 +961,9 @@ describeDatabase("hiring PostgreSQL API integration", () => {
     );
     await api("post", `jobs/${j.id}/confirm-completion`).expect(200);
     await api("post", `jobs/${j.id}/confirm-completion`).expect(200);
-    expect((await db.select().from(schema.payments))[0].status).toBe("held");
+    expect((await db.select().from(schema.payments))[0].status).toBe(
+      "release_pending",
+    );
     await api("post", `jobs/${j.id}/milestones`, provider.token)
       .send({ title: "Too late" })
       .expect(409);

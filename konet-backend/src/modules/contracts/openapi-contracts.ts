@@ -58,6 +58,9 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
       "jobs/{jobId}/payments",
       "jobs/{jobId}/payment/verify",
       "webhooks/payments/{gateway}",
+      "payout-banks",
+      "me/payout-accounts",
+      "admin/payouts/{id}/retry",
     ].includes(route.path);
     const status = !route.existing ? "contract-only" : "implemented";
     (operation as OperationObject & { "x-implementation-status": string })[
@@ -66,19 +69,21 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
     operation.operationId = `${route.method}_${route.path.replace(/[{}]/g, "").replace(/[/-]/g, "_")}`;
     operation.summary = `${route.summary}${!route.existing ? " [contract only]" : ""}`;
     const access =
-      route.auth === "reviewer"
-        ? "Requires an active admin or reviewer role, in addition to a live Bearer session. Evidence access and decisions are audited; self-review is forbidden."
-        : route.auth === "admin"
-          ? route.existing
-            ? "Requires an active administrator role from the database, in addition to a live Bearer session. Reviewer, support, finance, and ordinary student accounts cannot manage the directory or read the audit log."
-            : "Requires a staff role with permission for this resource. This stub always fails closed; its resource-specific permission enforcement remains pending."
-          : route.auth === "user"
-            ? "Requires a valid Bearer access token and resource ownership where applicable."
-            : route.auth === "cookie"
-              ? "Uses the HttpOnly konet_refresh cookie; send requests with credentials included."
-              : route.auth === "webhook"
-                ? "Paystack callback only; raw-body HMAC-SHA512 signature verification is mandatory."
-                : "Public endpoint; no authentication required.";
+      route.auth === "finance"
+        ? "Requires an active admin or finance role from the database and a live Bearer session. Financial actions are audited."
+        : route.auth === "reviewer"
+          ? "Requires an active admin or reviewer role, in addition to a live Bearer session. Evidence access and decisions are audited; self-review is forbidden."
+          : route.auth === "admin"
+            ? route.existing
+              ? "Requires an active administrator role from the database, in addition to a live Bearer session. Reviewer, support, finance, and ordinary student accounts cannot manage the directory or read the audit log."
+              : "Requires a staff role with permission for this resource. This stub always fails closed; its resource-specific permission enforcement remains pending."
+            : route.auth === "user"
+              ? "Requires a valid Bearer access token and resource ownership where applicable."
+              : route.auth === "cookie"
+                ? "Uses the HttpOnly konet_refresh cookie; send requests with credentials included."
+                : route.auth === "webhook"
+                  ? "Paystack callback only; raw-body HMAC-SHA512 signature verification is mandatory."
+                  : "Public endpoint; no authentication required.";
     operation.description = [
       access,
       !route.existing
@@ -115,7 +120,7 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
         required: true,
         description:
           name === "gateway"
-            ? "Selected payment provider identifier; provider selection is pending."
+            ? "Selected payment provider identifier: paystack."
             : name === "step"
               ? "Onboarding section: profile, services, portfolio, evidence, or preview."
               : name === "role"
@@ -165,7 +170,7 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
       operation.requestBody = {
         required: true,
         description:
-          "Unmodified Paystack JSON event. charge.success requires event, data.id and data.reference.",
+          "Unmodified Paystack JSON event. Charge and transfer events identify data.reference; refund events identify data.id. Signature verification uses the exact raw bytes; relevant events are verified with Paystack before updating funds.",
         content: jsonContent({ type: "object", additionalProperties: true }),
       };
     } else if (route.body) {

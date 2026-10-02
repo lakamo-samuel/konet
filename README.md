@@ -207,7 +207,7 @@ stateDiagram-v2
     disputed --> cancelled
 ```
 
-The API creates a `pending` payment row when a quote is accepted. Payment states in the schema include `pending`, `processing`, `funded`, `held`, `release_pending`, `released`, `failed`, `refunded`, and `disputed`. Paystack hosted checkout, signed charge webhooks and server-side verification are implemented. Checkout requires PAYSTACK_SECRET_KEY; missing credentials return 503. Verified collection atomically funds the payment and schedules the job. Provider payout, refund and reconciliation stages remain unfinished. Client confirmation records job completion and leaves payment funds held until the payment release workflow is implemented.
+The API creates a `pending` payment row when a quote is accepted. Payment states in the schema include `pending`, `processing`, `funded`, `held`, `release_pending`, `released`, `failed`, `refunded`, and `disputed`. Paystack hosted checkout, signed charge webhooks and server-side verification are implemented. Checkout requires PAYSTACK_SECRET_KEY; missing credentials return 503. Verified collection atomically funds the payment and schedules the job. Verified provider accounts, durable client-approved payouts and finance-authorized full refunds are implemented. Client confirmation sets release_pending; only verified transfer success marks released. Reconciliation and dispute resolution remain unfinished. Transfers default to disabled until merchant setup is ready; see [settlement integration](docs/backend-settlements.md).
 
 ## Local setup
 

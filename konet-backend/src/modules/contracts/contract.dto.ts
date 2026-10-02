@@ -541,7 +541,7 @@ export class UploadInput {
 export class PayoutAccountInput {
   @ApiProperty({ type: "string", minLength: 1 })
   @IsString()
-  @MinLength(1)
+  @Matches(/^[0-9]{3,9}$/)
   bankCode!: string;
   @ApiProperty({
     type: "string",

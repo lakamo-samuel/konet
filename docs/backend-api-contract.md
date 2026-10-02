@@ -1,6 +1,6 @@
 # Backend API contract handoff
 
-The backend registers **150 operations** under `/api/v1`: 120 existing handlers and 30 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
+The backend registers **151 operations** under `/api/v1`: 132 existing handlers and 19 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
 
 - Swagger UI: `http://localhost:4000/api/docs`
 - OpenAPI JSON: `http://localhost:4000/api/docs/json`
@@ -57,9 +57,9 @@ Live messaging uses Socket.IO namespace `/chat` on the backend origin, with tran
 - Paystack checkout is implemented; add PAYSTACK_SECRET_KEY to enable it. Empty credentials return 503.
 - Provider category/price filters are implemented and must match the same active service. See the [catalog guide](backend-catalog.md).
 - Quote acceptance is transactional and retry-safe: repeating acceptance of the same quote returns the original job. See the [hiring guide](backend-hiring.md).
-- Client confirmation leaves payment funds held. Payout and refund workflows require payment integration. See the [collaboration guide](backend-collaboration.md).
+- Client confirmation atomically queues payout and sets payment to release_pending. Only server-verified transfers mark funds released. Finance-authorized full refunds are durably queued. See the [collaboration guide](backend-collaboration.md).
 - The existing frontend mock statuses differ from backend statuses. Use the OpenAPI job, payment, verification, and availability enums.
-- Reviewer permissions for other resources, support/finance permissions, provider-specific signing, fee policy, and payout/refund operational rules still need finalization before those routes can become functional.
+- Permissions for remaining contract-only resources, fee policy, dispute resolution and financial reconciliation remain unfinished.
 
 - Student verification and provider onboarding/review are implemented; live email and evidence uploads need Resend and Cloudinary malware moderation configured. See the [verification setup guide](backend-verification.md) and [provider onboarding guide](backend-provider-onboarding.md).
 
@@ -134,12 +134,12 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 | GET | `/admin/disputes/{id}` | admin | — | 200 disputes | Contract only (501) |
 | GET | `/admin/payments` | admin | — | 200 payments[] | Contract only (501) |
 | GET | `/admin/payments/{id}` | admin | — | 200 payments | Contract only (501) |
-| GET | `/admin/payouts` | admin | — | 200 Payout[] | Contract only (501) |
-| GET | `/admin/payouts/{id}` | admin | — | 200 Payout | Contract only (501) |
+| GET | `/admin/payouts` | admin or finance | — | 200 Payout[] | Implemented |
+| GET | `/admin/payouts/{id}` | admin or finance | — | 200 Payout | Implemented |
 | PATCH | `/admin/users/{id}/status` | admin | AccountStatusInput | 200 user | Contract only (501) |
 | POST | `/admin/disputes/{id}/decision` | admin | DisputeDecisionInput | 201 Decision | Contract only (501) |
-| POST | `/admin/payments/{id}/refunds` | admin | RefundInput | 202 Refund | Contract only (501) |
-| POST | `/admin/payouts/{id}/retry` | admin | ReasonInput | 202 Payout | Contract only (501) |
+| POST | `/admin/payments/{id}/refunds` | admin or finance | RefundInput | 202 Refund | Implemented |
+| POST | `/admin/payouts/{id}/retry` | admin or finance | ReasonInput | 202 Payout | Implemented |
 | POST | `/admin/reconciliations` | admin | ReconciliationInput | 202 Reconciliation | Contract only (501) |
 | GET | `/admin/reconciliations` | admin | — | 200 Reconciliation[] | Contract only (501) |
 | GET | `/admin/reconciliations/{id}` | admin | — | 200 Reconciliation | Contract only (501) |
@@ -263,8 +263,8 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 | GET | `/jobs/{id}/conversation` | authenticated | — | 200 ConversationDetail | Existing handler |
 | GET | `/jobs/{id}/review` | authenticated | — | 200 reviews | Contract only (501) |
 | POST | `/jobs/{jobId}/payment/verify` | authenticated | — | 200 payments | Existing handler |
-| GET | `/jobs/{jobId}/payout` | authenticated | — | 200 Payout | Contract only (501) |
-| GET | `/jobs/{jobId}/refunds` | authenticated | — | 200 Refund[] | Contract only (501) |
+| GET | `/jobs/{jobId}/payout` | authenticated | — | 200 Payout | Implemented |
+| GET | `/jobs/{jobId}/refunds` | authenticated | — | 200 Refund[] | Implemented |
 
 ### conversations
 
@@ -361,19 +361,20 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 
 | Method | Path | Access | Request schema | Success | Current status |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/me/earnings` | authenticated | — | 200 Earnings | Contract only (501) |
+| GET | `/me/earnings` | authenticated | — | 200 Earnings | Implemented |
 
 ### payouts
 
 | Method | Path | Access | Request schema | Success | Current status |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/me/payouts` | authenticated | — | 200 Payout[] | Contract only (501) |
+| GET | `/me/payouts` | authenticated | — | 200 Payout[] | Implemented |
 
 ### payout-accounts
 
 | Method | Path | Access | Request schema | Success | Current status |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/me/payout-accounts` | authenticated | — | 200 PayoutAccount[] | Contract only (501) |
-| POST | `/me/payout-accounts` | authenticated | PayoutAccountInput | 201 PayoutAccount | Contract only (501) |
-| DELETE | `/me/payout-accounts/{id}` | authenticated | — | 204 No body | Contract only (501) |
+| GET | `/me/payout-accounts` | authenticated | — | 200 PayoutAccount[] | Implemented |
+| POST | `/me/payout-accounts` | authenticated | PayoutAccountInput | 201 PayoutAccount | Implemented |
+| DELETE | `/me/payout-accounts/{id}` | authenticated | — | 204 No body | Implemented |
 
+Authenticated `GET /payout-banks` returns the supported Nigerian bank list (`Bank[]`) for account setup. See [settlement integration](backend-settlements.md).

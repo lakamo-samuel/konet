@@ -2396,6 +2396,14 @@ export const contractSchemas: Record<string, SchemaObject> = {
       "completedAt",
     ],
   },
+  Bank: {
+    type: "object",
+    properties: {
+      code: { type: "string", example: "058" },
+      name: { type: "string", example: "Guaranty Trust Bank" },
+    },
+    required: ["code", "name"],
+  },
   PayoutAccount: {
     type: "object",
     properties: {
@@ -3459,7 +3467,7 @@ export const contractSchemas: Record<string, SchemaObject> = {
     properties: {
       bankCode: {
         type: "string",
-        minLength: 1,
+        pattern: "^[0-9]{3,9}$",
         example: "000",
       },
       accountNumber: {
@@ -3881,6 +3889,18 @@ export const contractSchemas: Record<string, SchemaObject> = {
 };
 
 export const routeContracts: RouteContract[] = [
+  {
+    method: "get",
+    path: "payout-banks",
+    summary: "List supported Nigerian payout banks",
+    response: "Bank[]",
+    body: null,
+    auth: "user",
+    existing: true,
+    query: null,
+    note: "Live Paystack bank codes and names, NGN nuban only. Server follows provider pagination and caches for one hour. Requires configured PAYSTACK_SECRET_KEY.",
+    code: 200,
+  },
   {
     method: "get",
     path: "health",
@@ -4707,7 +4727,7 @@ export const routeContracts: RouteContract[] = [
     auth: "user",
     existing: true,
     query: null,
-    note: "Client only. Records completion; funds remain held until the payment release workflow runs. Safe to retry.",
+    note: "Client only. Atomically queues one payout and sets payment release_pending; safe to retry. Funds become released only after Paystack confirms transfer success. Disputed jobs cannot be confirmed by the client.",
     code: 200,
   },
   {
@@ -5017,9 +5037,9 @@ export const routeContracts: RouteContract[] = [
     response: "Payout",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Participant only. Payout queues on client confirmation; 404 before queueing. pending may mean missing payout account or transfers disabled. succeeded requires Paystack verification.",
     code: 200,
   },
   {
@@ -5029,9 +5049,9 @@ export const routeContracts: RouteContract[] = [
     response: "Refund[]",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Participant-only refund history. Full refund status remains processing until Paystack verifies completion.",
     code: 200,
   },
   {
@@ -5053,9 +5073,9 @@ export const routeContracts: RouteContract[] = [
     response: "Earnings",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "NGN minor units. Earned is completed funded work; pending is unpaid earned funds; paidOut is verified released payments.",
     code: 200,
   },
   {
@@ -5065,9 +5085,9 @@ export const routeContracts: RouteContract[] = [
     response: "Payout[]",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: "ListQuery",
-    note: "",
+    note: "Provider-owned payouts; pagination and pending/processing/succeeded/failed/cancelled status filter.",
     code: 200,
   },
   {
@@ -5077,9 +5097,9 @@ export const routeContracts: RouteContract[] = [
     response: "PayoutAccount[]",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Approved providers only. One active Nigerian bank account. bankCode is 3–9 digits, accountNumber is 10 digits. Paystack resolves the name and recipient; full account number and recipient token are never returned or stored as plaintext bank details. Same account retries return the existing record.",
     code: 200,
   },
   {
@@ -5089,9 +5109,9 @@ export const routeContracts: RouteContract[] = [
     response: "PayoutAccount",
     body: "PayoutAccountInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Approved providers only. One active Nigerian bank account. bankCode is 3–9 digits, accountNumber is 10 digits. Paystack resolves the name and recipient; full account number and recipient token are never returned or stored as plaintext bank details. Same account retries return the existing record.",
     code: 201,
   },
   {
@@ -5101,9 +5121,9 @@ export const routeContracts: RouteContract[] = [
     response: "Acknowledgement",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Owner only. Soft removal; blocked while a pending/processing payout uses the account. Immutable payout recipient snapshots are retained.",
     code: 204,
   },
   {
@@ -5115,7 +5135,7 @@ export const routeContracts: RouteContract[] = [
     auth: "webhook",
     existing: true,
     query: null,
-    note: "gateway must be paystack. Required x-paystack-signature header is HMAC-SHA512 over exact raw JSON bytes with PAYSTACK_SECRET_KEY. Handles charge.success after server verification; duplicates are safe. Other event types and unrelated references are acknowledged without state changes. No JWT.",
+    note: "gateway must be paystack. x-paystack-signature is HMAC-SHA512 over exact raw JSON bytes. Handles charge.success and transfer/refund events after server-side verification. Duplicates are safe; unrelated events do not change records. No JWT.",
     code: 200,
   },
   {
@@ -5351,10 +5371,10 @@ export const routeContracts: RouteContract[] = [
     summary: "List payouts for authorized staff",
     response: "Payout[]",
     body: null,
-    auth: "admin",
-    existing: false,
+    auth: "finance",
+    existing: true,
     query: "ListQuery",
-    note: "",
+    note: "Active admin or finance only. Paginated payout queue and status filter.",
     code: 200,
   },
   {
@@ -5363,10 +5383,10 @@ export const routeContracts: RouteContract[] = [
     summary: "Read payouts for authorized staff",
     response: "Payout",
     body: null,
-    auth: "admin",
-    existing: false,
+    auth: "finance",
+    existing: true,
     query: null,
-    note: "",
+    note: "Active admin or finance only. Reads payout status without recipient tokens or full bank numbers.",
     code: 200,
   },
   {
@@ -5438,10 +5458,10 @@ export const routeContracts: RouteContract[] = [
     summary: "Initiate authorized refund",
     response: "Refund",
     body: "RefundInput",
-    auth: "admin",
-    existing: false,
+    auth: "finance",
+    existing: true,
     query: null,
-    note: "",
+    note: "Active admin or finance only. Full amount required, one refund per payment, reason required; no self-refund approval. No payout reservation or open dispute allowed. Cancels the job and durably queues a refund; 202 is not confirmation of returned funds.",
     code: 202,
   },
   {
@@ -5450,10 +5470,10 @@ export const routeContracts: RouteContract[] = [
     summary: "Retry failed payout without duplicate transfer",
     response: "Payout",
     body: "ReasonInput",
-    auth: "admin",
-    existing: false,
+    auth: "finance",
+    existing: true,
     query: null,
-    note: "",
+    note: "Active admin or finance only. Requires reason and server-verified failed original transfer. Uses the same reference and recipient; unknown outcomes and reversals cannot be retried blindly.",
     code: 202,
   },
   {

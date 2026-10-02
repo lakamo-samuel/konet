@@ -10373,7 +10373,7 @@
         ],
         "x-implementation-status": "implemented",
         "summary": "Client confirms work completion",
-        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nClient only. Records completion; funds remain held until the payment release workflow runs. Safe to retry.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nClient only. Atomically queues one payout and sets payment release_pending; safe to retry. Funds become released only after Paystack confirms transfer success. Disputed jobs cannot be confirmed by the client.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
     "/api/v1/jobs/{id}/cancel": {
@@ -13408,7 +13408,7 @@
             "name": "gateway",
             "in": "path",
             "required": true,
-            "description": "Selected payment provider identifier; provider selection is pending.",
+            "description": "Selected payment provider identifier: paystack.",
             "schema": {
               "type": "string"
             }
@@ -13520,11 +13520,11 @@
         ],
         "x-implementation-status": "implemented",
         "summary": "Receive signed payment provider event",
-        "description": "Paystack callback only; raw-body HMAC-SHA512 signature verification is mandatory.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\ngateway must be paystack. Required x-paystack-signature header is HMAC-SHA512 over exact raw JSON bytes with PAYSTACK_SECRET_KEY. Handles charge.success after server verification; duplicates are safe. Other event types and unrelated references are acknowledged without state changes. No JWT.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes.",
+        "description": "Paystack callback only; raw-body HMAC-SHA512 signature verification is mandatory.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\ngateway must be paystack. x-paystack-signature is HMAC-SHA512 over exact raw JSON bytes. Handles charge.success and transfer/refund events after server-side verification. Duplicates are safe; unrelated events do not change records. No JWT.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes.",
         "security": [],
         "requestBody": {
           "required": true,
-          "description": "Unmodified Paystack JSON event. charge.success requires event, data.id and data.reference.",
+          "description": "Unmodified Paystack JSON event. Charge and transfer events identify data.reference; refund events identify data.id. Signature verification uses the exact raw bytes; relevant events are verified with Paystack before updating funds.",
           "content": {
             "application/json": {
               "schema": {
@@ -13534,6 +13534,1516 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/payout-banks": {
+      "get": {
+        "operationId": "get_payout_banks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Bank"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Paystack credentials missing or provider temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "payout-banks"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "List supported Nigerian payout banks",
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nLive Paystack bank codes and names, NGN nuban only. Server follows provider pagination and caches for one hour. Requires configured PAYSTACK_SECRET_KEY.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/me/payout-accounts": {
+      "get": {
+        "operationId": "get_me_payout_accounts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PayoutAccount"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Paystack credentials missing or provider temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "payout-accounts"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "List own payout accounts",
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nApproved providers only. One active Nigerian bank account. bankCode is 3–9 digits, accountNumber is 10 digits. Paystack resolves the name and recipient; full account number and recipient token are never returned or stored as plaintext bank details. Same account retries return the existing record.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      },
+      "post": {
+        "operationId": "post_me_payout_accounts",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayoutAccountInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutAccount"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Paystack credentials missing or provider temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "payout-accounts"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "Register provider payout recipient",
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nApproved providers only. One active Nigerian bank account. bankCode is 3–9 digits, accountNumber is 10 digits. Paystack resolves the name and recipient; full account number and recipient token are never returned or stored as plaintext bank details. Same account retries return the existing record.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/me/payout-accounts/{id}": {
+      "delete": {
+        "operationId": "delete_me_payout_accounts_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource UUID.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Current successful response. No response body."
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "payout-accounts"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "Remove payout account",
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nOwner only. Soft removal; blocked while a pending/processing payout uses the account. Immutable payout recipient snapshots are retained.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/jobs/{jobId}/payout": {
+      "get": {
+        "operationId": "get_jobs_jobId_payout",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "description": "Resource UUID.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payout"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "jobs"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "Read participant payout status",
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nParticipant only. Payout queues on client confirmation; 404 before queueing. pending may mean missing payout account or transfers disabled. succeeded requires Paystack verification.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/jobs/{jobId}/refunds": {
+      "get": {
+        "operationId": "get_jobs_jobId_refunds",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "description": "Resource UUID.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Refund"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "jobs"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "Read participant refunds",
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nParticipant-only refund history. Full refund status remains processing until Paystack verifies completion.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/me/payouts": {
+      "get": {
+        "operationId": "get_me_payouts",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Optional resource status filter."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Payout"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "payouts"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "List own provider payouts",
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nProvider-owned payouts; pagination and pending/processing/succeeded/failed/cancelled status filter.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/me/earnings": {
+      "get": {
+        "operationId": "get_me_earnings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Earnings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "earnings"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "Read provider earnings summary",
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nNGN minor units. Earned is completed funded work; pending is unpaid earned funds; paidOut is verified released payments.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/admin/payments/{id}/refunds": {
+      "post": {
+        "operationId": "post_admin_payments_id_refunds",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource UUID.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refund"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "Initiate authorized refund",
+        "description": "Requires an active admin or finance role from the database and a live Bearer session. Financial actions are audited.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nActive admin or finance only. Full amount required, one refund per payment, reason required; no self-refund approval. No payout reservation or open dispute allowed. Cancels the job and durably queues a refund; 202 is not confirmation of returned funds.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/admin/payouts/{id}/retry": {
+      "post": {
+        "operationId": "post_admin_payouts_id_retry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource UUID.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payout"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Paystack credentials missing or provider temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "Retry failed payout without duplicate transfer",
+        "description": "Requires an active admin or finance role from the database and a live Bearer session. Financial actions are audited.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nActive admin or finance only. Requires reason and server-verified failed original transfer. Uses the same reference and recipient; unknown outcomes and reversals cannot be retried blindly.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/admin/payouts": {
+      "get": {
+        "operationId": "get_admin_payouts",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Optional resource status filter."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Payout"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "List payouts for authorized staff",
+        "description": "Requires an active admin or finance role from the database and a live Bearer session. Financial actions are audited.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nActive admin or finance only. Paginated payout queue and status filter.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/admin/payouts/{id}": {
+      "get": {
+        "operationId": "get_admin_payouts_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource UUID.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payout"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "Read payouts for authorized staff",
+        "description": "Requires an active admin or finance role from the database and a live Bearer session. Financial actions are audited.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nActive admin or finance only. Reads payout status without recipient tokens or full bank numbers.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
     "/api/v1/me/student-verification": {
@@ -15968,954 +17478,6 @@
         "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
-    "/api/v1/jobs/{jobId}/payout": {
-      "get": {
-        "operationId": "get_jobs_jobId_payout",
-        "parameters": [
-          {
-            "name": "jobId",
-            "in": "path",
-            "required": true,
-            "description": "Resource UUID.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Planned successful response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Payout"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request fields, types, or format.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid, or expired authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found or unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Duplicate action, expired resource, or conflicting state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Business-rule validation failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Current response: ENDPOINT_NOT_IMPLEMENTED. No data or money is changed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "statusCode": 501,
-                  "code": "ENDPOINT_NOT_IMPLEMENTED",
-                  "message": "Read participant payout status is contract-only; backend implementation is pending.",
-                  "path": "/api/v1/jobs/{jobId}/payout"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Read participant payout status [contract only]",
-        "tags": [
-          "jobs"
-        ],
-        "x-implementation-status": "contract-only",
-        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
-      }
-    },
-    "/api/v1/jobs/{jobId}/refunds": {
-      "get": {
-        "operationId": "get_jobs_jobId_refunds",
-        "parameters": [
-          {
-            "name": "jobId",
-            "in": "path",
-            "required": true,
-            "description": "Resource UUID.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Planned successful response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Refund"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request fields, types, or format.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid, or expired authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found or unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Duplicate action, expired resource, or conflicting state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Business-rule validation failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Current response: ENDPOINT_NOT_IMPLEMENTED. No data or money is changed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "statusCode": 501,
-                  "code": "ENDPOINT_NOT_IMPLEMENTED",
-                  "message": "Read participant refunds is contract-only; backend implementation is pending.",
-                  "path": "/api/v1/jobs/{jobId}/refunds"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Read participant refunds [contract only]",
-        "tags": [
-          "jobs"
-        ],
-        "x-implementation-status": "contract-only",
-        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
-      }
-    },
-    "/api/v1/me/earnings": {
-      "get": {
-        "operationId": "get_me_earnings",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Planned successful response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Earnings"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request fields, types, or format.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid, or expired authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found or unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Duplicate action, expired resource, or conflicting state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Business-rule validation failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Current response: ENDPOINT_NOT_IMPLEMENTED. No data or money is changed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "statusCode": 501,
-                  "code": "ENDPOINT_NOT_IMPLEMENTED",
-                  "message": "Read provider earnings summary is contract-only; backend implementation is pending.",
-                  "path": "/api/v1/me/earnings"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Read provider earnings summary [contract only]",
-        "tags": [
-          "earnings"
-        ],
-        "x-implementation-status": "contract-only",
-        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
-      }
-    },
-    "/api/v1/me/payouts": {
-      "get": {
-        "operationId": "get_me_payouts",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20
-            }
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "Optional resource status filter."
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Planned successful response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Payout"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request fields, types, or format.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid, or expired authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found or unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Duplicate action, expired resource, or conflicting state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Business-rule validation failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Current response: ENDPOINT_NOT_IMPLEMENTED. No data or money is changed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "statusCode": 501,
-                  "code": "ENDPOINT_NOT_IMPLEMENTED",
-                  "message": "List own provider payouts is contract-only; backend implementation is pending.",
-                  "path": "/api/v1/me/payouts"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List own provider payouts [contract only]",
-        "tags": [
-          "payouts"
-        ],
-        "x-implementation-status": "contract-only",
-        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
-      }
-    },
-    "/api/v1/me/payout-accounts": {
-      "get": {
-        "operationId": "get_me_payout_accounts",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Planned successful response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PayoutAccount"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request fields, types, or format.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid, or expired authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found or unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Duplicate action, expired resource, or conflicting state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Business-rule validation failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Current response: ENDPOINT_NOT_IMPLEMENTED. No data or money is changed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "statusCode": 501,
-                  "code": "ENDPOINT_NOT_IMPLEMENTED",
-                  "message": "List own payout accounts is contract-only; backend implementation is pending.",
-                  "path": "/api/v1/me/payout-accounts"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List own payout accounts [contract only]",
-        "tags": [
-          "payout-accounts"
-        ],
-        "x-implementation-status": "contract-only",
-        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
-      },
-      "post": {
-        "operationId": "post_me_payout_accounts",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PayoutAccountInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Planned successful response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PayoutAccount"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request fields, types, or format.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid, or expired authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found or unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Duplicate action, expired resource, or conflicting state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Business-rule validation failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Current response: ENDPOINT_NOT_IMPLEMENTED. No data or money is changed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "statusCode": 501,
-                  "code": "ENDPOINT_NOT_IMPLEMENTED",
-                  "message": "Register provider payout recipient is contract-only; backend implementation is pending.",
-                  "path": "/api/v1/me/payout-accounts"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Register provider payout recipient [contract only]",
-        "tags": [
-          "payout-accounts"
-        ],
-        "x-implementation-status": "contract-only",
-        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
-      }
-    },
-    "/api/v1/me/payout-accounts/{id}": {
-      "delete": {
-        "operationId": "delete_me_payout_accounts_id",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource UUID.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Planned successful response. No response body."
-          },
-          "400": {
-            "description": "Invalid request fields, types, or format.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid, or expired authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found or unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Duplicate action, expired resource, or conflicting state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Business-rule validation failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Current response: ENDPOINT_NOT_IMPLEMENTED. No data or money is changed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "statusCode": 501,
-                  "code": "ENDPOINT_NOT_IMPLEMENTED",
-                  "message": "Remove payout account is contract-only; backend implementation is pending.",
-                  "path": "/api/v1/me/payout-accounts/{id}"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Remove payout account [contract only]",
-        "tags": [
-          "payout-accounts"
-        ],
-        "x-implementation-status": "contract-only",
-        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
-      }
-    },
     "/api/v1/admin/disputes": {
       "get": {
         "operationId": "get_admin_disputes",
@@ -17504,300 +18066,6 @@
         "description": "Requires a staff role with permission for this resource. This stub always fails closed; its resource-specific permission enforcement remains pending.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
-    "/api/v1/admin/payouts": {
-      "get": {
-        "operationId": "get_admin_payouts",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20
-            }
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "Optional resource status filter."
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Planned successful response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Payout"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request fields, types, or format.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid, or expired authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found or unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Duplicate action, expired resource, or conflicting state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Business-rule validation failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Current response: ENDPOINT_NOT_IMPLEMENTED. No data or money is changed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "statusCode": 501,
-                  "code": "ENDPOINT_NOT_IMPLEMENTED",
-                  "message": "List payouts for authorized staff is contract-only; backend implementation is pending.",
-                  "path": "/api/v1/admin/payouts"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List payouts for authorized staff [contract only]",
-        "tags": [
-          "administration"
-        ],
-        "x-implementation-status": "contract-only",
-        "description": "Requires a staff role with permission for this resource. This stub always fails closed; its resource-specific permission enforcement remains pending.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
-      }
-    },
-    "/api/v1/admin/payouts/{id}": {
-      "get": {
-        "operationId": "get_admin_payouts_id",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource UUID.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Planned successful response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Payout"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request fields, types, or format.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid, or expired authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found or unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Duplicate action, expired resource, or conflicting state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Business-rule validation failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Current response: ENDPOINT_NOT_IMPLEMENTED. No data or money is changed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "statusCode": 501,
-                  "code": "ENDPOINT_NOT_IMPLEMENTED",
-                  "message": "Read payouts for authorized staff is contract-only; backend implementation is pending.",
-                  "path": "/api/v1/admin/payouts/{id}"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Read payouts for authorized staff [contract only]",
-        "tags": [
-          "administration"
-        ],
-        "x-implementation-status": "contract-only",
-        "description": "Requires a staff role with permission for this resource. This stub always fails closed; its resource-specific permission enforcement remains pending.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
-      }
-    },
     "/api/v1/admin/users/{id}/status": {
       "patch": {
         "operationId": "patch_admin_users_id_status",
@@ -18083,298 +18351,6 @@
           }
         ],
         "summary": "Resolve dispute and authorize payout or refund [contract only]",
-        "tags": [
-          "administration"
-        ],
-        "x-implementation-status": "contract-only",
-        "description": "Requires a staff role with permission for this resource. This stub always fails closed; its resource-specific permission enforcement remains pending.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
-      }
-    },
-    "/api/v1/admin/payments/{id}/refunds": {
-      "post": {
-        "operationId": "post_admin_payments_id_refunds",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource UUID.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RefundInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "202": {
-            "description": "Planned successful response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refund"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request fields, types, or format.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid, or expired authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found or unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Duplicate action, expired resource, or conflicting state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Business-rule validation failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Current response: ENDPOINT_NOT_IMPLEMENTED. No data or money is changed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "statusCode": 501,
-                  "code": "ENDPOINT_NOT_IMPLEMENTED",
-                  "message": "Initiate authorized refund is contract-only; backend implementation is pending.",
-                  "path": "/api/v1/admin/payments/{id}/refunds"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Initiate authorized refund [contract only]",
-        "tags": [
-          "administration"
-        ],
-        "x-implementation-status": "contract-only",
-        "description": "Requires a staff role with permission for this resource. This stub always fails closed; its resource-specific permission enforcement remains pending.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
-      }
-    },
-    "/api/v1/admin/payouts/{id}/retry": {
-      "post": {
-        "operationId": "post_admin_payouts_id_retry",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource UUID.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReasonInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "202": {
-            "description": "Planned successful response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Payout"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request fields, types, or format.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid, or expired authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found or unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Duplicate action, expired resource, or conflicting state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Business-rule validation failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Current response: ENDPOINT_NOT_IMPLEMENTED. No data or money is changed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "statusCode": 501,
-                  "code": "ENDPOINT_NOT_IMPLEMENTED",
-                  "message": "Retry failed payout without duplicate transfer is contract-only; backend implementation is pending.",
-                  "path": "/api/v1/admin/payouts/{id}/retry"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Retry failed payout without duplicate transfer [contract only]",
         "tags": [
           "administration"
         ],
@@ -19745,6 +19721,46 @@
         "type": "object",
         "properties": {}
       },
+      "PayoutAccountInput": {
+        "type": "object",
+        "properties": {
+          "bankCode": {
+            "type": "string",
+            "pattern": "^[0-9]{3,9}$",
+            "example": "000"
+          },
+          "accountNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{10}$",
+            "description": "Ten-digit bank account number; response exposes only the final four digits.",
+            "example": "0123456789"
+          }
+        },
+        "required": [
+          "bankCode",
+          "accountNumber"
+        ]
+      },
+      "RefundInput": {
+        "type": "object",
+        "properties": {
+          "amountMinor": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 500000,
+            "description": "Integer minor units (NGN kobo); 500000 = ₦5,000."
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "example": "The submitted document needs a clearer photograph."
+          }
+        },
+        "required": [
+          "amountMinor",
+          "reason"
+        ]
+      },
       "StudentVerificationInput": {
         "type": "object",
         "properties": {
@@ -19895,26 +19911,6 @@
           "password"
         ]
       },
-      "PayoutAccountInput": {
-        "type": "object",
-        "properties": {
-          "bankCode": {
-            "type": "string",
-            "minLength": 1,
-            "example": "000"
-          },
-          "accountNumber": {
-            "type": "string",
-            "pattern": "^[0-9]{10}$",
-            "description": "Ten-digit bank account number; response exposes only the final four digits.",
-            "example": "0123456789"
-          }
-        },
-        "required": [
-          "bankCode",
-          "accountNumber"
-        ]
-      },
       "AccountStatusInput": {
         "type": "object",
         "properties": {
@@ -19962,26 +19958,6 @@
         },
         "required": [
           "decision",
-          "reason"
-        ]
-      },
-      "RefundInput": {
-        "type": "object",
-        "properties": {
-          "amountMinor": {
-            "type": "integer",
-            "minimum": 1,
-            "example": 500000,
-            "description": "Integer minor units (NGN kobo); 500000 = ₦5,000."
-          },
-          "reason": {
-            "type": "string",
-            "minLength": 3,
-            "example": "The submitted document needs a clearer photograph."
-          }
-        },
-        "required": [
-          "amountMinor",
           "reason"
         ]
       },
@@ -22673,6 +22649,23 @@
           "dueAt",
           "status",
           "completedAt"
+        ]
+      },
+      "Bank": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "058"
+          },
+          "name": {
+            "type": "string",
+            "example": "Guaranty Trust Bank"
+          }
+        },
+        "required": [
+          "code",
+          "name"
         ]
       },
       "PayoutAccount": {

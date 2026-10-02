@@ -1,3 +1,4 @@
+import { queueClientPayout } from "./settlement.service";
 import { RealtimePublisher, LiveEvent } from "../realtime/realtime.publisher";
 import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, isNull, sql, or } from "drizzle-orm";
@@ -150,6 +151,11 @@ export class CollaborationService {
             "Payment activity prevents cancellation.",
           );
       }
+      if (job.status === "disputed")
+        this.fail(
+          "DISPUTE_RESOLUTION_REQUIRED",
+          "Staff must resolve this dispute before job completion.",
+        );
       assertJobTransition(job.status as JobState, to);
       if (to === "in_progress" || to === "completed") {
         const [payment] = await tx
@@ -176,6 +182,13 @@ export class CollaborationService {
             "MILESTONES_INCOMPLETE",
             "Complete all milestones before submitting the job.",
           );
+      }
+      if (to === "completed") {
+        const [payment] = await tx
+          .select()
+          .from(s.payments)
+          .where(eq(s.payments.jobId, id));
+        await queueClientPayout(tx, job, payment);
       }
       const now = new Date();
       const [out] = await tx

@@ -1,3 +1,4 @@
+import { SettlementService } from "./settlement.service";
 import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { and, desc, eq, or } from "drizzle-orm";
@@ -14,6 +15,7 @@ export class PaymentService {
     @Inject(DATABASE) private db: Database,
     private gateway: PaystackGateway,
     private config: ConfigService,
+    private settlements: SettlementService,
   ) {}
   private fail(code: string, message: string, status = 409): never {
     throw new DomainError(code, message, status);
@@ -317,6 +319,8 @@ export class PaymentService {
     if (!raw)
       this.fail("RAW_BODY_REQUIRED", "Raw webhook body is required.", 400);
     const event = await this.gateway.verifyWebhook(signature, raw);
+    if (event.status === "settlement" && event.kind)
+      return this.settlements.webhook(event.kind, event.reference);
     if (event.status === "ignored") return { message: "Event ignored." };
     const [payment] = await this.db
       .select()

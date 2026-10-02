@@ -88,7 +88,7 @@ export class MarketplaceService {
         .select()
         .from(jobs)
         .where(eq(jobs.id, jobId))
-        .limit(1);
+        .for("update");
       const p = await tx
         .select({ id: providerProfiles.id })
         .from(providerProfiles)

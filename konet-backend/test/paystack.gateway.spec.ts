@@ -137,11 +137,146 @@ describe("Paystack gateway", () => {
     ).rejects.toMatchObject({ code: "INVALID_WEBHOOK_SIGNATURE" });
   });
   it("ignores signed unrelated event types", async () => {
-    const raw = Buffer.from('{"event":"transfer.success"}');
+    const raw = Buffer.from('{"event":"unrelated.event"}');
     const signature = createHmac("sha512", secret).update(raw).digest("hex");
     expect((await gateway.verifyWebhook(signature, raw)).status).toBe(
       "ignored",
     );
+  });
+  it("follows bank pagination, excludes inactive banks and caches the result", async () => {
+    const first = {
+      code: "058",
+      name: "First Bank",
+      active: true,
+      is_deleted: false,
+      currency: "NGN",
+      type: "nuban",
+    };
+    const fetch = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: true,
+            data: [first],
+            meta: { next: "second-page" },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: true,
+            data: [
+              { ...first, code: "044", name: "Second Bank" },
+              { ...first, code: "000", active: false },
+            ],
+            meta: { next: null },
+          }),
+        ),
+      );
+    const fresh = new PaystackGateway(
+      new ConfigService({ PAYSTACK_SECRET_KEY: secret }),
+    );
+    expect(await fresh.listBanks()).toHaveLength(2);
+    expect(fetch.mock.calls[1][0]).toContain("next=second-page");
+    await fresh.listBanks();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+  it("resolves a bank account and registers only its matching active NGN recipient", async () => {
+    const fetch = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: true,
+            data: {
+              account_number: "0123456789",
+              account_name: "Bank Verified Name",
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: true,
+            data: {
+              active: true,
+              currency: "NGN",
+              recipient_code: "RCP_bank",
+              details: { account_number: "0123456789", bank_code: "058" },
+            },
+          }),
+        ),
+      );
+    expect(await gateway.resolveRecipient("058", "0123456789")).toEqual({
+      accountName: "Bank Verified Name",
+      recipientCode: "RCP_bank",
+    });
+    expect(JSON.parse(fetch.mock.calls[1][1]!.body as string)).toMatchObject({
+      type: "nuban",
+      name: "Bank Verified Name",
+      bank_code: "058",
+      account_number: "0123456789",
+    });
+  });
+  it("initiates a stable transfer reference and extracts server-verified settlement evidence", async () => {
+    const fetch = respond({
+      reference: "konet-payout-reference",
+      status: "pending",
+    });
+    await gateway.transfer({
+      reference: "konet-payout-reference",
+      recipientCode: "RCP_bank",
+      amountMinor: 500000,
+    });
+    expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toMatchObject({
+      source: "balance",
+      amount: 500000,
+      reference: "konet-payout-reference",
+      recipient: "RCP_bank",
+    });
+    jest.restoreAllMocks();
+    respond({
+      reference: "konet-payout-reference",
+      amount: 500000,
+      currency: "NGN",
+      status: "success",
+      recipient: { recipient_code: "RCP_bank" },
+    });
+    expect(
+      (await gateway.verifyTransfer("konet-payout-reference")).recipientCode,
+    ).toBe("RCP_bank");
+  });
+  it("correlates full refunds with the local authorization rather than claiming create is success", async () => {
+    const fetch = respond({ id: 987654 });
+    expect(
+      await gateway.createRefund({
+        reference: "charge-ref",
+        amountMinor: 500000,
+        refundId: "local-refund",
+      }),
+    ).toEqual({ id: "987654" });
+    expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toMatchObject({
+      transaction: "charge-ref",
+      amount: 500000,
+      merchant_note: "konet-refund:local-refund",
+    });
+    jest.restoreAllMocks();
+    respond({
+      id: 987654,
+      transaction: 123456,
+      amount: 500000,
+      currency: "NGN",
+      status: "processed",
+      merchant_note: "konet-refund:local-refund",
+    });
+    expect(await gateway.verifyRefund("987654")).toMatchObject({
+      transactionId: "123456",
+      status: "processed",
+      merchantNote: "konet-refund:local-refund",
+    });
   });
   it("returns a safe provider error after network or API failures", async () => {
     jest

@@ -1,3 +1,8 @@
+import {
+  SettlementController,
+  FinanceSettlementController,
+} from "./settlement.controller";
+import { SettlementService } from "./settlement.service";
 import { RealtimePublisher } from "../realtime/realtime.publisher";
 import { RealtimeServer } from "../realtime/realtime.server";
 import { CollaborationController } from "./collaboration.controller";
@@ -29,6 +34,8 @@ import { PaymentService } from "./payment.service";
     MarketplaceController,
     PaymentsController,
     PaymentWebhookController,
+    SettlementController,
+    FinanceSettlementController,
   ],
   providers: [
     MarketplaceService,
@@ -39,6 +46,7 @@ import { PaymentService } from "./payment.service";
     CategoriesService,
     PaystackGateway,
     PaymentService,
+    SettlementService,
     { provide: PAYMENT_GATEWAY, useExisting: PaystackGateway },
   ],
 })

@@ -57,6 +57,14 @@ class Environment {
   @IsString()
   STORAGE_LOCAL_PATH = "./uploads";
 
+  @Transform(
+    ({ obj, key }) =>
+      obj[key] === true ||
+      ["true", "1"].includes(String(obj[key]).toLowerCase()),
+  )
+  @IsBoolean()
+  PAYSTACK_TRANSFERS_ENABLED = false;
+
   @IsOptional()
   @Matches(/^sk_(test|live)_[a-zA-Z0-9]+$/)
   PAYSTACK_SECRET_KEY?: string;
@@ -195,6 +203,7 @@ export function resolveSwaggerEnabled(env: EnvironmentConfig): boolean {
 }
 
 const KNOWN_KEYS = [
+  "PAYSTACK_TRANSFERS_ENABLED",
   "PAYSTACK_SECRET_KEY",
   "PAYMENT_CALLBACK_URL",
   "CLOUDINARY_CLOUD_NAME",

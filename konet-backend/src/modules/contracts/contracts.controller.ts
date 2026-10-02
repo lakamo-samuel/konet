@@ -95,61 +95,6 @@ export class MemberContractsController {
   getDisputesIdDecisions(@Param("id", new ParseUUIDPipe()) _id: string): never {
     return unavailable("Read dispute decision history");
   }
-
-  @Get("jobs/:jobId/payout")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Read participant payout status" })
-  getJobsJobIdPayout(
-    @Param("jobId", new ParseUUIDPipe()) _jobId: string,
-  ): never {
-    return unavailable("Read participant payout status");
-  }
-
-  @Get("jobs/:jobId/refunds")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Read participant refunds" })
-  getJobsJobIdRefunds(
-    @Param("jobId", new ParseUUIDPipe()) _jobId: string,
-  ): never {
-    return unavailable("Read participant refunds");
-  }
-
-  @Get("me/earnings")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Read provider earnings summary" })
-  getMeEarnings(): never {
-    return unavailable("Read provider earnings summary");
-  }
-
-  @Get("me/payouts")
-  @HttpCode(200)
-  @ApiOperation({ summary: "List own provider payouts" })
-  getMePayouts(@Query() _query: Dto.ListQuery): never {
-    return unavailable("List own provider payouts");
-  }
-
-  @Get("me/payout-accounts")
-  @HttpCode(200)
-  @ApiOperation({ summary: "List own payout accounts" })
-  getMePayoutAccounts(): never {
-    return unavailable("List own payout accounts");
-  }
-
-  @Post("me/payout-accounts")
-  @HttpCode(201)
-  @ApiOperation({ summary: "Register provider payout recipient" })
-  postMePayoutAccounts(@Body() _body: Dto.PayoutAccountInput): never {
-    return unavailable("Register provider payout recipient");
-  }
-
-  @Delete("me/payout-accounts/:id")
-  @HttpCode(204)
-  @ApiOperation({ summary: "Remove payout account" })
-  deleteMePayoutAccountsId(
-    @Param("id", new ParseUUIDPipe()) _id: string,
-  ): never {
-    return unavailable("Remove payout account");
-  }
 }
 
 @ApiTags("admin contracts")
@@ -185,20 +130,6 @@ export class AdminContractsController {
     return unavailable("Read payments for authorized staff");
   }
 
-  @Get("admin/payouts")
-  @HttpCode(200)
-  @ApiOperation({ summary: "List payouts for authorized staff" })
-  getAdminPayouts(@Query() _query: Dto.ListQuery): never {
-    return unavailable("List payouts for authorized staff");
-  }
-
-  @Get("admin/payouts/:id")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Read payouts for authorized staff" })
-  getAdminPayoutsId(@Param("id", new ParseUUIDPipe()) _id: string): never {
-    return unavailable("Read payouts for authorized staff");
-  }
-
   @Patch("admin/users/:id/status")
   @HttpCode(200)
   @ApiOperation({ summary: "Set account status with audit reason" })
@@ -217,26 +148,6 @@ export class AdminContractsController {
     @Body() _body: Dto.DisputeDecisionInput,
   ): never {
     return unavailable("Resolve dispute and authorize payout or refund");
-  }
-
-  @Post("admin/payments/:id/refunds")
-  @HttpCode(202)
-  @ApiOperation({ summary: "Initiate authorized refund" })
-  postAdminPaymentsIdRefunds(
-    @Param("id", new ParseUUIDPipe()) _id: string,
-    @Body() _body: Dto.RefundInput,
-  ): never {
-    return unavailable("Initiate authorized refund");
-  }
-
-  @Post("admin/payouts/:id/retry")
-  @HttpCode(202)
-  @ApiOperation({ summary: "Retry failed payout without duplicate transfer" })
-  postAdminPayoutsIdRetry(
-    @Param("id", new ParseUUIDPipe()) _id: string,
-    @Body() _body: Dto.ReasonInput,
-  ): never {
-    return unavailable("Retry failed payout without duplicate transfer");
   }
 
   @Post("admin/reconciliations")

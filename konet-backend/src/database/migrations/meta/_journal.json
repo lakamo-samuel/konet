@@ -50,6 +50,13 @@
       "when": 1790921626640,
       "tag": "0006_perpetual_skaar",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790922625352,
+      "tag": "0007_unique_phalanx",
+      "breakpoints": true
     }
   ]
 }
