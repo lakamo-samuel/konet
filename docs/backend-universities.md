@@ -29,7 +29,7 @@ All paths below are relative to `/api/v1` and require an active session with the
 | Grant role | `POST /admin/users/{id}/roles` | `{ "role": "reviewer", "reason": "Assigned to student document review" }` |
 | Revoke role | `DELETE /admin/users/{id}/roles/{role}` | `{ "reason": "Assignment ended" }` |
 
-Supported roles are `admin`, `reviewer`, `support`, and `finance`. Only `admin` currently grants permissions for directory and staff management. Reviewer, support, and finance access will be added to their respective features. A role does not make an unimplemented endpoint functional.
+Supported roles are `admin`, `reviewer`, `support`, and `finance`. Only `admin` currently grants permissions for directory and staff management. Admin and reviewer roles now also grant access to student document review and private submitted evidence. Support and finance access will be added to their respective features. A role does not make an unimplemented endpoint functional.
 
 Students cannot assign themselves roles. Role changes are idempotent, require a reason, and are audited. The API prevents removal of the final active administrator, including simultaneous revocation attempts. Revocations take effect on the next request without waiting for a JWT to expire. Administrators cannot grant staff roles to inactive accounts. Role changes use a database advisory lock shared with the operator command.
 
@@ -55,9 +55,9 @@ Inactive universities and campuses are omitted from public discovery. Deleting a
 
 Email domains are normalized to lowercase ASCII domain names. URLs, email addresses, wildcards, and malformed hostnames are rejected. Domains start unapproved unless an administrator explicitly approves them. Domain names are globally unique; campus slugs are unique within a university; university slugs are globally unique. Cross-university campus/domain updates and deletions return 404. Invalid, null, or empty updates fail validation. Failed mutations do not create success audit events.
 
-## Verification clarification and next feature
+## Student verification
 
-Approved email domains are directory configuration, not proof that a student controls an address. The next feature will send a one-time university-email code through Resend and verify it automatically. Students using ID cards or documents will use the manual fallback: a private Cloudinary upload followed by a reviewer decision. Cloudinary is the selected storage provider; its upload/access/scanning integration and the review queue are not implemented by this directory feature.
+Approved email domains are directory configuration, not proof that a student controls an address. The student-verification feature now sends a one-time university-email code through Resend and verifies it automatically. Students using ID cards or documents use the manual fallback: a private scanned Cloudinary upload followed by an admin/reviewer decision. See [verification setup and flows](backend-verification.md) for configuration and dashboard integration.
 
 ## Verification performed
 

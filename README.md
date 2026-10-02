@@ -127,7 +127,7 @@ The NestJS app is assembled in `konet-backend/src/app.module.ts`. Controllers ha
 
 Protected endpoints require `Authorization: Bearer <access token>`. Login and registration return an access token and set an HttpOnly refresh cookie scoped to `/api/v1/auth`; refresh rotates the stored hashed token. The API validates DTOs, applies ownership checks, and rejects invalid job transitions. CORS origins come from `FRONTEND_URL`.
 
-The API implements automatic university email verification, private scanned Cloudinary evidence, and admin/reviewer document decisions. Configure Cloudinary and Resend and connect the frontend to these APIs; see [verification setup](docs/backend-verification.md). Password recovery uses the encrypted Resend outbox; see [account setup](docs/backend-accounts.md). Provider onboarding/review and payment-provider integration remain pending.
+The API implements automatic university email verification, private scanned Cloudinary evidence, and admin/reviewer document decisions. Configure Cloudinary and Resend and connect the frontend to these APIs; see [verification setup](docs/backend-verification.md). Password recovery uses the encrypted Resend outbox; see [account setup](docs/backend-accounts.md). Provider onboarding, evidence review and publication are implemented; see [provider setup](docs/backend-provider-onboarding.md). Payment-provider integration remains pending.
 
 ## Planned stack and requirements
 
@@ -141,7 +141,7 @@ The [backend requirements](docs/backend-requirements.md) and [frontend requireme
 | Accessible components | Radix UI primitives or a compatible component system | Dialogs, menus, selects, and focus handling; choose a visual system before adopting broadly |
 | Frontend testing | Playwright for critical journeys; Vitest/React Testing Library for complex components | Verify auth, hiring, and payment handoffs once they are wired |
 | Backend email | Email provider such as Resend | University address proof, recovery links, notifications |
-| Backend evidence | Private S3-compatible storage and presigned uploads | Student evidence and portfolio assets with controlled access |
+| Backend evidence | Cloudinary authenticated uploads and malware moderation | Student evidence implemented; account configuration required; public portfolio uploads pending; private provider evidence implemented |
 | Backend async jobs | BullMQ + Redis when needed | Email delivery, payment event processing, reconciliation |
 | Payment provider | Paystack candidate for NGN-first pilot | Confirm merchant eligibility and a real client-approved delayed payout model before promising escrow |
 
@@ -207,7 +207,7 @@ stateDiagram-v2
     disputed --> cancelled
 ```
 
-The API creates a `pending` payment row when a quote is accepted. Payment states in the schema include `pending`, `processing`, `funded`, `held`, `release_pending`, `released`, `failed`, `refunded`, and `disputed`. The current gateway implementation returns `503 PAYMENT_GATEWAY_NOT_CONFIGURED` for initialization, verification, refunds, and webhooks. A real integration must verify signed gateway events, move payment and job states consistently, and implement real release/refund behavior. The current job completion code can update a `held` payment row to `released` in the database; that alone is **not** a gateway payout.
+The API creates a `pending` payment row when a quote is accepted. Payment states in the schema include `pending`, `processing`, `funded`, `held`, `release_pending`, `released`, `failed`, `refunded`, and `disputed`. The current gateway implementation returns `503 PAYMENT_GATEWAY_NOT_CONFIGURED` for initialization, verification, refunds, and webhooks. A real integration must verify signed gateway events, move payment and job states consistently, and implement real release/refund behavior. Client confirmation records job completion and leaves payment funds held until the payment release workflow is implemented.
 
 ## Local setup
 

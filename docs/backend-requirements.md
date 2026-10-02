@@ -13,10 +13,10 @@ Konet serves verified university students who hire other students for services. 
 | F1 | Account and session | Register, log in, refresh, log out, reset password | Registration/login/refresh/logout/reset and password change exist; recovery delivery requires Resend configuration |
 | F2 | University directory | Manage universities, campuses, approved email domains | Public directory, admin management, staff roles, and audit records implemented |
 | F3 | Student verification | Confirm an applicant belongs to selected university; record evidence and decision | Automatic email codes, scanned private Cloudinary evidence, admin/reviewer queue, decisions, retention and audit implemented; provider credentials required |
-| F4 | Provider onboarding | Verified student creates profile, submits identity/work evidence, receives approval | Profile creation and verification rows exist; evidence/review flow missing |
-| F5 | Catalog and discovery | Publish active services and search by query, university, category, availability | Public read and service write APIs exist |
-| F6 | Hiring | Request, quote, accept one quote, create job and conversation | API exists |
-| F7 | Collaboration | Participant-only messages, notifications, job milestones | Persistence and endpoints exist; delivery strategy pending |
+| F4 | Provider onboarding | Verified student creates profile, submits identity/work evidence, receives approval | Drafts, services/portfolio metadata, private evidence, mandatory identity/work review, optional CAC, revisioned decisions and controlled publication implemented |
+| F5 | Catalog and discovery | Publish active services and search by query, university, category, availability | Admin category management, hierarchy validation, public filtering/pagination and service visibility implemented |
+| F6 | Hiring | Request, quote, accept one quote, create job and conversation | Implemented; see [hiring guide](backend-hiring.md) |
+| F7 | Collaboration | Participant-only messages, notifications, job milestones | Socket.IO live delivery, private messaging/reads, preferences, milestones and guarded job progression implemented; see [collaboration guide](backend-collaboration.md) |
 | F8 | Protected payment | Collect client payment, track funds, release or refund after decision | Payment records/interface exist; provider integration missing |
 | F9 | Trust after work | Client review, dispute case, staff resolution | Review and dispute creation exist; resolution operations missing |
 | F10 | Operations | Admin review queue, support tools, reconciliation, audit log, reporting | Student review queue, roles and audit implemented; other operations pending |
@@ -29,7 +29,7 @@ Konet serves verified university students who hire other students for services. 
 2. A student chooses one of: approved university email, student ID with evidence, or manual document. An approved university email requires a one-time link or code delivered to that address. Domain membership alone is insufficient proof because addresses can be mistyped or controlled by someone else.
 3. For institutions without usable student email, staff review a student ID or document. The system stores a private object key, not a public document URL; reviewers record approver, timestamp, reason, and decision. Limit retries and prevent duplicate active submissions.
 4. Student status moves `unverified/not_submitted → pending → verified/rejected/requires_more_information`. Only an authoritative backend decision may set `verified`. Rejected applicants can resubmit under a documented policy.
-5. Provider verification separately records identity, work, and optional business/CAC proof. The exact mandatory dimensions are a product decision. Only approved active providers may publish visible services.
+5. Provider verification separately records identity, work, and optional business/CAC proof. The team selected identity and work as mandatory, with CAC optional. Only approved active providers may publish visible services.
 6. Verification evidence needs retention and deletion rules, restricted access, malware/content checks, and an audit record. Never log raw student numbers or documents.
 
 ### Hiring and jobs
@@ -67,7 +67,7 @@ Konet serves verified university students who hire other students for services. 
 | Payment collection and transfers | Paystack as a candidate for an NGN-first pilot | Verify merchant eligibility, settlement timing, transfer access, fees, and support for client-approved delayed payout. Split payments alone do not meet that requirement. |
 | University email | One-time email link/code plus approved per-university domains | Must provide a manual review path for universities without reliable student domains. |
 | Transactional email | Resend (implemented for recovery) | Resend selected; configure verified sending domain, API key, and durable outbox encryption key. |
-| File storage | Cloudinary (selected; integration pending) | Implement private evidence uploads, restricted access, scanning, and retention policy. |
+| File storage | Cloudinary (student evidence implemented; credentials/add-on required) | Private signed uploads, restricted downloads, malware moderation and retention implemented for student evidence; public portfolio uploads pending; private provider evidence is implemented. |
 | Background work | BullMQ + Redis when jobs are needed | Adds infrastructure and worker deployment; avoid until requirements justify it. |
 | API contract | Nest Swagger/OpenAPI with generated TypeScript client | Prevent frontend/backend status and field drift. |
 | Monitoring | Sentry plus structured Pino logs and OpenTelemetry | Choose hosting and data retention before integration. |
@@ -120,4 +120,4 @@ sequenceDiagram
 ### References
 
 - [Paystack payment acceptance](https://paystack.com/docs/payments/accept-payments/), [webhook verification](https://paystack.com/docs/payments/webhooks/), [transaction verification](https://paystack.com/docs/payments/verify-payments/), [transfers](https://paystack.com/docs/transfers/single-transfers/), [split payments](https://docs-v2.paystack.com/payments/split-payments/)
-- [AWS S3 presigned uploads](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html)
+- [Cloudinary authenticated access](https://cloudinary.com/documentation/control_access_to_media), [Perception Point malware moderation](https://cloudinary.com/documentation/perception_point_malware_detection_addon)

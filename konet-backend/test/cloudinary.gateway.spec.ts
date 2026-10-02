@@ -9,6 +9,28 @@ describe("private Cloudinary gateway", () => {
     CLOUDINARY_API_SECRET: "test-secret",
     CLOUDINARY_MALWARE_SCAN_ENABLED: true,
   };
+  it("accepts empty integration placeholders while retaining required secret validation", () => {
+    const base = {
+      NODE_ENV: "test",
+      DATABASE_URL: "postgresql://test.invalid/test",
+      FRONTEND_URL: "http://localhost:3000",
+      JWT_ACCESS_SECRET: "a".repeat(32),
+      JWT_REFRESH_SECRET: "b".repeat(32),
+      RESEND_API_KEY: "",
+      EMAIL_FROM: "",
+      EMAIL_OUTBOX_KEY: "",
+      PASSWORD_RESET_URL: "",
+      CLOUDINARY_CLOUD_NAME: "",
+      CLOUDINARY_API_KEY: "",
+      CLOUDINARY_API_SECRET: "",
+    };
+    const env = validateEnvironment(base);
+    expect(env.EMAIL_FROM).toBeUndefined();
+    expect(env.CLOUDINARY_CLOUD_NAME).toBeUndefined();
+    expect(() =>
+      validateEnvironment({ ...base, JWT_ACCESS_SECRET: "" }),
+    ).toThrow();
+  });
   afterEach(() => jest.restoreAllMocks());
   it("signs private non-overwriting uploads and excludes the API secret from the frontend ticket", () => {
     const gateway = new CloudinaryGateway(new ConfigService(values));

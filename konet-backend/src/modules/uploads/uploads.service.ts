@@ -37,10 +37,10 @@ export class UploadsService
   }
   async ticket(userId: string, input: UploadInput) {
     this.gateway.requireConfigured();
-    if (input.purpose !== "student_evidence")
+    if (!["student_evidence", "provider_evidence"].includes(input.purpose))
       throw new DomainError(
         "UPLOAD_PURPOSE_NOT_IMPLEMENTED",
-        "This feature currently accepts student_evidence only.",
+        "Only student_evidence and provider_evidence are implemented.",
         501,
       );
     return this.db.transaction(async (tx) => {
@@ -79,6 +79,7 @@ export class UploadsService
           and(
             eq(uploads.userId, userId),
             isNull(uploads.verificationId),
+            isNull(uploads.providerVerificationId),
             inArray(uploads.status, ["pending", "scanning", "ready"]),
             gt(uploads.retainUntil, new Date()),
           ),
@@ -91,7 +92,7 @@ export class UploadsService
           429,
         );
       const id = randomUUID();
-      const objectKey = `konet/student-evidence/${userId}/${id}`;
+      const objectKey = `konet/${input.purpose === "student_evidence" ? "student-evidence" : "provider-evidence"}/${userId}/${id}`;
       const [row] = await tx
         .insert(uploads)
         .values({
@@ -201,7 +202,13 @@ export class UploadsService
             ),
           )
           .limit(1);
-        if (!role || !row.verificationId || row.purpose !== "student_evidence")
+        if (
+          !role ||
+          !(
+            (row.verificationId && row.purpose === "student_evidence") ||
+            (row.providerVerificationId && row.purpose === "provider_evidence")
+          )
+        )
           throw new DomainError(
             "UPLOAD_FORBIDDEN",
             "Evidence access is restricted to its owner and authorized reviewers.",
@@ -240,7 +247,7 @@ export class UploadsService
         .for("update");
       if (!row)
         throw new DomainError("UPLOAD_NOT_FOUND", "Upload not found.", 404);
-      if (row.verificationId)
+      if (row.verificationId || row.providerVerificationId)
         throw new DomainError(
           "EVIDENCE_ATTACHED",
           "Submitted evidence is retained according to the review policy.",

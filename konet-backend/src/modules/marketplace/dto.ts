@@ -5,6 +5,7 @@ import {
   IsIn,
   IsInt,
   IsOptional,
+  ValidateIf,
   IsString,
   IsUUID,
   Length,
@@ -19,16 +20,31 @@ export class CreateServiceDto {
   @IsIn(["fixed", "starting_from", "per_hour", "per_session", "custom_quote"])
   pricingType!:
     "fixed" | "starting_from" | "per_hour" | "per_session" | "custom_quote";
-  @IsOptional() @IsInt() @Min(0) priceMinor?: number;
-  @IsOptional() @Length(3, 3) currency = "NGN";
+  @ValidateIf((_, value) => value !== undefined)
+  @IsInt()
+  @Min(0)
+  priceMinor?: number;
+  @ValidateIf((_, value) => value !== undefined) @Length(3, 3) currency = "NGN";
 }
 export class UpdateServiceDto {
-  @IsOptional() @IsString() @MinLength(3) title?: string;
-  @IsOptional() @IsString() @MinLength(30) description?: string;
-  @IsOptional() @IsIn(["fixed", "starting_from", "per_hour", "per_session", "custom_quote"])
-  pricingType?: "fixed" | "starting_from" | "per_hour" | "per_session" | "custom_quote";
-  @IsOptional() @IsInt() @Min(0) priceMinor?: number;
-  @IsOptional() @IsIn(["draft", "active", "paused", "archived"])
+  @ValidateIf((_, value) => value !== undefined)
+  @IsString()
+  @MinLength(3)
+  title?: string;
+  @ValidateIf((_, value) => value !== undefined)
+  @IsString()
+  @MinLength(30)
+  description?: string;
+  @ValidateIf((_, value) => value !== undefined)
+  @IsIn(["fixed", "starting_from", "per_hour", "per_session", "custom_quote"])
+  pricingType?:
+    "fixed" | "starting_from" | "per_hour" | "per_session" | "custom_quote";
+  @ValidateIf((_, value) => value !== undefined)
+  @IsInt()
+  @Min(0)
+  priceMinor?: number;
+  @ValidateIf((_, value) => value !== undefined)
+  @IsIn(["draft", "active", "paused", "archived"])
   status?: "draft" | "active" | "paused" | "archived";
 }
 export class CreateRequestDto {

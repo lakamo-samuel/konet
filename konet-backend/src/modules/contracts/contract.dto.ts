@@ -18,8 +18,9 @@ import {
   MaxLength,
   Matches,
   ArrayMinSize,
+  ArrayMaxSize,
 } from "class-validator";
-import { Type } from "class-transformer";
+import { Type, Transform } from "class-transformer";
 
 export class RegisterInput {
   @ApiProperty({ type: "string", format: "email" })
@@ -162,45 +163,45 @@ export class ProviderInput {
   @MinLength(40)
   bio!: string;
   @ApiPropertyOptional({ type: "integer", minimum: 1, maximum: 10080 })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(10080)
   responseTimeMinutes?: number;
   @ApiPropertyOptional({ type: "string", format: "uri" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsUrl()
   coverImageUrl?: string;
 }
 
 export class ProviderUpdateInput {
   @ApiPropertyOptional({ type: "string", minLength: 3 })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsString()
   @MinLength(3)
   professionalTitle?: string;
   @ApiPropertyOptional({ type: "string", minLength: 40 })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsString()
   @MinLength(40)
   bio?: string;
   @ApiPropertyOptional({ type: "integer", minimum: 1, maximum: 10080 })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(10080)
   responseTimeMinutes?: number;
   @ApiPropertyOptional({ type: "string", format: "uri" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsUrl()
   coverImageUrl?: string;
   @ApiPropertyOptional({
     type: "string",
     enum: ["available", "unavailable", "limited"],
   })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsString()
   @IsIn(["available", "unavailable", "limited"])
   availability?: string;
@@ -225,7 +226,7 @@ export class ProviderStatusInput {
 }
 
 export class OnboardingStepInput {
-  @ApiProperty({ type: "object", additionalProperties: { type: "string" } })
+  @ApiProperty({ type: "object", additionalProperties: true })
   @IsObject()
   values!: Record<string, unknown>;
 }
@@ -243,15 +244,15 @@ export class PortfolioInput {
   @MinLength(3)
   title!: string;
   @ApiPropertyOptional({ type: "string" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsString()
   description?: string;
   @ApiPropertyOptional({ type: "string", format: "uri" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsUrl()
   assetUrl?: string;
   @ApiPropertyOptional({ type: "string", format: "uri" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsUrl()
   externalUrl?: string;
 }
@@ -261,25 +262,25 @@ export class PortfolioUpdateInput {
     type: "string",
     enum: ["image", "external_link", "project", "case_study", "certificate"],
   })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsString()
   @IsIn(["image", "external_link", "project", "case_study", "certificate"])
   type?: string;
   @ApiPropertyOptional({ type: "string", minLength: 3 })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsString()
   @MinLength(3)
   title?: string;
   @ApiPropertyOptional({ type: "string" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsString()
   description?: string;
   @ApiPropertyOptional({ type: "string", format: "uri" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsUrl()
   assetUrl?: string;
   @ApiPropertyOptional({ type: "string", format: "uri" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsUrl()
   externalUrl?: string;
 }
@@ -367,26 +368,30 @@ export class RequestInput {
   @ApiProperty({ type: "string", minLength: 20 })
   @IsString()
   @MinLength(20)
+  @MaxLength(10000)
   description!: string;
   @ApiPropertyOptional({ type: "integer", minimum: 0 })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @Max(2147483647)
   budgetMinMinor?: number;
   @ApiPropertyOptional({ type: "integer", minimum: 0 })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @Max(2147483647)
   budgetMaxMinor?: number;
   @ApiPropertyOptional({ type: "string", format: "date-time" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsDateString()
   requestedAt?: string;
   @ApiPropertyOptional({ type: "string" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsString()
+  @MaxLength(255)
   location?: string;
 }
 
@@ -398,19 +403,23 @@ export class QuoteInput {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(2147483647)
   amountMinor!: number;
   @ApiProperty({ type: "array", items: { type: "string" }, minItems: 1 })
   @IsArray()
   @IsString({ each: true })
   @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @MaxLength(2000, { each: true })
   scope!: string[];
   @ApiPropertyOptional({ type: "string", format: "date-time" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsDateString()
   deliveryAt?: string;
   @ApiPropertyOptional({ type: "string" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsString()
+  @MaxLength(10000)
   notes?: string;
   @ApiProperty({ type: "string", format: "date-time" })
   @IsDateString()
@@ -571,7 +580,25 @@ export class DecisionInput {
   reason!: string;
 }
 
+export class ProviderEvidenceDecisionInput extends DecisionInput {
+  @ApiProperty({
+    type: "integer",
+    minimum: 1,
+    description: "Current verification revision from the review detail.",
+  })
+  @IsInt()
+  @Min(1)
+  revision!: number;
+}
 export class ProviderDecisionInput {
+  @ApiProperty({
+    type: "integer",
+    minimum: 1,
+    description: "Current profile reviewRevision from the review detail.",
+  })
+  @IsInt()
+  @Min(1)
+  revision!: number;
   @ApiProperty({
     type: "string",
     enum: ["active", "rejected", "requires_more_information"],
@@ -732,32 +759,34 @@ export class CategoryInput {
   @MinLength(2)
   slug!: string;
   @ApiPropertyOptional({ type: "string", format: "uuid" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsUUID()
-  parentId?: string;
+  parentId?: string | null;
   @ApiPropertyOptional({ type: "boolean" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
+  @Transform(({ obj, key }) => obj[key])
   @IsBoolean()
   isActive?: boolean;
 }
 
 export class CategoryUpdateInput {
   @ApiPropertyOptional({ type: "string", minLength: 2 })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsString()
   @MinLength(2)
   name?: string;
   @ApiPropertyOptional({ type: "string", minLength: 2 })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsString()
   @MinLength(2)
   slug?: string;
   @ApiPropertyOptional({ type: "string", format: "uuid" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsUUID()
-  parentId?: string;
+  parentId?: string | null;
   @ApiPropertyOptional({ type: "boolean" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
+  @Transform(({ obj, key }) => obj[key])
   @IsBoolean()
   isActive?: boolean;
 }
@@ -787,11 +816,13 @@ export class ContactInput {
 
 export class PreferencesInput {
   @ApiPropertyOptional({ type: "boolean" })
-  @IsOptional()
+  @ValidateIf((_o, value) => value !== undefined)
+  @Transform(({ obj, key }) => obj[key])
   @IsBoolean()
   emailEnabled?: boolean;
   @ApiPropertyOptional({ type: "boolean" })
-  @IsOptional()
+  @ValidateIf((_o, value) => value !== undefined)
+  @Transform(({ obj, key }) => obj[key])
   @IsBoolean()
   inAppEnabled?: boolean;
 }
@@ -826,7 +857,7 @@ export class ProviderSearch {
   @IsOptional()
   @IsString()
   @IsIn(["available", "unavailable", "limited"])
-  availability?: string;
+  availability?: "available" | "unavailable" | "limited";
   @ApiPropertyOptional({
     type: "integer",
     minimum: 1,
@@ -847,19 +878,11 @@ export class ProviderSearch {
   offset?: number;
 }
 
-export class CatalogSearch {
-  @ApiPropertyOptional({ type: "string" })
-  @IsOptional()
-  @IsString()
-  query?: string;
+export class CatalogSearch extends ProviderSearch {
   @ApiPropertyOptional({ type: "string", format: "uuid" })
   @IsOptional()
   @IsUUID()
-  categoryId?: string;
-  @ApiPropertyOptional({ type: "string", format: "uuid" })
-  @IsOptional()
-  @IsUUID()
-  universityId?: string;
+  providerId?: string;
 }
 
 export class ListQuery {

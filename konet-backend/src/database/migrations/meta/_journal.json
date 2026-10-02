@@ -29,6 +29,20 @@
       "when": 1790867088729,
       "tag": "0003_big_champions",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790889126187,
+      "tag": "0004_unknown_barracuda",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790920611502,
+      "tag": "0005_quick_yellowjacket",
+      "breakpoints": true
     }
   ]
 }

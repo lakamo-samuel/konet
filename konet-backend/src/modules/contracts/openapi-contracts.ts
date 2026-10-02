@@ -13,6 +13,28 @@ const errorContent = jsonContent({ $ref: "#/components/schemas/Error" });
 
 /** Enrich actual Nest routes; fail document generation if any declared route is missing. */
 export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
+  document.info.description = `${document.info.description ?? ""}\n\nLive chat uses Socket.IO at /chat (transport path /socket.io). Handshake auth: {token: accessToken}. Client events with acknowledgements: conversation.join/leave/read {conversationId}, message.send {conversationId, content}. Server events: message.new, conversation.read, notification.new. REST routes load history and recover after reconnect. See docs/backend-collaboration.md for the frontend example and delivery limits.`;
+  Object.assign(document, {
+    "x-socket-io": {
+      namespace: "/chat",
+      path: "/socket.io",
+      authentication: "handshake.auth.token (live access JWT)",
+      clientEvents: {
+        "conversation.join": ["conversationId"],
+        "conversation.leave": ["conversationId"],
+        "message.send": ["conversationId", "content"],
+        "conversation.read": ["conversationId"],
+      },
+      serverEvents: {
+        "message.new": "messages",
+        "conversation.read": "{conversationId,userId,readAt}",
+        "notification.new": "notifications",
+      },
+      acknowledgement: "{ok:true,data} or {ok:false,error:{code,message}}",
+      delivery:
+        "After database commit. Reload REST history on reconnect; live events are not replayed.",
+    },
+  });
   document.components ??= {};
   document.components.schemas = {
     ...document.components.schemas,
@@ -45,7 +67,7 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
     operation.summary = `${route.summary}${!route.existing ? " [contract only]" : ""}`;
     const access =
       route.auth === "reviewer"
-        ? "Requires an active admin or reviewer role, in addition to a live Bearer session. Document access and decisions are audited; self-review is forbidden."
+        ? "Requires an active admin or reviewer role, in addition to a live Bearer session. Evidence access and decisions are audited; self-review is forbidden."
         : route.auth === "admin"
           ? route.existing
             ? "Requires an active administrator role from the database, in addition to a live Bearer session. Reviewer, support, finance, and ordinary student accounts cannot manage the directory or read the audit log."
@@ -211,7 +233,7 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
     if (route.path === "uploads/presign")
       operation.responses[501] = {
         description:
-          "UPLOAD_PURPOSE_NOT_IMPLEMENTED: currently student_evidence only.",
+          "UPLOAD_PURPOSE_NOT_IMPLEMENTED: currently student_evidence and provider_evidence only.",
         content: errorContent,
       };
     if (!route.existing)

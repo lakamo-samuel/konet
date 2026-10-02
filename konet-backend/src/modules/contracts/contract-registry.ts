@@ -14,6 +14,106 @@ export interface RouteContract {
 }
 
 export const contractSchemas: Record<string, SchemaObject> = {
+  ProviderEvidenceDecisionInput: {
+    type: "object",
+    properties: {
+      revision: { type: "integer", minimum: 1 },
+      decision: {
+        type: "string",
+        enum: ["verified", "rejected", "requires_more_information"],
+      },
+      reason: { type: "string", minLength: 3 },
+    },
+    required: ["revision", "decision", "reason"],
+  },
+  ProviderApplicant: {
+    type: "object",
+    properties: {
+      id: { type: "string", format: "uuid" },
+      fullName: { type: "string" },
+      universityId: { type: "string", format: "uuid" },
+      campusId: { type: "string", format: "uuid" },
+      studentVerificationStatus: { type: "string" },
+      accountStatus: { type: "string" },
+    },
+  },
+  ProviderReviewDetail: {
+    allOf: [
+      { $ref: "#/components/schemas/providerProfiles" },
+      {
+        type: "object",
+        properties: {
+          applicant: { $ref: "#/components/schemas/ProviderApplicant" },
+          verification: {
+            type: "array",
+            items: { $ref: "#/components/schemas/VerificationDimension" },
+          },
+          services: {
+            type: "array",
+            items: { $ref: "#/components/schemas/services" },
+          },
+          portfolio: {
+            type: "array",
+            items: { $ref: "#/components/schemas/portfolioItems" },
+          },
+          decisions: {
+            type: "array",
+            items: { $ref: "#/components/schemas/ProviderReviewDecision" },
+          },
+        },
+      },
+    ],
+  },
+  ProviderReviewDecision: {
+    allOf: [
+      { $ref: "#/components/schemas/Decision" },
+      {
+        type: "object",
+        properties: {
+          resourceId: { type: "string", format: "uuid" },
+          resourceType: {
+            type: "string",
+            enum: ["provider", "provider_verification"],
+          },
+          revision: { type: "integer" },
+        },
+      },
+    ],
+  },
+  ProviderEvidenceReviewDetail: {
+    allOf: [
+      { $ref: "#/components/schemas/VerificationDimension" },
+      {
+        type: "object",
+        properties: {
+          applicant: { $ref: "#/components/schemas/ProviderApplicant" },
+          submissions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string", format: "uuid" },
+                uploadId: { type: "string", format: "uuid" },
+                revision: { type: "integer" },
+                status: { type: "string" },
+                submittedAt: { type: "string", format: "date-time" },
+                decidedAt: {
+                  type: "string",
+                  format: "date-time",
+                  nullable: true,
+                },
+              },
+            },
+          },
+          decisions: {
+            type: "array",
+            items: { $ref: "#/components/schemas/ProviderReviewDecision" },
+          },
+        },
+      },
+    ],
+  },
+
   UserRoles: {
     type: "object",
     properties: {
@@ -349,6 +449,21 @@ export const contractSchemas: Record<string, SchemaObject> = {
   providerProfiles: {
     type: "object",
     properties: {
+      reviewStatus: {
+        type: "string",
+        enum: [
+          "not_submitted",
+          "pending",
+          "approved",
+          "rejected",
+          "requires_more_information",
+        ],
+      },
+      reviewRevision: { type: "integer" },
+      approvedAt: { type: "string", format: "date-time", nullable: true },
+      submittedAt: { type: "string", format: "date-time", nullable: true },
+      reviewedAt: { type: "string", format: "date-time", nullable: true },
+      reviewReason: { type: "string", nullable: true },
       id: {
         type: "string",
         format: "uuid",
@@ -421,6 +536,10 @@ export const contractSchemas: Record<string, SchemaObject> = {
   providerVerifications: {
     type: "object",
     properties: {
+      revision: { type: "integer" },
+      reason: { type: "string", nullable: true },
+      submittedAt: { type: "string", format: "date-time", nullable: true },
+      uploadId: { type: "string", format: "uuid", nullable: true },
       id: {
         type: "string",
         format: "uuid",
@@ -1685,6 +1804,10 @@ export const contractSchemas: Record<string, SchemaObject> = {
   VerificationDimension: {
     type: "object",
     properties: {
+      revision: { type: "integer" },
+      reason: { type: "string", nullable: true },
+      submittedAt: { type: "string", format: "date-time", nullable: true },
+      uploadId: { type: "string", format: "uuid", nullable: true },
       dimension: {
         type: "string",
         enum: ["identity", "work", "cac"],
@@ -2123,8 +2246,25 @@ export const contractSchemas: Record<string, SchemaObject> = {
   Onboarding: {
     type: "object",
     properties: {
+      requirements: {
+        type: "object",
+        properties: {
+          requiredDimensions: {
+            type: "array",
+            items: { type: "string", enum: ["identity", "work"] },
+          },
+          optionalDimensions: {
+            type: "array",
+            items: { type: "string", enum: ["cac"] },
+          },
+          serviceRequired: { type: "boolean" },
+        },
+      },
+      canSubmit: { type: "boolean" },
+      canPublish: { type: "boolean" },
       profile: {
-        $ref: "#/components/schemas/providerProfiles",
+        allOf: [{ $ref: "#/components/schemas/providerProfiles" }],
+        nullable: true,
       },
       services: {
         type: "array",
@@ -2228,6 +2368,7 @@ export const contractSchemas: Record<string, SchemaObject> = {
       },
       dueAt: {
         type: "string",
+        nullable: true,
         format: "date-time",
         example: "2026-10-01T12:00:00.000Z",
         description: "ISO 8601 timestamp with timezone.",
@@ -2239,6 +2380,7 @@ export const contractSchemas: Record<string, SchemaObject> = {
       },
       completedAt: {
         type: "string",
+        nullable: true,
         format: "date-time",
         example: "2026-10-01T12:00:00.000Z",
         description: "ISO 8601 timestamp with timezone.",
@@ -2923,10 +3065,10 @@ export const contractSchemas: Record<string, SchemaObject> = {
     type: "object",
     properties: {
       values: {
+        description:
+          "Partial typed form values: profile uses ProviderUpdateInput fields; services uses ServiceInput fields; portfolio uses PortfolioUpdateInput; evidence uses ProviderEvidenceInput; preview accepts ready:boolean. These are saved forms, not canonical records.",
         type: "object",
-        additionalProperties: {
-          type: "string",
-        },
+        additionalProperties: true,
       },
     },
     required: ["values"],
@@ -3106,18 +3248,21 @@ export const contractSchemas: Record<string, SchemaObject> = {
       description: {
         type: "string",
         minLength: 20,
+        maxLength: 10000,
         example:
           "Design a logo for our student society and deliver the final files by the agreed date.",
       },
       budgetMinMinor: {
         type: "integer",
         minimum: 0,
+        maximum: 2147483647,
         example: 300000,
         description: "Integer minor units (NGN kobo); 500000 = \u20a65,000.",
       },
       budgetMaxMinor: {
         type: "integer",
         minimum: 0,
+        maximum: 2147483647,
         example: 600000,
         description: "Integer minor units (NGN kobo); 500000 = \u20a65,000.",
       },
@@ -3144,6 +3289,7 @@ export const contractSchemas: Record<string, SchemaObject> = {
       amountMinor: {
         type: "integer",
         minimum: 1,
+        maximum: 2147483647,
         example: 500000,
         description: "Integer minor units (NGN kobo); 500000 = \u20a65,000.",
       },
@@ -3151,8 +3297,10 @@ export const contractSchemas: Record<string, SchemaObject> = {
         type: "array",
         items: {
           type: "string",
+          maxLength: 2000,
         },
         minItems: 1,
+        maxItems: 50,
         example: ["Design one logo", "Deliver SVG and PNG files"],
       },
       deliveryAt: {
@@ -3163,6 +3311,7 @@ export const contractSchemas: Record<string, SchemaObject> = {
       },
       notes: {
         type: "string",
+        maxLength: 10000,
       },
       expiresAt: {
         type: "string",
@@ -3359,6 +3508,11 @@ export const contractSchemas: Record<string, SchemaObject> = {
   ProviderDecisionInput: {
     type: "object",
     properties: {
+      revision: {
+        type: "integer",
+        minimum: 1,
+        description: "Current profile reviewRevision.",
+      },
       decision: {
         type: "string",
         enum: ["active", "rejected", "requires_more_information"],
@@ -3370,7 +3524,7 @@ export const contractSchemas: Record<string, SchemaObject> = {
         example: "The submitted document needs a clearer photograph.",
       },
     },
-    required: ["decision", "reason"],
+    required: ["decision", "reason", "revision"],
   },
   DisputeDecisionInput: {
     type: "object",
@@ -3532,6 +3686,7 @@ export const contractSchemas: Record<string, SchemaObject> = {
       parentId: {
         type: "string",
         format: "uuid",
+        nullable: true,
         example: "00000000-0000-4000-8000-000000000001",
       },
       isActive: {
@@ -3554,6 +3709,7 @@ export const contractSchemas: Record<string, SchemaObject> = {
       parentId: {
         type: "string",
         format: "uuid",
+        nullable: true,
         example: "00000000-0000-4000-8000-000000000001",
       },
       isActive: {
@@ -3658,6 +3814,15 @@ export const contractSchemas: Record<string, SchemaObject> = {
   CatalogSearch: {
     type: "object",
     properties: {
+      campusId: { type: "string", format: "uuid" },
+      providerId: { type: "string", format: "uuid" },
+      availability: {
+        type: "string",
+        enum: ["available", "unavailable", "limited"],
+      },
+      maxPriceMinor: { type: "integer", minimum: 0 },
+      limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+      offset: { type: "integer", minimum: 0, default: 0 },
       query: {
         type: "string",
       },
@@ -3981,7 +4146,7 @@ export const routeContracts: RouteContract[] = [
     auth: "public",
     existing: true,
     query: "ProviderSearch",
-    note: "categoryId and maxPriceMinor are currently accepted but not applied.",
+    note: "Category and price must match the same active service in a visible category tree. Unpriced quotes do not match price caps. Query is a literal substring; results use stable pagination.",
     code: 200,
   },
   {
@@ -4005,8 +4170,9 @@ export const routeContracts: RouteContract[] = [
     auth: "user",
     existing: true,
     query: null,
-    note: "Requires verified student.",
+
     code: 201,
+    note: "Verified student required. Creates an atomic draft and identity/work/CAC records. Owner profile reads include reviewStatus and reviewRevision. Title, bio, cover, or portfolio changes invalidate approval and unpublish the profile; availability and response-time changes preserve approval. Pending review freezes canonical edits.",
   },
   {
     method: "get",
@@ -4015,10 +4181,11 @@ export const routeContracts: RouteContract[] = [
     response: "providerProfiles",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Verified student required. Creates an atomic draft and identity/work/CAC records. Owner profile reads include reviewStatus and reviewRevision. Title, bio, cover, or portfolio changes invalidate approval and unpublish the profile; availability and response-time changes preserve approval. Pending review freezes canonical edits.",
   },
   {
     method: "patch",
@@ -4027,10 +4194,11 @@ export const routeContracts: RouteContract[] = [
     response: "providerProfiles",
     body: "ProviderUpdateInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Verified student required. Creates an atomic draft and identity/work/CAC records. Owner profile reads include reviewStatus and reviewRevision. Title, bio, cover, or portfolio changes invalidate approval and unpublish the profile; availability and response-time changes preserve approval. Pending review freezes canonical edits.",
   },
   {
     method: "get",
@@ -4039,10 +4207,11 @@ export const routeContracts: RouteContract[] = [
     response: "VerificationDimension[]",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Identity and work are required; CAC is optional. Evidence must be your own scanned ready unused provider_evidence upload. Returns uploadId/revision/reason, never private storage keys. One pending submission per dimension; 3 submissions per dimension per day. Rejected evidence can be resubmitted.",
   },
   {
     method: "post",
@@ -4051,10 +4220,11 @@ export const routeContracts: RouteContract[] = [
     response: "VerificationDimension",
     body: "ProviderEvidenceInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 201,
+    note: "Identity and work are required; CAC is optional. Evidence must be your own scanned ready unused provider_evidence upload. Returns uploadId/revision/reason, never private storage keys. One pending submission per dimension; 3 submissions per dimension per day. Rejected evidence can be resubmitted.",
   },
   {
     method: "post",
@@ -4063,10 +4233,11 @@ export const routeContracts: RouteContract[] = [
     response: "providerProfiles",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 202,
+    note: "Requires verified student, at least one non-archived service in an active category, and pending or verified identity/work evidence. Sets pending_verification and freezes canonical edits. Does not publish.",
   },
   {
     method: "post",
@@ -4075,10 +4246,11 @@ export const routeContracts: RouteContract[] = [
     response: "providerProfiles",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "Only approved verified providers can publish; this endpoint cannot grant approval.",
+
     code: 200,
+    note: "Requires staff-approved identity and work, overall reviewStatus=approved, approvedAt, and a service. Activates the provider only; services are activated separately with PATCH /me/services/{id}. This endpoint cannot grant approval.",
   },
   {
     method: "patch",
@@ -4087,10 +4259,11 @@ export const routeContracts: RouteContract[] = [
     response: "providerProfiles",
     body: "ProviderStatusInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Pause or reactivate a staff-approved profile. Reactivation rechecks student and required dimensions. Suspended providers cannot reactivate themselves.",
   },
   {
     method: "get",
@@ -4099,10 +4272,11 @@ export const routeContracts: RouteContract[] = [
     response: "Onboarding",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Includes canonical profile/services/portfolio/evidence plus saved form drafts and server requirements. profile is null before creation. canSubmit/canPublish are UI hints; action endpoints revalidate all rules.",
   },
   {
     method: "patch",
@@ -4111,10 +4285,11 @@ export const routeContracts: RouteContract[] = [
     response: "Onboarding",
     body: "OnboardingStepInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Persists typed form drafts for profile/services/portfolio/evidence/preview without modifying canonical entities or approval. Create/edit actual entities through their dedicated endpoints before submitting. Unknown keys, status/approval injection, null fields and oversized drafts are rejected. Preview accepts optional boolean ready only.",
   },
   {
     method: "get",
@@ -4123,10 +4298,11 @@ export const routeContracts: RouteContract[] = [
     response: "services[]",
     body: null,
     auth: "public",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Public active services of a published staff-approved provider with an active verified student account. Paused/draft/unapproved provider returns 404.",
   },
   {
     method: "get",
@@ -4135,10 +4311,11 @@ export const routeContracts: RouteContract[] = [
     response: "portfolioItems[]",
     body: null,
     auth: "public",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Public portfolio of a published staff-approved provider only; private verification evidence is never included.",
   },
   {
     method: "get",
@@ -4147,10 +4324,11 @@ export const routeContracts: RouteContract[] = [
     response: "reviews[]",
     body: null,
     auth: "public",
-    existing: false,
+    existing: true,
     query: "ListQuery",
-    note: "",
+
     code: 200,
+    note: "Public reputation records of a published approved provider. Supports limit/offset.",
   },
   {
     method: "get",
@@ -4159,10 +4337,11 @@ export const routeContracts: RouteContract[] = [
     response: "portfolioItems[]",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Private owner portfolio CRUD. Image items require a public HTTPS assetUrl; external_link items require HTTPS externalUrl. Do not use private evidence URLs. Metadata/links are supported; dedicated public portfolio uploads remain pending. Canonical portfolio changes invalidate approval. Maximum 30 items.",
   },
   {
     method: "post",
@@ -4171,10 +4350,11 @@ export const routeContracts: RouteContract[] = [
     response: "portfolioItems",
     body: "PortfolioInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 201,
+    note: "Private owner portfolio CRUD. Image items require a public HTTPS assetUrl; external_link items require HTTPS externalUrl. Do not use private evidence URLs. Metadata/links are supported; dedicated public portfolio uploads remain pending. Canonical portfolio changes invalidate approval. Maximum 30 items.",
   },
   {
     method: "patch",
@@ -4183,10 +4363,11 @@ export const routeContracts: RouteContract[] = [
     response: "portfolioItems",
     body: "PortfolioUpdateInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Owner-only mutation; pending review is frozen. Portfolio changes invalidate approval and unpublish the provider.",
   },
   {
     method: "delete",
@@ -4195,10 +4376,11 @@ export const routeContracts: RouteContract[] = [
     response: "Acknowledgement",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+
     code: 204,
+    note: "Owner-only mutation; pending review is frozen. Portfolio changes invalidate approval and unpublish the provider.",
   },
   {
     method: "get",
@@ -4221,8 +4403,9 @@ export const routeContracts: RouteContract[] = [
     auth: "public",
     existing: true,
     query: "CatalogSearch",
-    note: "",
+
     code: 200,
+    note: "Public active services of published approved providers with active verified student accounts. Draft/paused/unapproved provider services are hidden.",
   },
   {
     method: "get",
@@ -4245,8 +4428,9 @@ export const routeContracts: RouteContract[] = [
     auth: "user",
     existing: true,
     query: null,
-    note: "",
+
     code: 201,
+    note: "POST creates a draft service for a verified provider during onboarding. Does not activate it. Choose an active category; use NGN and a positive price for priced services.",
   },
   {
     method: "get",
@@ -4269,8 +4453,9 @@ export const routeContracts: RouteContract[] = [
     auth: "user",
     existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Owner service updates. Pending provider review freezes canonical service edits. Activating requires a published approved provider. Deletes archive the service.",
   },
   {
     method: "delete",
@@ -4281,8 +4466,9 @@ export const routeContracts: RouteContract[] = [
     auth: "user",
     existing: true,
     query: null,
-    note: "",
+
     code: 204,
+    note: "Owner service updates. Pending provider review freezes canonical service edits. Activating requires a published approved provider. Deletes archive the service.",
   },
   {
     method: "get",
@@ -4340,7 +4526,7 @@ export const routeContracts: RouteContract[] = [
     body: null,
     auth: "user",
     existing: true,
-    query: null,
+    query: "ListQuery",
     note: "",
     code: 200,
   },
@@ -4351,7 +4537,7 @@ export const routeContracts: RouteContract[] = [
     response: "serviceRequests",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -4363,7 +4549,7 @@ export const routeContracts: RouteContract[] = [
     response: "serviceRequests",
     body: "ReasonInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -4375,7 +4561,7 @@ export const routeContracts: RouteContract[] = [
     response: "serviceRequests",
     body: "ReasonInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -4387,8 +4573,8 @@ export const routeContracts: RouteContract[] = [
     response: "quotes[]",
     body: null,
     auth: "user",
-    existing: false,
-    query: null,
+    existing: true,
+    query: "ListQuery",
     note: "",
     code: 200,
   },
@@ -4411,7 +4597,7 @@ export const routeContracts: RouteContract[] = [
     response: "quotes[]",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: "ListQuery",
     note: "",
     code: 200,
@@ -4423,7 +4609,7 @@ export const routeContracts: RouteContract[] = [
     response: "quotes",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -4437,7 +4623,7 @@ export const routeContracts: RouteContract[] = [
     auth: "user",
     existing: true,
     query: null,
-    note: "Transactional creation; repeated acceptance currently returns 409.",
+    note: "Atomic and retry-safe: repeated acceptance of the same quote returns the original job, including concurrent retries. Another accepted quote for the request returns 409. Rechecks active verified participants, approved provider, service/category visibility, expiry and delivery date. Creates one pending payment and one participant conversation; no money is collected or released.",
     code: 201,
   },
   {
@@ -4447,7 +4633,7 @@ export const routeContracts: RouteContract[] = [
     response: "quotes",
     body: "ReasonInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -4459,7 +4645,7 @@ export const routeContracts: RouteContract[] = [
     response: "quotes",
     body: "ReasonInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -4472,7 +4658,7 @@ export const routeContracts: RouteContract[] = [
     body: null,
     auth: "user",
     existing: true,
-    query: null,
+    query: "ListQuery",
     note: "",
     code: 200,
   },
@@ -4483,7 +4669,7 @@ export const routeContracts: RouteContract[] = [
     response: "jobs",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -4497,8 +4683,8 @@ export const routeContracts: RouteContract[] = [
     auth: "user",
     existing: true,
     query: null,
-    note: "",
-    code: 201,
+    note: "Provider only. Requires scheduled job and funded/held payment; safe to retry. No client-supplied funding is accepted.",
+    code: 200,
   },
   {
     method: "post",
@@ -4509,8 +4695,8 @@ export const routeContracts: RouteContract[] = [
     auth: "user",
     existing: true,
     query: null,
-    note: "",
-    code: 201,
+    note: "Provider only. All milestones must be completed. Safe to retry.",
+    code: 200,
   },
   {
     method: "post",
@@ -4521,8 +4707,8 @@ export const routeContracts: RouteContract[] = [
     auth: "user",
     existing: true,
     query: null,
-    note: "Current code updates a held payment row to released; no real payout occurs. Transfer integration is pending.",
-    code: 201,
+    note: "Client only. Records completion; funds remain held until the payment release workflow runs. Safe to retry.",
+    code: 200,
   },
   {
     method: "post",
@@ -4531,9 +4717,9 @@ export const routeContracts: RouteContract[] = [
     response: "jobs",
     body: "ReasonInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Either participant may cancel only an unpaid awaiting_payment job with pending/failed payment. Funded cancellation requires the future refund workflow. Requires reason; safe to retry.",
     code: 200,
   },
   {
@@ -4543,9 +4729,9 @@ export const routeContracts: RouteContract[] = [
     response: "Milestone[]",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Participants may read. Only provider may create; maximum 50 milestones. Editable before submission/completion; future due date, title 3–160 characters, description maximum 10000.",
     code: 200,
   },
   {
@@ -4555,9 +4741,9 @@ export const routeContracts: RouteContract[] = [
     response: "Milestone",
     body: "MilestoneInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Participants may read. Only provider may create; maximum 50 milestones. Editable before submission/completion; future due date, title 3–160 characters, description maximum 10000.",
     code: 201,
   },
   {
@@ -4567,9 +4753,9 @@ export const routeContracts: RouteContract[] = [
     response: "Milestone",
     body: "MilestoneUpdateInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Provider only. Progress cannot move backwards; in_progress/completed require started job. Changes serialize with job actions.",
     code: 200,
   },
   {
@@ -4579,7 +4765,7 @@ export const routeContracts: RouteContract[] = [
     response: "ConversationDetail[]",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: "ListQuery",
     note: "",
     code: 200,
@@ -4591,7 +4777,7 @@ export const routeContracts: RouteContract[] = [
     response: "ConversationDetail",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -4603,7 +4789,7 @@ export const routeContracts: RouteContract[] = [
     response: "ConversationDetail",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -4615,7 +4801,7 @@ export const routeContracts: RouteContract[] = [
     response: "ConversationDetail",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -4628,8 +4814,8 @@ export const routeContracts: RouteContract[] = [
     body: null,
     auth: "user",
     existing: true,
-    query: null,
-    note: "",
+    query: "ListQuery",
+    note: "Participants only. GET supports limit/offset, ascending timestamp/ID. POST requires nonblank text, maximum 10000 characters; message, conversation activity and recipient notifications commit atomically, then broadcast through Socket.IO.",
     code: 200,
   },
   {
@@ -4641,7 +4827,7 @@ export const routeContracts: RouteContract[] = [
     auth: "user",
     existing: true,
     query: null,
-    note: "",
+    note: "Participants only. GET supports limit/offset, ascending timestamp/ID. POST requires nonblank text, maximum 10000 characters; message, conversation activity and recipient notifications commit atomically, then broadcast through Socket.IO.",
     code: 201,
   },
   {
@@ -4651,9 +4837,9 @@ export const routeContracts: RouteContract[] = [
     response: "Acknowledgement",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Stores participant read timestamp and marks existing conversation notifications read. Returns message and readAt.",
     code: 200,
   },
   {
@@ -4664,8 +4850,8 @@ export const routeContracts: RouteContract[] = [
     body: null,
     auth: "user",
     existing: true,
-    query: null,
-    note: "",
+    query: "ListQuery",
+    note: "Own notifications only; limit/offset and status read/unread. Live collaboration notifications use Socket.IO /chat; REST supports history and reconnect recovery.",
     code: 200,
   },
   {
@@ -4687,9 +4873,9 @@ export const routeContracts: RouteContract[] = [
     response: "Acknowledgement",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Marks only your unread notifications. Returns message and updatedCount.",
     code: 200,
   },
   {
@@ -4699,9 +4885,9 @@ export const routeContracts: RouteContract[] = [
     response: "NotificationPreferences",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Boolean fields only. Preferences default true. inAppEnabled controls collaboration notifications; verification/security notifications remain mandatory. emailEnabled is stored for future optional email delivery.",
     code: 200,
   },
   {
@@ -4711,9 +4897,9 @@ export const routeContracts: RouteContract[] = [
     response: "NotificationPreferences",
     body: "PreferencesInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Boolean fields only. Preferences default true. inAppEnabled controls collaboration notifications; verification/security notifications remain mandatory. emailEnabled is stored for future optional email delivery.",
     code: 200,
   },
   {
@@ -4943,7 +5129,8 @@ export const routeContracts: RouteContract[] = [
     query: null,
 
     code: 201,
-    note: "Currently supports student_evidence only (other purposes return 501 UPLOAD_PURPOSE_NOT_IMPLEMENTED). Private Cloudinary authenticated upload: POST multipart/form-data with all returned fields and file. Complete within 10 minutes. Configure storage and malware moderation first (503 otherwise).",
+
+    note: "Currently supports student_evidence and provider_evidence; other purposes return 501. Private Cloudinary authenticated upload: POST multipart/form-data with all returned fields and file. Complete within 10 minutes. Configure storage and malware moderation first (503 otherwise).",
   },
   {
     method: "post",
@@ -4981,7 +5168,8 @@ export const routeContracts: RouteContract[] = [
     query: null,
 
     code: 200,
-    note: "Owner or admin/reviewer for attached student evidence only. Requires ready and retained evidence; signed download expires in 5 minutes. Access is audited.",
+
+    note: "Owner or admin/reviewer for attached student/provider evidence only. Requires ready retained evidence; signed download expires in 5 minutes and access is audited.",
   },
   {
     method: "delete",
@@ -5063,23 +5251,25 @@ export const routeContracts: RouteContract[] = [
     summary: "List provider-verifications for authorized staff",
     response: "providerVerifications[]",
     body: null,
-    auth: "admin",
-    existing: false,
+    auth: "reviewer",
+    existing: true,
     query: "ListQuery",
-    note: "",
+
     code: 200,
+    note: "Admin/reviewer evidence queue; pending by default. Filter by verification status. Read details for uploadId and immutable submission/decision history.",
   },
   {
     method: "get",
     path: "admin/provider-verifications/{id}",
     summary: "Read provider-verifications for authorized staff",
-    response: "providerVerifications",
+    response: "ProviderEvidenceReviewDetail",
     body: null,
-    auth: "admin",
-    existing: false,
+    auth: "reviewer",
+    existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Admin/reviewer detail includes current revision, uploadId, submissions and decisions. Open evidence through GET /uploads/{uploadId}/download.",
   },
   {
     method: "get",
@@ -5087,23 +5277,25 @@ export const routeContracts: RouteContract[] = [
     summary: "List providers for authorized staff",
     response: "providerProfiles[]",
     body: null,
-    auth: "admin",
-    existing: false,
+    auth: "reviewer",
+    existing: true,
     query: "ListQuery",
-    note: "",
+
     code: 200,
+    note: "Admin/reviewer profile queue. status filters reviewStatus (pending default, approved/rejected/requires_more_information/not_submitted), not publishing status.",
   },
   {
     method: "get",
     path: "admin/providers/{id}",
     summary: "Read providers for authorized staff",
-    response: "providerProfiles",
+    response: "ProviderReviewDetail",
     body: null,
-    auth: "admin",
-    existing: false,
+    auth: "reviewer",
+    existing: true,
     query: null,
-    note: "",
+
     code: 200,
+    note: "Admin/reviewer detail includes profile review state, dimensions, services, portfolio and decision history.",
   },
   {
     method: "get",
@@ -5206,25 +5398,27 @@ export const routeContracts: RouteContract[] = [
     method: "post",
     path: "admin/provider-verifications/{id}/decision",
     summary: "Record provider dimension decision",
-    response: "Decision",
-    body: "DecisionInput",
-    auth: "admin",
-    existing: false,
+    response: "ProviderReviewDecision",
+    body: "ProviderEvidenceDecisionInput",
+    auth: "reviewer",
+    existing: true,
     query: null,
-    note: "",
+
     code: 201,
+    note: "Admin/reviewer only. Send current revision, decision and reason. Approval requires available scanned evidence and a verified active student; self-review, stale revisions and repeated decisions fail. Required-proof rejection returns a pending profile for corrections.",
   },
   {
     method: "post",
     path: "admin/providers/{id}/decision",
     summary: "Record provider approval decision",
-    response: "Decision",
+    response: "ProviderReviewDecision",
     body: "ProviderDecisionInput",
-    auth: "admin",
-    existing: false,
+    auth: "reviewer",
+    existing: true,
     query: null,
-    note: "",
+
     code: 201,
+    note: "Send current reviewRevision as revision, decision and reason. Existing decision=active means grant staff approval (reviewStatus=approved) while keeping status=draft; owner must publish separately. Requires verified identity AND work. CAC is optional. Self-review/stale/repeated decisions fail.",
   },
   {
     method: "post",
@@ -5365,7 +5559,7 @@ export const routeContracts: RouteContract[] = [
     response: "serviceCategories[]",
     body: null,
     auth: "admin",
-    existing: false,
+    existing: true,
     query: "ListQuery",
     note: "",
     code: 200,
@@ -5377,7 +5571,7 @@ export const routeContracts: RouteContract[] = [
     response: "serviceCategories",
     body: "CategoryInput",
     auth: "admin",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 201,
@@ -5389,7 +5583,7 @@ export const routeContracts: RouteContract[] = [
     response: "serviceCategories",
     body: "CategoryUpdateInput",
     auth: "admin",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,

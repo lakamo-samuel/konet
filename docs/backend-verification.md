@@ -25,11 +25,11 @@ A pending document review blocks email verification. An already verified student
 
 ## Private upload and document flow
 
-1. Send `POST /uploads/presign` with `purpose: "student_evidence"`, `fileName`, `contentType`, and `sizeBytes`. JPEG, PNG, and PDF are accepted, up to 10 MiB. This feature implements student evidence only; other upload purposes return `501 UPLOAD_PURPOSE_NOT_IMPLEMENTED`.
+1. Send `POST /uploads/presign` with `purpose: "student_evidence"`, `fileName`, `contentType`, and `sizeBytes`. JPEG, PNG, and PDF are accepted, up to 10 MiB. Private provider evidence is also implemented in the [provider onboarding feature](backend-provider-onboarding.md); portfolio/avatar/message purposes return `501 UPLOAD_PURPOSE_NOT_IMPLEMENTED`.
 2. Upload to the returned `uploadUrl` using **POST multipart/form-data**. Add **every returned `fields` entry**, then add the binary under `file`. Do not manually set the multipart Content-Type; the browser supplies the boundary. The API secret never leaves the backend.
 3. Call `POST /uploads/{id}/complete` (`202`). The backend reads Cloudinary metadata and malware moderation. Repeat this endpoint while `status` is `scanning`; `GET /uploads/{id}` reads the last recorded status and does not poll Cloudinary. Missing moderation never counts as a clean scan.
 4. When `status` is `ready`, send `POST /me/student-verification` with `method: "student_id"`, `studentNumber`, and `evidenceObjectKey: upload.objectKey`. `manual_document` also requires ready evidence but does not require a student number.
-5. Show pending status and the history from `GET /me/student-verification`. A student can resubmit new evidence after rejection or a request for more information. At most three submissions per day, one pending document submission, and five retained unused uploads per account are allowed.
+5. Show pending status and the history from `GET /me/student-verification`. A student can resubmit new evidence after rejection or a request for more information. At most three submissions per day, one pending document submission, and five retained unused uploads per account are allowed. Upload tickets are also limited to twenty per day per account.
 
 Example browser upload:
 
@@ -90,3 +90,7 @@ Email confirmation uses the existing `RESEND_API_KEY`, `EMAIL_FROM`, and `EMAIL_
 The Konet ticket completion window is 10 minutes. Cloudinary's signed upload timestamp validity is independently controlled by Cloudinary; deletion of unused evidence therefore waits at least one hour from ticket creation to prevent late re-creation through an old signature. Unattached uploads otherwise expire after one day. Attached evidence expires after `EVIDENCE_RETENTION_DAYS` from submission, then receives the same retention period again when a reviewer decides it. A worker runs every minute while the API is running, deleting up to ten expired assets per pass, retaining metadata and audit records, and retrying provider failures. Downloads stop immediately when retention expires. A review that exceeds retention must request fresh evidence. The worker is intentionally disabled in tests.
 
 No real Cloudinary uploads or Resend deliveries were performed during implementation; provider adapters are mocked in tests. Production credentials, account add-on activation, migrations, and the frontend dashboard integration remain deployment/team tasks.
+
+## Validation
+
+The full backend suite passes 58 tests across seven suites using isolated PostgreSQL databases and mocked external providers. Verification tests cover codes, expiry, resend invalidation, ownership, attempt/send limits, concurrent address claims, manual-review permissions, self-review, evidence readiness, context changes, concurrent decisions, resubmission, and retention cleanup. Cloudinary adapter tests cover signed parameters, credential/scanning requirements, download expiry and provider failures. Typecheck, lint, build and offline OpenAPI export pass.

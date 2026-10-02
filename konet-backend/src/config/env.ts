@@ -80,7 +80,7 @@ class Environment {
   @IsOptional()
   @IsBoolean()
   CLOUDINARY_MALWARE_SCAN_ENABLED?: boolean;
-  @Type(() => Number) @IsInt() @Min(1) EVIDENCE_RETENTION_DAYS = 30;
+  @Type(() => Number) @IsInt() @Min(1) @Max(365) EVIDENCE_RETENTION_DAYS = 30;
 
   @IsString()
   SERVICE_NAME = "konet-api";
@@ -106,7 +106,21 @@ export type EnvironmentConfig = InstanceType<typeof Environment>;
 export function validateEnvironment(
   values: Record<string, unknown>,
 ): EnvironmentConfig {
-  const parsed = plainToInstance(Environment, values, {
+  // Empty optional placeholders are unset; required settings still validate.
+  const normalized = { ...values };
+  for (const key of [
+    "RESEND_API_KEY",
+    "EMAIL_FROM",
+    "EMAIL_OUTBOX_KEY",
+    "PASSWORD_RESET_URL",
+    "CLOUDINARY_CLOUD_NAME",
+    "CLOUDINARY_API_KEY",
+    "CLOUDINARY_API_SECRET",
+    "CLOUDINARY_MALWARE_SCAN_ENABLED",
+  ]) {
+    if (normalized[key] === "") delete normalized[key];
+  }
+  const parsed = plainToInstance(Environment, normalized, {
     enableImplicitConversion: true,
   });
   const errors = validateSync(parsed, { skipMissingProperties: false });

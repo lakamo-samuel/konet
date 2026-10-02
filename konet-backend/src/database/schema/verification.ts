@@ -8,7 +8,13 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import { users, universities, campuses, studentVerifications } from "./core";
+import {
+  users,
+  universities,
+  campuses,
+  studentVerifications,
+  providerVerifications,
+} from "./core";
 
 export const verificationChallenges = pgTable(
   "verification_challenges",
@@ -56,6 +62,9 @@ export const uploads = pgTable(
     retainUntil: timestamp("retain_until", { withTimezone: true }).notNull(),
     verificationId: uuid("verification_id").references(
       () => studentVerifications.id,
+    ),
+    providerVerificationId: uuid("provider_verification_id").references(
+      () => providerVerifications.id,
     ),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
