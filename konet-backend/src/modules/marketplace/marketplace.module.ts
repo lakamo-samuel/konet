@@ -1,3 +1,8 @@
+import { DisputeService } from "./dispute.service";
+import {
+  DisputeController,
+  StaffDisputeController,
+} from "./dispute.controller";
 import {
   SettlementController,
   FinanceSettlementController,
@@ -27,6 +32,8 @@ import { PaymentService } from "./payment.service";
 @Module({
   imports: [ProvidersModule, AdministrationModule],
   controllers: [
+    DisputeController,
+    StaffDisputeController,
     CategoriesController,
     CatalogController,
     HiringController,
@@ -38,6 +45,7 @@ import { PaymentService } from "./payment.service";
     FinanceSettlementController,
   ],
   providers: [
+    DisputeService,
     MarketplaceService,
     HiringService,
     CollaborationService,

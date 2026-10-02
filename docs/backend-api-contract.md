@@ -1,6 +1,6 @@
 # Backend API contract handoff
 
-The backend registers **151 operations** under `/api/v1`: 132 existing handlers and 19 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
+The backend registers **151 operations** under `/api/v1`: 138 existing handlers and 13 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
 
 - Swagger UI: `http://localhost:4000/api/docs`
 - OpenAPI JSON: `http://localhost:4000/api/docs/json`
@@ -59,7 +59,7 @@ Live messaging uses Socket.IO namespace `/chat` on the backend origin, with tran
 - Quote acceptance is transactional and retry-safe: repeating acceptance of the same quote returns the original job. See the [hiring guide](backend-hiring.md).
 - Client confirmation atomically queues payout and sets payment to release_pending. Only server-verified transfers mark funds released. Finance-authorized full refunds are durably queued. See the [collaboration guide](backend-collaboration.md).
 - The existing frontend mock statuses differ from backend statuses. Use the OpenAPI job, payment, verification, and availability enums.
-- Permissions for remaining contract-only resources, fee policy, dispute resolution and financial reconciliation remain unfinished.
+- Permissions for remaining contract-only resources, fee policy and financial reconciliation remain unfinished.
 
 - Student verification and provider onboarding/review are implemented; live email and evidence uploads need Resend and Cloudinary malware moderation configured. See the [verification setup guide](backend-verification.md) and [provider onboarding guide](backend-provider-onboarding.md).
 
@@ -130,14 +130,14 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 | GET | `/admin/student-verifications` | admin/reviewer | — | 200 studentVerifications[] | Existing handler |
 | GET | `/admin/student-verifications/{id}` | admin/reviewer | — | 200 studentVerifications | Existing handler |
 | POST | `/admin/student-verifications/{id}/decision` | admin/reviewer | DecisionInput | 201 Decision | Existing handler |
-| GET | `/admin/disputes` | admin | — | 200 disputes[] | Contract only (501) |
-| GET | `/admin/disputes/{id}` | admin | — | 200 disputes | Contract only (501) |
+| GET | `/admin/disputes` | admin or finance | — | 200 disputes[] | Implemented |
+| GET | `/admin/disputes/{id}` | admin or finance | — | 200 disputes | Implemented |
 | GET | `/admin/payments` | admin | — | 200 payments[] | Contract only (501) |
 | GET | `/admin/payments/{id}` | admin | — | 200 payments | Contract only (501) |
 | GET | `/admin/payouts` | admin or finance | — | 200 Payout[] | Implemented |
 | GET | `/admin/payouts/{id}` | admin or finance | — | 200 Payout | Implemented |
 | PATCH | `/admin/users/{id}/status` | admin | AccountStatusInput | 200 user | Contract only (501) |
-| POST | `/admin/disputes/{id}/decision` | admin | DisputeDecisionInput | 201 Decision | Contract only (501) |
+| POST | `/admin/disputes/{id}/decision` | admin or finance | DisputeDecisionInput | 201 Decision | Implemented |
 | POST | `/admin/payments/{id}/refunds` | admin or finance | RefundInput | 202 Refund | Implemented |
 | POST | `/admin/payouts/{id}/retry` | admin or finance | ReasonInput | 202 Payout | Implemented |
 | POST | `/admin/reconciliations` | admin | ReconciliationInput | 202 Reconciliation | Contract only (501) |
@@ -347,9 +347,9 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 
 | Method | Path | Access | Request schema | Success | Current status |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/disputes` | authenticated | — | 200 disputes[] | Contract only (501) |
-| GET | `/disputes/{id}` | authenticated | — | 200 disputes | Contract only (501) |
-| GET | `/disputes/{id}/decisions` | authenticated | — | 200 Decision[] | Contract only (501) |
+| GET | `/disputes` | authenticated | — | 200 disputes[] | Implemented |
+| GET | `/disputes/{id}` | authenticated | — | 200 disputes | Implemented |
+| GET | `/disputes/{id}/decisions` | authenticated | — | 200 Decision[] | Implemented |
 
 ### payments
 
@@ -378,3 +378,5 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 | DELETE | `/me/payout-accounts/{id}` | authenticated | — | 204 No body | Implemented |
 
 Authenticated `GET /payout-banks` returns the supported Nigerian bank list (`Bank[]`) for account setup. See [settlement integration](backend-settlements.md).
+
+Dispute reads and admin/finance final resolution are implemented; see [dispute integration](backend-disputes.md).

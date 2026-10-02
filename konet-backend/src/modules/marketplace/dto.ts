@@ -10,6 +10,7 @@ import {
   IsUUID,
   Length,
   Max,
+  MaxLength,
   Min,
   MinLength,
 } from "class-validator";
@@ -73,6 +74,6 @@ export class ReviewDto {
   @IsString() @MinLength(5) comment!: string;
 }
 export class DisputeDto {
-  @IsString() @MinLength(3) reason!: string;
-  @IsString() @MinLength(20) description!: string;
+  @IsString() @MinLength(3) @MaxLength(100) reason!: string;
+  @IsString() @MinLength(20) @MaxLength(5000) description!: string;
 }

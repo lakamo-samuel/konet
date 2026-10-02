@@ -74,27 +74,6 @@ export class MemberContractsController {
   getJobsIdReview(@Param("id", new ParseUUIDPipe()) _id: string): never {
     return unavailable("Read review for participant job");
   }
-
-  @Get("disputes")
-  @HttpCode(200)
-  @ApiOperation({ summary: "List own disputes" })
-  getDisputes(@Query() _query: Dto.ListQuery): never {
-    return unavailable("List own disputes");
-  }
-
-  @Get("disputes/:id")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Read participant dispute" })
-  getDisputesId(@Param("id", new ParseUUIDPipe()) _id: string): never {
-    return unavailable("Read participant dispute");
-  }
-
-  @Get("disputes/:id/decisions")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Read dispute decision history" })
-  getDisputesIdDecisions(@Param("id", new ParseUUIDPipe()) _id: string): never {
-    return unavailable("Read dispute decision history");
-  }
 }
 
 @ApiTags("admin contracts")
@@ -102,20 +81,6 @@ export class MemberContractsController {
 @UseGuards(AuthGuard)
 @Controller({ version: "1" })
 export class AdminContractsController {
-  @Get("admin/disputes")
-  @HttpCode(200)
-  @ApiOperation({ summary: "List disputes for authorized staff" })
-  getAdminDisputes(@Query() _query: Dto.ListQuery): never {
-    return unavailable("List disputes for authorized staff");
-  }
-
-  @Get("admin/disputes/:id")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Read disputes for authorized staff" })
-  getAdminDisputesId(@Param("id", new ParseUUIDPipe()) _id: string): never {
-    return unavailable("Read disputes for authorized staff");
-  }
-
   @Get("admin/payments")
   @HttpCode(200)
   @ApiOperation({ summary: "List payments for authorized staff" })
@@ -138,16 +103,6 @@ export class AdminContractsController {
     @Body() _body: Dto.AccountStatusInput,
   ): never {
     return unavailable("Set account status with audit reason");
-  }
-
-  @Post("admin/disputes/:id/decision")
-  @HttpCode(201)
-  @ApiOperation({ summary: "Resolve dispute and authorize payout or refund" })
-  postAdminDisputesIdDecision(
-    @Param("id", new ParseUUIDPipe()) _id: string,
-    @Body() _body: Dto.DisputeDecisionInput,
-  ): never {
-    return unavailable("Resolve dispute and authorize payout or refund");
   }
 
   @Post("admin/reconciliations")

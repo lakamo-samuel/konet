@@ -36,4 +36,4 @@ Empty optional settings allow startup; checkout returns 503 `PAYMENT_GATEWAY_NOT
 
 Migration 0006 adds `payment_checkouts` for references, cached hosted URLs and initialization leases. Apply with `npm run db:migrate`. Automated tests use isolated databases and cover signature verification, private ownership, amount/metadata mismatches, concurrent funding, cached initialization and ambiguous response recovery.
 
-Remaining financial stages: reconciliation, authorized dispute resolution and operational recovery for ambiguous provider outcomes. Partial refunds are unsupported.
+Remaining financial stages: reconciliation and operational recovery for ambiguous provider outcomes. Partial refunds are unsupported.

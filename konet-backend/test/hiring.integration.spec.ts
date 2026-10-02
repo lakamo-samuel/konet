@@ -275,6 +275,241 @@ describeDatabase("hiring PostgreSQL API integration", () => {
       .insert(schema.userRoles)
       .values({ userId: outsider.id, role: "finance" });
   }
+  const disputeInput = () => ({
+    reason: "Work quality",
+    description: "The delivered work does not match the agreed service scope.",
+  });
+  async function disputedJob() {
+    const data = await fundedJob();
+    const dispute = (
+      await api("post", `jobs/${data.j.id}/disputes`)
+        .send(disputeInput())
+        .expect(201)
+    ).body;
+    return { ...data, dispute };
+  }
+  it("opens one audited dispute on concurrent retries and restricts reads to participants", async () => {
+    const { j } = await fundedJob();
+    const attempts = await Promise.all([
+      api("post", `jobs/${j.id}/disputes`).send(disputeInput()),
+      api("post", `jobs/${j.id}/disputes`).send(disputeInput()),
+    ]);
+    expect(attempts.map((r) => r.status)).toEqual([201, 201]);
+    const id = attempts[0].body.id;
+    expect(attempts[1].body.id).toBe(id);
+    expect(await db.select().from(schema.disputes)).toHaveLength(1);
+    expect(
+      (await db.select().from(schema.auditEvents)).filter(
+        (x) => x.action === "dispute.opened",
+      ),
+    ).toHaveLength(1);
+    expect(
+      (await db.select().from(schema.notifications)).filter(
+        (x) => x.type === "dispute",
+      ),
+    ).toHaveLength(2);
+    await api("get", `disputes/${id}`, outsider.token).expect(404);
+    await api("get", `disputes/${id}/decisions`, outsider.token).expect(404);
+    expect((await api("get", "disputes", outsider.token)).body).toEqual([]);
+    expect(
+      (await api("get", "disputes?status=open&limit=1", provider.token)).body[0]
+        .id,
+    ).toBe(id);
+    await api("get", "disputes?status=invalid").expect(400);
+    await api("get", "disputes/not-a-uuid").expect(400);
+    await api("post", `jobs/${j.id}/disputes`, provider.token)
+      .send(disputeInput())
+      .expect(409);
+    expect((await api("get", `jobs/${j.id}`)).body.status).toBe("disputed");
+  });
+  it("resolves for provider once, queues payout and releases only after verified transfer", async () => {
+    const { j, payment, dispute } = await disputedJob();
+    await finance();
+    const input = {
+      decision: "resolved_for_provider",
+      reason: "Delivery evidence confirms the agreed work.",
+    };
+    const attempts = await Promise.all([
+      api("post", `admin/disputes/${dispute.id}/decision`, outsider.token).send(
+        input,
+      ),
+      api("post", `admin/disputes/${dispute.id}/decision`, outsider.token).send(
+        input,
+      ),
+    ]);
+    expect(attempts.map((r) => r.status)).toEqual([201, 201]);
+    expect(attempts[0].body.id).toBe(attempts[1].body.id);
+    expect(await db.select().from(schema.disputeDecisions)).toHaveLength(1);
+    expect(
+      (await api("get", `disputes/${dispute.id}/decisions`, provider.token))
+        .body[0].decision,
+    ).toBe(input.decision);
+    expect(
+      (await api("get", `admin/disputes/${dispute.id}`, outsider.token)).body
+        .status,
+    ).toBe(input.decision);
+    expect((await api("get", `jobs/${j.id}/payment`)).body.status).toBe(
+      "release_pending",
+    );
+    await api("post", "me/payout-accounts", provider.token)
+      .send({ bankCode: "058", accountNumber: "0123456789" })
+      .expect(201);
+    const [payout] = await db.select().from(schema.payouts);
+    gateway.verifyTransfer.mockResolvedValue(
+      transferResult({ ...payout, recipientCode: "RCP_test" }),
+    );
+    app.get(ConfigService).set("PAYSTACK_TRANSFERS_ENABLED", true);
+    await app.get(SettlementService).processPayout(payout.id);
+    expect((await api("get", `jobs/${j.id}/payment`)).body.status).toBe(
+      "released",
+    );
+    expect(await db.select().from(schema.refunds)).toHaveLength(0);
+    expect(payout.paymentId).toBe(payment.id);
+  });
+  it("resolves for client with one full refund and confirms returned funds through Paystack", async () => {
+    const { j, payment, result, dispute } = await disputedJob();
+    await finance();
+    await api("post", `admin/disputes/${dispute.id}/decision`, outsider.token)
+      .send({
+        decision: "resolved_for_client",
+        reason: "The service was not delivered.",
+        refundAmountMinor: 1,
+      })
+      .expect(422);
+    const input = {
+      decision: "resolved_for_client",
+      reason: "The service was not delivered.",
+    };
+    await api("post", `admin/disputes/${dispute.id}/decision`, outsider.token)
+      .send(input)
+      .expect(201);
+    await api("post", `admin/disputes/${dispute.id}/decision`, outsider.token)
+      .send({ ...input, refundAmountMinor: payment.amountMinor })
+      .expect(201);
+    const [refund] = await db.select().from(schema.refunds);
+    expect(refund.amountMinor).toBe(payment.amountMinor);
+    expect((await api("get", `jobs/${j.id}`)).body.status).toBe("cancelled");
+    expect((await api("get", `jobs/${j.id}/payment`)).body.status).toBe(
+      "funded",
+    );
+    expect(await db.select().from(schema.payouts)).toHaveLength(0);
+    gateway.verifyRefund.mockResolvedValue({
+      id: "987654",
+      transactionId: result.transactionId,
+      amountMinor: refund.amountMinor,
+      currency: "NGN",
+      status: "processed",
+      merchantNote: `konet-refund:${refund.id}`,
+    });
+    await app.get(SettlementService).processRefund(refund.id);
+    expect((await api("get", `jobs/${j.id}/payment`)).body.status).toBe(
+      "refunded",
+    );
+    expect(gateway.createRefund).toHaveBeenCalledTimes(1);
+  });
+  it("permits financial staff decisions, forbids self-resolution and applies role revocation immediately", async () => {
+    const { dispute } = await disputedJob();
+    const input = {
+      decision: "resolved_for_client",
+      reason: "The work was not delivered.",
+    };
+    await api("get", "admin/disputes", outsider.token).expect(403);
+    await db
+      .insert(schema.userRoles)
+      .values({ userId: outsider.id, role: "reviewer" });
+    await api("post", `admin/disputes/${dispute.id}/decision`, outsider.token)
+      .send(input)
+      .expect(403);
+    await db
+      .insert(schema.userRoles)
+      .values({ userId: client.id, role: "admin" });
+    await api("post", `admin/disputes/${dispute.id}/decision`)
+      .send(input)
+      .expect(403);
+    await finance();
+    expect(
+      (await api("get", "admin/disputes", outsider.token)).body,
+    ).toHaveLength(1);
+    await db
+      .delete(schema.userRoles)
+      .where(eq(schema.userRoles.userId, outsider.id));
+    await api("post", `admin/disputes/${dispute.id}/decision`, outsider.token)
+      .send(input)
+      .expect(403);
+    expect(await db.select().from(schema.disputeDecisions)).toHaveLength(0);
+  });
+  it("requires verified collection evidence before any dispute settlement", async () => {
+    const { payment, dispute } = await disputedJob();
+    await finance();
+    await db
+      .delete(schema.paymentEvents)
+      .where(eq(schema.paymentEvents.paymentId, payment.id));
+    await api("post", `admin/disputes/${dispute.id}/decision`, outsider.token)
+      .send({
+        decision: "resolved_for_provider",
+        reason: "The work evidence confirms delivery.",
+      })
+      .expect(409);
+    expect(await db.select().from(schema.disputeDecisions)).toHaveLength(0);
+    expect(await db.select().from(schema.payouts)).toHaveLength(0);
+    expect(await db.select().from(schema.refunds)).toHaveLength(0);
+    expect((await api("get", `disputes/${dispute.id}`)).body.status).toBe(
+      "open",
+    );
+  });
+  it("serializes conflicting decisions without reserving both payout and refund", async () => {
+    const { dispute } = await disputedJob();
+    await finance();
+    const attempts = await Promise.all(
+      ["resolved_for_client", "resolved_for_provider"].map((decision) =>
+        api(
+          "post",
+          `admin/disputes/${dispute.id}/decision`,
+          outsider.token,
+        ).send({
+          decision,
+          reason: "Reviewed the submitted work and evidence.",
+        }),
+      ),
+    );
+    expect(attempts.map((r) => r.status).sort()).toEqual([201, 409]);
+    expect(await db.select().from(schema.disputeDecisions)).toHaveLength(1);
+    expect(
+      (await db.select().from(schema.refunds)).length +
+        (await db.select().from(schema.payouts)).length,
+    ).toBe(1);
+  });
+  it("rolls back the decision and money reservation when notification persistence fails", async () => {
+    const { j, dispute } = await disputedJob();
+    await finance();
+    await pool.query(
+      "CREATE FUNCTION dispute_test_fail_notification() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test notification failure'; END $$",
+    );
+    await pool.query(
+      "CREATE TRIGGER dispute_test_notification_failure BEFORE INSERT ON notifications FOR EACH ROW EXECUTE FUNCTION dispute_test_fail_notification()",
+    );
+    try {
+      await api("post", `admin/disputes/${dispute.id}/decision`, outsider.token)
+        .send({
+          decision: "resolved_for_provider",
+          reason: "The delivery evidence is satisfactory.",
+        })
+        .expect(500);
+      expect(await db.select().from(schema.disputeDecisions)).toHaveLength(0);
+      expect(await db.select().from(schema.payouts)).toHaveLength(0);
+      expect((await api("get", `disputes/${dispute.id}`)).body.status).toBe(
+        "open",
+      );
+      expect((await api("get", `jobs/${j.id}/payment`)).body.status).toBe(
+        "disputed",
+      );
+    } finally {
+      await pool.query(
+        "DROP TRIGGER dispute_test_notification_failure ON notifications",
+      );
+      await pool.query("DROP FUNCTION dispute_test_fail_notification()");
+    }
+  });
   it("resolves payout bank accounts, masks private fields and permits one active account", async () => {
     await api("post", "me/payout-accounts")
       .send({ bankCode: "058", accountNumber: "0123456789" })

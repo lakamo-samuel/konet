@@ -2584,6 +2584,17 @@ export const contractSchemas: Record<string, SchemaObject> = {
   Decision: {
     type: "object",
     properties: {
+      disputeId: {
+        type: "string",
+        format: "uuid",
+        description: "Present for dispute decisions.",
+      },
+      refundAmountMinor: {
+        type: "integer",
+        nullable: true,
+        description:
+          "Full refund for client decisions; null for provider decisions.",
+      },
       id: {
         type: "string",
         format: "uuid",
@@ -3369,11 +3380,13 @@ export const contractSchemas: Record<string, SchemaObject> = {
       reason: {
         type: "string",
         minLength: 3,
+        maxLength: 100,
         example: "The submitted document needs a clearer photograph.",
       },
       description: {
         type: "string",
         minLength: 20,
+        maxLength: 5000,
         example:
           "Design a logo for our student society and deliver the final files by the agreed date.",
       },
@@ -3545,12 +3558,14 @@ export const contractSchemas: Record<string, SchemaObject> = {
       reason: {
         type: "string",
         minLength: 3,
+        maxLength: 2000,
         example: "The submitted document needs a clearer photograph.",
       },
       refundAmountMinor: {
         type: "integer",
         minimum: 0,
-        description: "Integer minor units (NGN kobo); 500000 = \u20a65,000.",
+        description:
+          "Optional: full payment amount for client resolution; omitted or zero for provider resolution. Partial refunds are unsupported.",
       },
     },
     required: ["decision", "reason"],
@@ -4955,7 +4970,7 @@ export const routeContracts: RouteContract[] = [
     auth: "user",
     existing: true,
     query: null,
-    note: "",
+    note: "Participants may dispute funded scheduled/in-progress/awaiting-confirmation work. Reason is 3–100 characters; description is 20–5000. One open case per job; identical retries return the existing case. Opening freezes job and payment, records an audit and notifies participants.",
     code: 201,
   },
   {
@@ -4965,9 +4980,9 @@ export const routeContracts: RouteContract[] = [
     response: "disputes[]",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: "ListQuery",
-    note: "",
+    note: "Participants only; unrelated resources return 404. Lists support limit, offset and dispute status.",
     code: 200,
   },
   {
@@ -4977,9 +4992,9 @@ export const routeContracts: RouteContract[] = [
     response: "disputes",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Participants only; unrelated resources return 404. Lists support limit, offset and dispute status.",
     code: 200,
   },
   {
@@ -4989,9 +5004,9 @@ export const routeContracts: RouteContract[] = [
     response: "Decision[]",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Participants only; unrelated resources return 404. Lists support limit, offset and dispute status.",
     code: 200,
   },
   {
@@ -5323,10 +5338,10 @@ export const routeContracts: RouteContract[] = [
     summary: "List disputes for authorized staff",
     response: "disputes[]",
     body: null,
-    auth: "admin",
-    existing: false,
+    auth: "finance",
+    existing: true,
     query: "ListQuery",
-    note: "",
+    note: "Active admin or finance only. Audited final decisions forbid self-resolution. resolved_for_client queues a full refund and cancels the job; resolved_for_provider completes the job and queues payout. refundAmountMinor may be omitted; if supplied it must equal the full payment for client decisions, or zero for provider decisions. Identical retries by the deciding actor return the existing decision. Conflicting decisions return 409. Paystack confirmation still determines money movement.",
     code: 200,
   },
   {
@@ -5335,10 +5350,10 @@ export const routeContracts: RouteContract[] = [
     summary: "Read disputes for authorized staff",
     response: "disputes",
     body: null,
-    auth: "admin",
-    existing: false,
+    auth: "finance",
+    existing: true,
     query: null,
-    note: "",
+    note: "Active admin or finance only. Audited final decisions forbid self-resolution. resolved_for_client queues a full refund and cancels the job; resolved_for_provider completes the job and queues payout. refundAmountMinor may be omitted; if supplied it must equal the full payment for client decisions, or zero for provider decisions. Identical retries by the deciding actor return the existing decision. Conflicting decisions return 409. Paystack confirmation still determines money movement.",
     code: 200,
   },
   {
@@ -5446,10 +5461,10 @@ export const routeContracts: RouteContract[] = [
     summary: "Resolve dispute and authorize payout or refund",
     response: "Decision",
     body: "DisputeDecisionInput",
-    auth: "admin",
-    existing: false,
+    auth: "finance",
+    existing: true,
     query: null,
-    note: "",
+    note: "Active admin or finance only. Audited final decisions forbid self-resolution. resolved_for_client queues a full refund and cancels the job; resolved_for_provider completes the job and queues payout. refundAmountMinor may be omitted; if supplied it must equal the full payment for client decisions, or zero for provider decisions. Identical retries by the deciding actor return the existing decision. Conflicting decisions return 409. Paystack confirmation still determines money movement.",
     code: 201,
   },
   {

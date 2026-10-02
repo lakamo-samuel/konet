@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   UseGuards,
@@ -55,7 +56,7 @@ export class MarketplaceController {
   }
   @Post("jobs/:id/disputes") dispute(
     @CurrentUser() u: AuthUser,
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Body() d: DisputeDto,
   ) {
     return this.s.dispute(u.userId, id, d);

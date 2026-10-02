@@ -32,4 +32,6 @@ If creation has an ambiguous outcome without a provider ID, the worker never bli
 
 Paystack uses `/webhooks/payments/paystack` and `x-paystack-signature`. The API checks raw-body HMAC-SHA512 and verifies relevant financial details with Paystack. Repeated events cannot duplicate financial transitions. Audits and participant notifications commit with financial changes; Socket.IO events publish after commit.
 
-Authorized dispute resolution, reconciliation, partial refunds and operational recovery tooling remain unfinished. Collection and ledger states do not establish regulated escrow. Current platform fees remain zero.
+Reconciliation, partial refunds and operational recovery tooling remain unfinished. Collection and ledger states do not establish regulated escrow. Current platform fees remain zero.
+
+Admin/finance dispute outcomes can also authorize a payout or full refund. See [dispute integration](backend-disputes.md).

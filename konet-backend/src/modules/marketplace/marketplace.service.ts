@@ -1,10 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { DisputeService } from "./dispute.service";
 import { and, eq } from "drizzle-orm";
 import { DATABASE, Database } from "../../database/database.module";
 import {
-  disputes,
   jobs,
-  payments,
   providerProfiles,
   reviews,
   services,
@@ -22,6 +21,7 @@ export class MarketplaceService {
   constructor(
     @Inject(DATABASE) private db: Database,
     private onboarding: ProviderOnboardingService,
+    private disputes: DisputeService,
   ) {}
   private async providerFor(userId: string) {
     const [p] = await this.db
@@ -83,46 +83,6 @@ export class MarketplaceService {
     }
   }
   async dispute(userId: string, jobId: string, d: DisputeDto) {
-    return this.db.transaction(async (tx) => {
-      const [j] = await tx
-        .select()
-        .from(jobs)
-        .where(eq(jobs.id, jobId))
-        .for("update");
-      const p = await tx
-        .select({ id: providerProfiles.id })
-        .from(providerProfiles)
-        .where(eq(providerProfiles.userId, userId))
-        .limit(1);
-      if (!j || (j.clientId !== userId && j.providerId !== p[0]?.id))
-        throw new DomainError(
-          "JOB_FORBIDDEN",
-          "You cannot dispute this job.",
-          403,
-        );
-      if (
-        !["scheduled", "in_progress", "awaiting_client_confirmation"].includes(
-          j.status,
-        )
-      )
-        throw new DomainError(
-          "DISPUTE_NOT_ALLOWED",
-          "This job cannot be disputed in its current state.",
-          409,
-        );
-      const [dsp] = await tx
-        .insert(disputes)
-        .values({ jobId, openedByUserId: userId, ...d })
-        .returning();
-      await tx
-        .update(jobs)
-        .set({ status: "disputed", updatedAt: new Date() })
-        .where(eq(jobs.id, jobId));
-      await tx
-        .update(payments)
-        .set({ status: "disputed", updatedAt: new Date() })
-        .where(eq(payments.jobId, jobId));
-      return dsp;
-    });
+    return this.disputes.open(userId, jobId, d);
   }
 }

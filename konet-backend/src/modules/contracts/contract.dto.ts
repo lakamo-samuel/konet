@@ -623,6 +623,7 @@ export class DisputeDecisionInput {
   @ApiProperty({ type: "string", minLength: 3 })
   @IsString()
   @MinLength(3)
+  @MaxLength(2000)
   reason!: string;
   @ApiPropertyOptional({ type: "integer", minimum: 0 })
   @IsOptional()
