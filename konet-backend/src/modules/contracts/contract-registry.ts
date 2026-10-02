@@ -2882,11 +2882,14 @@ export const contractSchemas: Record<string, SchemaObject> = {
       fullName: {
         type: "string",
         minLength: 2,
+        maxLength: 150,
         example: "Ada Okafor",
       },
       avatarUrl: {
         type: "string",
         format: "uri",
+        maxLength: 2048,
+        pattern: "^https://",
         example: "https://example.com/resource",
       },
       universityId: {
@@ -4019,9 +4022,9 @@ export const routeContracts: RouteContract[] = [
     response: "user",
     body: "ProfileInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "University/campus changes require re-verification; email changes use a separate challenge.",
+    note: "At least one field required. fullName: 2–150 characters; avatarUrl: HTTPS URL, max 2048. Campus must belong to an active university. Affiliation changes require no unresolved jobs/payment obligations, reset student verification, invalidate pending student challenges and reset provider approval/publication. Null values are not accepted.",
     code: 200,
   },
   {
@@ -4031,9 +4034,9 @@ export const routeContracts: RouteContract[] = [
     response: "Challenge",
     body: "EmailChangeInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Requires current password and configured Resend delivery. Sends a six-digit code to the new address using the encrypted outbox. Ten-minute expiry, 60-second resend cooldown, three requests/hour. A newer request invalidates earlier codes. No unresolved jobs/payment obligations allowed.",
     code: 202,
   },
   {
@@ -4043,9 +4046,9 @@ export const routeContracts: RouteContract[] = [
     response: "user",
     body: "ConfirmChallengeInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Authenticated owner only. Five attempts per challenge. Verifies current email/password context and new email uniqueness. Success updates email, revokes every session and clears the refresh cookie; sign in again. Student university verification is separate and is preserved.",
     code: 200,
   },
   {
@@ -4067,9 +4070,9 @@ export const routeContracts: RouteContract[] = [
     response: "Acknowledgement",
     body: "ReasonInput",
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Deactivates the account and hides the provider profile; does not erase financial/job history. A reason of 3–2000 characters is required. Unresolved jobs or payments block deactivation with 409. Revokes all sessions and outstanding recovery/email codes; clears refresh cookie.",
     code: 204,
   },
   {

@@ -1,3 +1,4 @@
+import { AccountService } from "../src/modules/auth/account.service";
 import "reflect-metadata";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
@@ -42,6 +43,7 @@ describeDatabase("account and recovery PostgreSQL integration", () => {
   const jwt = new JwtService();
   const email = new EmailService(db, config);
   const auth = new AuthService(db, jwt, config, email);
+  const accountService = new AccountService(db, config, email);
   const guard = new AuthGuard(jwt, config, db);
   let universityId: string;
   let campusId: string;
@@ -71,6 +73,250 @@ describeDatabase("account and recovery PostgreSQL integration", () => {
       new URL(payload.text.match(/https:\/\/\S+/)![0]).hash.slice(1),
     ).get("token")!;
   }
+  async function emailChallenge(userId: string, address = "new@example.com") {
+    const challenge = await accountService.requestEmail(userId, {
+      email: address,
+      password: credentials.password,
+    });
+    const rows = await db.select().from(schema.emailOutbox);
+    const row = rows.find(
+      (r) => r.idempotencyKey === `email-change:${challenge.challengeId}`,
+    )!;
+    const message = email.decrypt(row.payloadCiphertext!);
+    return {
+      ...challenge,
+      code: message.text.match(/code is (\d{6})/)![1],
+      row,
+    };
+  }
+  it("edits profiles without exposing password hashes and resets verification on affiliation changes", async () => {
+    const r = await register();
+    await db
+      .update(schema.users)
+      .set({ studentVerificationStatus: "verified" })
+      .where(eq(schema.users.id, r.user.id));
+    const same = await accountService.profile(r.user.id, {
+      fullName: "New Student Name",
+    });
+    expect(same.fullName).toBe("New Student Name");
+    expect(same).not.toHaveProperty("passwordHash");
+    expect(same.studentVerificationStatus).toBe("verified");
+    const [campus] = await db
+      .insert(schema.campuses)
+      .values({ universityId, name: "Second", slug: "second" })
+      .returning();
+    await db
+      .insert(schema.providerProfiles)
+      .values({
+        userId: r.user.id,
+        professionalTitle: "Student photographer",
+        bio: "Photographs and edits campus events for students.",
+        status: "active",
+        reviewStatus: "approved",
+        approvedAt: new Date(),
+      });
+    const moved = await accountService.profile(r.user.id, {
+      campusId: campus.id,
+    });
+    expect(moved.studentVerificationStatus).toBe("unverified");
+    const [p] = await db.select().from(schema.providerProfiles);
+    expect(p.status).toBe("draft");
+    expect(p.reviewStatus).toBe("not_submitted");
+    expect(p.approvedAt).toBeNull();
+    await expect(accountService.profile(r.user.id, {})).rejects.toMatchObject({
+      code: "EMPTY_PROFILE",
+    });
+    await expect(
+      accountService.profile(r.user.id, {
+        universityId: "00000000-0000-4000-8000-000000000099",
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_CAMPUS" });
+  });
+  it("requires the current password and configured delivery for email changes", async () => {
+    const r = await register();
+    await expect(
+      accountService.requestEmail(r.user.id, {
+        email: "new@example.com",
+        password: "wrong",
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_PASSWORD" });
+    await expect(
+      accountService.requestEmail(r.user.id, {
+        email: credentials.email,
+        password: credentials.password,
+      }),
+    ).rejects.toMatchObject({ code: "EMAIL_UNCHANGED" });
+    config.set("RESEND_API_KEY", "");
+    try {
+      await expect(
+        accountService.requestEmail(r.user.id, {
+          email: "new@example.com",
+          password: credentials.password,
+        }),
+      ).rejects.toMatchObject({ code: "EMAIL_DELIVERY_NOT_CONFIGURED" });
+    } finally {
+      config.set("RESEND_API_KEY", "test-only-never-sent");
+    }
+  });
+  it("confirms a private hashed email code, revokes all sessions and queues an old-address alert", async () => {
+    const r = await register();
+    const c = await emailChallenge(r.user.id);
+    const [stored] = await db.select().from(schema.emailChangeChallenges);
+    expect(stored.codeHash).not.toBe(c.code);
+    expect(c.row.payloadCiphertext).not.toContain(c.code);
+    await db
+      .update(schema.users)
+      .set({ studentVerificationStatus: "verified" })
+      .where(eq(schema.users.id, r.user.id));
+    const changed = await accountService.confirmEmail(r.user.id, {
+      challengeId: c.challengeId,
+      code: c.code,
+    });
+    expect(changed.email).toBe("new@example.com");
+    expect(changed.studentVerificationStatus).toBe("verified");
+    await expect(authorize(r.accessToken)).rejects.toThrow(
+      "Session is revoked",
+    );
+    await expect(auth.login(credentials)).rejects.toThrow();
+    expect(
+      (await auth.login({ ...credentials, email: "new@example.com" })).user.id,
+    ).toBe(r.user.id);
+    await expect(
+      accountService.confirmEmail(r.user.id, {
+        challengeId: c.challengeId,
+        code: c.code,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_EMAIL_CHANGE_CODE" });
+    const rows = await db.select().from(schema.emailOutbox);
+    expect(rows.find((x) => x.id === c.row.id)?.payloadCiphertext).toBeNull();
+    const alert = rows.find((x) =>
+      x.idempotencyKey.startsWith("email-changed-alert:"),
+    )!;
+    expect(email.decrypt(alert.payloadCiphertext!).to).toBe(credentials.email);
+  });
+  it("limits wrong codes to five committed attempts and rejects another users challenge", async () => {
+    const r = await register();
+    const c = await emailChallenge(r.user.id);
+    const other = await auth.register({
+      ...credentials,
+      email: "other@example.com",
+      fullName: "Other Student",
+      universityId,
+      campusId,
+    });
+    await expect(
+      accountService.confirmEmail(other.user.id, {
+        challengeId: c.challengeId,
+        code: c.code,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_EMAIL_CHANGE_CODE" });
+    const wrong = c.code === "000000" ? "000001" : "000000";
+    for (let i = 0; i < 5; i++)
+      await expect(
+        accountService.confirmEmail(r.user.id, {
+          challengeId: c.challengeId,
+          code: wrong,
+        }),
+      ).rejects.toMatchObject({ code: "INVALID_EMAIL_CHANGE_CODE" });
+    const [row] = await db.select().from(schema.emailChangeChallenges);
+    expect(row.attempts).toBe(5);
+    expect(row.consumedAt).not.toBeNull();
+    await expect(
+      accountService.confirmEmail(r.user.id, {
+        challengeId: c.challengeId,
+        code: c.code,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_EMAIL_CHANGE_CODE" });
+  });
+  it("expires codes and invalidates them after a password change", async () => {
+    const r = await register();
+    const c = await emailChallenge(r.user.id);
+    await auth.changePassword(
+      r.user.id,
+      credentials.password,
+      "new-long-password",
+    );
+    await expect(
+      accountService.confirmEmail(r.user.id, {
+        challengeId: c.challengeId,
+        code: c.code,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_EMAIL_CHANGE_CODE" });
+    await db
+      .update(schema.emailChangeChallenges)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.emailChangeChallenges.id, c.challengeId));
+    await expect(
+      accountService.confirmEmail(r.user.id, {
+        challengeId: c.challengeId,
+        code: c.code,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_EMAIL_CHANGE_CODE" });
+  });
+  it("enforces email cooldown, invalidates older codes on resend and limits requests per hour", async () => {
+    const r = await register();
+    const first = await emailChallenge(r.user.id);
+    await expect(emailChallenge(r.user.id)).rejects.toMatchObject({
+      code: "EMAIL_CHANGE_RATE_LIMIT",
+    });
+    await db
+      .update(schema.emailChangeChallenges)
+      .set({ createdAt: new Date(Date.now() - 61000) })
+      .where(eq(schema.emailChangeChallenges.id, first.challengeId));
+    const second = await emailChallenge(r.user.id, "second@example.com");
+    await expect(
+      accountService.confirmEmail(r.user.id, {
+        challengeId: first.challengeId,
+        code: first.code,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_EMAIL_CHANGE_CODE" });
+    await db
+      .update(schema.emailChangeChallenges)
+      .set({ createdAt: new Date(Date.now() - 61000) })
+      .where(eq(schema.emailChangeChallenges.id, second.challengeId));
+    await emailChallenge(r.user.id, "third@example.com");
+    await expect(
+      emailChallenge(r.user.id, "fourth@example.com"),
+    ).rejects.toMatchObject({ code: "EMAIL_CHANGE_RATE_LIMIT" });
+  });
+  it("prevents takeover when the requested email is registered before confirmation", async () => {
+    const r = await register();
+    const c = await emailChallenge(r.user.id);
+    await auth.register({
+      ...credentials,
+      email: "new@example.com",
+      fullName: "Other Student",
+      universityId,
+      campusId,
+    });
+    await expect(
+      accountService.confirmEmail(r.user.id, {
+        challengeId: c.challengeId,
+        code: c.code,
+      }),
+    ).rejects.toMatchObject({ code: "EMAIL_UNAVAILABLE" });
+    expect((await auth.login(credentials)).user.email).toBe(credentials.email);
+  });
+  it("deactivates without deleting history and invalidates sessions and recovery codes", async () => {
+    const r = await register();
+    await auth.forgotPassword(credentials.email);
+    const token = await recoveryToken();
+    await accountService.deactivate(r.user.id, "No longer using this account");
+    const [u] = await db.select().from(schema.users);
+    expect(u.accountStatus).toBe("deactivated");
+    await expect(authorize(r.accessToken)).rejects.toThrow(
+      "Session is revoked",
+    );
+    await expect(auth.login(credentials)).rejects.toThrow();
+    await expect(
+      auth.resetPassword(token, "different-password"),
+    ).rejects.toThrow();
+    expect(
+      (await db.select().from(schema.auditEvents)).find(
+        (x) => x.action === "account.deactivated",
+      ),
+    ).toBeDefined();
+  });
   beforeAll(async () => {
     const admin = new Pool({
       host: process.env.AUTH_TEST_DB_SOCKET,

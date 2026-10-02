@@ -1,6 +1,6 @@
 # Backend API contract handoff
 
-The backend registers **151 operations** under `/api/v1`: 138 existing handlers and 13 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
+The backend registers **151 operations** under `/api/v1`: 142 existing handlers and 9 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
 
 - Swagger UI: `http://localhost:4000/api/docs`
 - OpenAPI JSON: `http://localhost:4000/api/docs/json`
@@ -321,20 +321,20 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 
 | Method | Path | Access | Request schema | Success | Current status |
 | --- | --- | --- | --- | --- | --- |
-| PATCH | `/me/profile` | authenticated | ProfileInput | 200 user | Contract only (501) |
+| PATCH | `/me/profile` | authenticated | ProfileInput | 200 user | Implemented |
 
 ### email-change
 
 | Method | Path | Access | Request schema | Success | Current status |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/me/email-change` | authenticated | EmailChangeInput | 202 Challenge | Contract only (501) |
-| POST | `/me/email-change/confirm` | authenticated | ConfirmChallengeInput | 200 user | Contract only (501) |
+| POST | `/me/email-change` | authenticated | EmailChangeInput | 202 Challenge | Implemented |
+| POST | `/me/email-change/confirm` | authenticated | ConfirmChallengeInput | 200 user | Implemented |
 
 ### account
 
 | Method | Path | Access | Request schema | Success | Current status |
 | --- | --- | --- | --- | --- | --- |
-| DELETE | `/me/account` | authenticated | ReasonInput | 204 No body | Contract only (501) |
+| DELETE | `/me/account` | authenticated | ReasonInput | 204 No body | Implemented |
 
 ### notification-preferences
 
@@ -380,3 +380,5 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 Authenticated `GET /payout-banks` returns the supported Nigerian bank list (`Bank[]`) for account setup. See [settlement integration](backend-settlements.md).
 
 Dispute reads and admin/finance final resolution are implemented; see [dispute integration](backend-disputes.md).
+
+Student profile editing, email changes and account deactivation are implemented; see [account management](backend-account-management.md).

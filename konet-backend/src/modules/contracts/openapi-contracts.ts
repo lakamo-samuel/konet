@@ -62,6 +62,11 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
       "me/payout-accounts",
       "admin/payouts/{id}/retry",
     ].includes(route.path);
+    const emailBlocked = [
+      "auth/forgot-password",
+      "me/email-change",
+      "me/email-change/confirm",
+    ].includes(route.path);
     const status = !route.existing ? "contract-only" : "implemented";
     (operation as OperationObject & { "x-implementation-status": string })[
       "x-implementation-status"
@@ -262,19 +267,15 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
           },
         },
       };
-    if (
-      gatewayBlocked ||
-      route.path === "health" ||
-      route.path === "auth/forgot-password"
-    )
+    if (gatewayBlocked || route.path === "health" || emailBlocked)
       operation.responses[503] = {
         description: gatewayBlocked
           ? "Paystack credentials missing or provider temporarily unavailable."
-          : route.path === "auth/forgot-password"
+          : emailBlocked
             ? "EMAIL_DELIVERY_NOT_CONFIGURED: set Resend credentials, sender address, and outbox encryption key."
             : "Database unavailable.",
         content:
-          gatewayBlocked || route.path === "auth/forgot-password"
+          gatewayBlocked || emailBlocked
             ? errorContent
             : jsonContent({
                 type: "object",

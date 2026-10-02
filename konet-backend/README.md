@@ -15,7 +15,7 @@ The REST API is rooted at `/api/v1`; Swagger is at `/api/docs`; health is at `/a
 
 ## Frontend integration contracts
 
-All planned routes are registered and documented: 151 operations, including 13 contract-only endpoints. Swagger specifies authentication, required and optional fields, validation, success schemas, and errors. New endpoints return `501 ENDPOINT_NOT_IMPLEMENTED` until their services are implemented; Paystack checkout returns 503 until its secret key is configured. Documented success schemas support frontend client generation and mocks, rather than successful live calls to unfinished routes.
+All planned routes are registered and documented: 151 operations, including 9 contract-only endpoints. Swagger specifies authentication, required and optional fields, validation, success schemas, and errors. New endpoints return `501 ENDPOINT_NOT_IMPLEMENTED` until their services are implemented; Paystack checkout returns 503 until its secret key is configured. Documented success schemas support frontend client generation and mocks, rather than successful live calls to unfinished routes.
 
 See the [API handoff and full route inventory](../docs/backend-api-contract.md). Share [openapi.json](openapi.json) with the frontend developer, or fetch `/api/docs/json`. Run `npm run docs:export` to regenerate the offline snapshot without a database or running API.
 
@@ -50,3 +50,5 @@ Collaboration uses participant-only Socket.IO messaging, persisted conversation 
 Paystack collection, verification and signed charge webhooks are implemented. Set PAYSTACK_SECRET_KEY and optional PAYMENT_CALLBACK_URL; see the [payment integration guide](../docs/backend-payments.md). Verified payout accounts, client-approved transfers and finance-authorized full refunds are implemented; see the [settlement guide](../docs/backend-settlements.md). Reconciliation remains unfinished.
 
 Participant dispute cases and admin/finance resolution are implemented; see the [dispute guide](../docs/backend-disputes.md).
+
+Student profile, email changes and deactivation are implemented; see [account management](../docs/backend-account-management.md).

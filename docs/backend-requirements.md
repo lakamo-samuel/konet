@@ -10,7 +10,7 @@ Konet serves verified university students who hire other students for services. 
 
 | ID | Feature | Required outcome | Existing foundation |
 | --- | --- | --- | --- |
-| F1 | Account and session | Register, log in, refresh, log out, reset password | Registration/login/refresh/logout/reset and password change exist; recovery delivery requires Resend configuration |
+| F1 | Account and session | Register, log in, refresh, log out, reset password | Registration/login/refresh/logout/reset, password/profile/email changes and deactivation implemented; recovery delivery requires Resend configuration |
 | F2 | University directory | Manage universities, campuses, approved email domains | Public directory, admin management, staff roles, and audit records implemented |
 | F3 | Student verification | Confirm an applicant belongs to selected university; record evidence and decision | Automatic email codes, scanned private Cloudinary evidence, admin/reviewer queue, decisions, retention and audit implemented; provider credentials required |
 | F4 | Provider onboarding | Verified student creates profile, submits identity/work evidence, receives approval | Drafts, services/portfolio metadata, private evidence, mandatory identity/work review, optional CAC, revisioned decisions and controlled publication implemented |

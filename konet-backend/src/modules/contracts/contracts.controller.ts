@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpCode,
   Param,
@@ -40,34 +39,6 @@ export class PublicContractsController {
 @UseGuards(AuthGuard)
 @Controller({ version: "1" })
 export class MemberContractsController {
-  @Patch("me/profile")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Update current account profile" })
-  patchMeProfile(@Body() _body: Dto.ProfileInput): never {
-    return unavailable("Update current account profile");
-  }
-
-  @Post("me/email-change")
-  @HttpCode(202)
-  @ApiOperation({ summary: "Request account email change" })
-  postMeEmailChange(@Body() _body: Dto.EmailChangeInput): never {
-    return unavailable("Request account email change");
-  }
-
-  @Post("me/email-change/confirm")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Confirm new account email" })
-  postMeEmailChangeConfirm(@Body() _body: Dto.ConfirmChallengeInput): never {
-    return unavailable("Confirm new account email");
-  }
-
-  @Delete("me/account")
-  @HttpCode(204)
-  @ApiOperation({ summary: "Deactivate account" })
-  deleteMeAccount(@Body() _body: Dto.ReasonInput): never {
-    return unavailable("Deactivate account");
-  }
-
   @Get("jobs/:id/review")
   @HttpCode(200)
   @ApiOperation({ summary: "Read review for participant job" })

@@ -275,6 +275,64 @@ describeDatabase("hiring PostgreSQL API integration", () => {
       .insert(schema.userRoles)
       .values({ userId: outsider.id, role: "finance" });
   }
+  it("exposes safe profile editing and rejects null or privileged fields", async () => {
+    const result = await api("patch", "me/profile")
+      .send({ fullName: "Updated Student" })
+      .expect(200);
+    expect(result.body.fullName).toBe("Updated Student");
+    expect(result.body).not.toHaveProperty("passwordHash");
+    await api("patch", "me/profile").send({ fullName: null }).expect(400);
+    await api("patch", "me/profile")
+      .send({ accountStatus: "suspended" })
+      .expect(400);
+    await api("patch", "me/profile")
+      .send({ avatarUrl: "http://example.com/photo.png" })
+      .expect(400);
+    await api("patch", "me/profile").send({}).expect(422);
+  });
+  it("blocks affiliation changes, email changes and deactivation while work or money is unresolved", async () => {
+    await fundedJob();
+    const [u] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, client.id));
+    const [campus] = await db
+      .insert(schema.campuses)
+      .values({ universityId: u.universityId, name: "Second", slug: "second" })
+      .returning();
+    await api("patch", "me/profile").send({ campusId: campus.id }).expect(409);
+    await api("delete", "me/account")
+      .send({ reason: "Leaving the platform" })
+      .expect(409);
+    await api("delete", "me/account", provider.token)
+      .send({ reason: "Leaving the platform" })
+      .expect(409);
+    const config = app.get(ConfigService);
+    config.set("RESEND_API_KEY", "test-only-never-sent");
+    config.set("EMAIL_FROM", "support@konet.example");
+    config.set("EMAIL_OUTBOX_KEY", "12".repeat(32));
+    await api("post", "me/email-change")
+      .send({ email: "new@example.com", password: "hiring-test-password" })
+      .expect(409);
+    await api("patch", "me/profile")
+      .send({ fullName: "Still allowed" })
+      .expect(200);
+  });
+  it("deactivates through the member endpoint and clears access and refresh sessions", async () => {
+    const result = await api("delete", "me/account")
+      .send({ reason: "No longer need an account" })
+      .expect(204);
+    expect(result.headers["set-cookie"].join(" ")).toContain("konet_refresh=;");
+    await api("get", "auth/me").expect(401);
+    expect(
+      (
+        await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.id, client.id))
+      )[0].accountStatus,
+    ).toBe("deactivated");
+  });
   const disputeInput = () => ({
     reason: "Work quality",
     description: "The delivered work does not match the agreed service scope.",

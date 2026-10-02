@@ -70,20 +70,22 @@ export class ResetPasswordInput {
 
 export class ProfileInput {
   @ApiPropertyOptional({ type: "string", minLength: 2 })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsString()
   @MinLength(2)
+  @MaxLength(150)
   fullName?: string;
   @ApiPropertyOptional({ type: "string", format: "uri" })
-  @IsOptional()
-  @IsUrl()
+  @ValidateIf((_, value) => value !== undefined)
+  @IsUrl({ protocols: ["https"], require_protocol: true })
+  @MaxLength(2048)
   avatarUrl?: string;
   @ApiPropertyOptional({ type: "string", format: "uuid" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsUUID()
   universityId?: string;
   @ApiPropertyOptional({ type: "string", format: "uuid" })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsUUID()
   campusId?: string;
 }
@@ -91,10 +93,12 @@ export class ProfileInput {
 export class EmailChangeInput {
   @ApiProperty({ type: "string", format: "email" })
   @IsEmail()
+  @MaxLength(255)
   email!: string;
   @ApiProperty({ type: "string", minLength: 1 })
   @IsString()
   @MinLength(1)
+  @MaxLength(1024)
   password!: string;
 }
 

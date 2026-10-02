@@ -9,3 +9,4 @@ export * from "./collaboration";
 export * from "./payment-checkouts";
 export * from "./settlements";
 export * from './dispute-decisions';
+export * from './account-changes';
