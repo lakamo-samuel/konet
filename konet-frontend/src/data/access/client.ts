@@ -1,4 +1,5 @@
 import axios from "axios";
+import { readAccessToken, saveAccessToken } from "@/lib/auth/transport";
 import { refreshSession } from "@/lib/auth/refresh-client";
 import type {
   CommandInput,
@@ -13,6 +14,11 @@ const http = axios.create({
   baseURL: "/api/frontend",
   timeout: 15_000,
   headers: { "Content-Type": "application/json" },
+});
+http.interceptors.request.use((config) => {
+  const token = readAccessToken();
+  if (token) config.headers.set("Authorization", `Bearer ${token}`);
+  return config;
 });
 http.interceptors.response.use(
   (response) => response,
@@ -78,9 +84,15 @@ export async function command<K extends CommandName>(
   name: K,
   input: CommandInput<K>,
 ): Promise<CommandResult<K>> {
-  const response = await http.post<{ data: CommandResult<K> }>("", {
+  const response = await http.post<{
+    data: CommandResult<K>;
+    authentication?: { accessToken: string };
+  }>("", {
     name,
     input,
   });
+  if (["signIn", "signUp"].includes(name))
+    saveAccessToken(response.data.authentication?.accessToken);
+  if (["signOut", "resetPassword"].includes(name)) saveAccessToken();
   return response.data.data;
 }

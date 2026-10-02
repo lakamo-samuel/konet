@@ -7,6 +7,7 @@ import {
 import { HttpAdapterHost } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
+import { resolveCorsOrigins } from "../../config/cors";
 import { Server, Socket } from "socket.io";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { DATABASE, Database } from "../../database/database.module";
@@ -72,14 +73,16 @@ export class RealtimeServer
     }
   }
   onApplicationBootstrap() {
-    const origin = new URL(this.config.getOrThrow<string>("FRONTEND_URL"))
-      .origin;
+    const origins = resolveCorsOrigins(
+      this.config.getOrThrow<string>("FRONTEND_URL"),
+      this.config.get<string>("CORS_ORIGINS"),
+    );
     this.server = new Server(this.http.httpAdapter.getHttpServer(), {
       path: "/socket.io",
       maxHttpBufferSize: 65536,
-      cors: { origin, credentials: true },
+      cors: { origin: origins, credentials: true },
       allowRequest: (req, done) =>
-        done(null, !req.headers.origin || req.headers.origin === origin),
+        done(null, !req.headers.origin || origins.includes(req.headers.origin)),
     });
     const namespace = this.server.of("/chat");
     this.publisher.attach(namespace, (socket, id) =>

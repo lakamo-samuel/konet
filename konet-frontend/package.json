@@ -8,7 +8,9 @@
     "typecheck": "tsc --noEmit",
     "start": "next start",
     "lint": "eslint",
-    "test:integration": "node test/auth-integration.mjs"
+    "test:integration": "node test/auth-integration.mjs",
+    "test:integration:dev": "node test/auth-integration.mjs --development",
+    "test:auth-transport": "node test/auth-transport.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.0",

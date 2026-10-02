@@ -1,8 +1,6 @@
 import "reflect-metadata";
-import {
-  ValidationPipe,
-  VersioningType,
-} from "@nestjs/common";
+import { resolveCorsOrigins } from "./config/cors";
+import { ValidationPipe, VersioningType } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { ConfigService } from "@nestjs/config";
 import type { NestExpressApplication } from "@nestjs/platform-express";
@@ -15,7 +13,10 @@ import type { EnvironmentConfig } from "./config/env";
 import { readEnvironment, resolveSwaggerEnabled } from "./config/env";
 import { setupSwagger } from "./config/swagger";
 
-function applySecurityMiddleware(app: NestExpressApplication, env: EnvironmentConfig): void {
+function applySecurityMiddleware(
+  app: NestExpressApplication,
+  env: EnvironmentConfig,
+): void {
   app.use(
     helmet({
       contentSecurityPolicy: env.NODE_ENV === "production" ? undefined : false,
@@ -42,7 +43,7 @@ async function bootstrap(): Promise<void> {
   applySecurityMiddleware(app, env);
 
   app.enableCors({
-    origin: env.FRONTEND_URL.split(",").map((origin) => origin.trim()),
+    origin: resolveCorsOrigins(env.FRONTEND_URL, env.CORS_ORIGINS),
     credentials: true,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],

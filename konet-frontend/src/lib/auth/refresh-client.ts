@@ -1,4 +1,5 @@
 "use client";
+import { saveAccessToken } from "./transport";
 let running: Promise<void> | undefined;
 async function state() {
   const response = await fetch("/api/frontend/session", {
@@ -7,10 +8,13 @@ async function state() {
   });
   if (!response.ok)
     throw new Error("Your session could not be checked. Please try again.");
-  return response.json() as Promise<{
-    mode: "mock" | "http";
+  const result = (await response.json()) as {
+    mode: "http";
     expiresAt: number | null;
-  }>;
+    accessToken?: string;
+  };
+  saveAccessToken(result.accessToken);
+  return result;
 }
 export function refreshSession(force = true): Promise<void> {
   if (running) return running;
@@ -37,12 +41,15 @@ export function refreshSession(force = true): Promise<void> {
         headers: { "Content-Type": "application/json" },
         body: "{}",
       });
+      if (response.status === 401) saveAccessToken();
       if (!response.ok)
         throw new Error(
           response.status === 401
             ? "Your session has ended. Please sign in again."
             : "Your session could not be renewed. Please try again.",
         );
+      const result = await response.json();
+      saveAccessToken(result.accessToken);
     };
     // Web Locks serialize rotating refresh credentials across tabs on the same origin.
     if (navigator.locks)

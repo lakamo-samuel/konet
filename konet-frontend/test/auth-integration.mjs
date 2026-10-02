@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+const development = process.argv.includes("--development");
 const uid = "00000000-0000-4000-8000-000000000001";
 const universityId = "00000000-0000-4000-8000-000000000002";
 const campusId = "00000000-0000-4000-8000-000000000003";
@@ -144,7 +145,7 @@ const child = spawn(
   process.execPath,
   [
     "node_modules/next/dist/bin/next",
-    "start",
+    development ? "dev" : "start",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -153,7 +154,7 @@ const child = spawn(
   {
     env: {
       ...process.env,
-      KONET_DATA_SOURCE: "http",
+      NODE_ENV: development ? "development" : "production",
       KONET_API_URL: `http://127.0.0.1:${apiPort}/api/v1`,
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -169,13 +170,14 @@ const cookie = () =>
   [...jar].map(([key, value]) => `${key}=${value}`).join("; ");
 async function call(
   path,
-  { method = "GET", body, origin = base, rawCookie = cookie() } = {},
+  { method = "GET", body, origin = base, rawCookie = cookie(), bearer } = {},
 ) {
   const result = await fetch(base + path, {
     method,
     redirect: "manual",
     headers: {
       ...(rawCookie ? { Cookie: rawCookie } : {}),
+      ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
       ...(method === "POST"
         ? { Origin: origin, "Content-Type": "application/json" }
         : {}),
@@ -231,7 +233,9 @@ try {
   });
   assert.equal(register.status, 200);
   assert.equal(registered.fullName, "Integration Student");
-  assert.doesNotMatch(register.text, /accessToken|refreshToken/);
+  if (development) assert.equal(register.json().authentication.accessToken, jar.get("konet_access"));
+  else assert.doesNotMatch(register.text, /accessToken|refreshToken/);
+  assert.doesNotMatch(register.text, /refreshToken/);
   assert.ok(jar.has("konet_access"));
   assert.ok(jar.has("konet_refresh"));
   assert.ok(!jar.has("konet_session"));
@@ -241,10 +245,18 @@ try {
       (c) => c.startsWith("konet_access=") || c.startsWith("konet_refresh="),
     )) {
     assert.match(c, /HttpOnly/i);
-    assert.match(c, /Secure/i);
+    if (development) assert.doesNotMatch(c, /; Secure/i);
+    else assert.match(c, /Secure/i);
     assert.match(c, /SameSite=lax/i);
   }
   checks++;
+  if (development) {
+    const tokenOnly = await call('/api/frontend?name=currentUser&input=%7B%7D', { rawCookie: '', bearer: register.json().authentication.accessToken });
+    assert.equal(tokenOnly.status, 200);
+    const forged = await call('/api/frontend?name=currentUser&input=%7B%7D', { rawCookie: '', bearer: 'forged.token.value' });
+    assert.equal(forged.status, 401);
+    checks++;
+  }
   const me = await query("currentUser");
   assert.equal(me.status, 200);
   assert.equal(me.json().data.name, "Integration Student");
@@ -289,7 +301,8 @@ try {
   });
   assert.equal(refreshed.status, 200);
   assert.notEqual(jar.get("konet_refresh"), oldRefresh);
-  assert.doesNotMatch(refreshed.text, /accessToken|refreshToken/);
+  if (development) assert.equal(refreshed.json().accessToken, jar.get("konet_access"));
+  else assert.doesNotMatch(refreshed.text, /accessToken|refreshToken/);
   assert.equal((await query("currentUser")).status, 200);
   checks++;
   jar.delete("konet_access");

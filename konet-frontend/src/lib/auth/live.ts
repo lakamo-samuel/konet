@@ -1,4 +1,5 @@
 import "server-only";
+import { usesBearerStorage } from "./transport";
 import { cookies } from "next/headers";
 import { backendRequest } from "@/data/access/backend";
 import { DataError } from "@/data/access/errors";
@@ -129,7 +130,10 @@ export async function refreshAuth() {
       { refreshToken },
     );
     await storeTokens(result);
-    return { success: true };
+    return {
+      success: true,
+      ...(usesBearerStorage ? { accessToken: result.data.accessToken } : {}),
+    };
   } catch (error) {
     if (error instanceof DataError && error.status === 401)
       await clearSession();

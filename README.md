@@ -66,15 +66,14 @@ Typical provider journey:
 flowchart LR
     Browser[Browser] --> Next[Next.js App Router frontend :3000]
     Next --> Access[Frontend data access layer]
-    Access -->|KONET_DATA_SOURCE=http| API[NestJS REST API :4000]
-    Access -->|KONET_DATA_SOURCE=mock| Mock[Local mock state]
+    Access --> API[NestJS REST API :4000]
     API --> Drizzle[Drizzle ORM]
     Drizzle --> PG[(PostgreSQL)]
     API --> Gateway[PaymentGateway interface]
     Gateway --> Unconfigured[Unconfigured gateway: 503]
 ```
 
-The frontend and backend are separate npm projects in this repository. The frontend uses a same-origin Next route for browser queries and commands. `KONET_DATA_SOURCE=http` is the default. Authentication, public catalog reads, notifications and contact submission use the backend adapter. `mock` remains an explicit preview option. Missing mappings fail explicitly; remaining student/provider workflows are being connected feature by feature. The API uses PostgreSQL as its source of truth.
+The frontend and backend are separate npm projects in this repository. The frontend uses a same-origin Next route for browser queries and commands. The live API adapter is the only data source. Authentication, public catalog reads, notifications and contact submission use the backend adapter. Mock adapters and fixtures have been removed. Missing mappings fail explicitly; remaining student/provider workflows are being connected feature by feature. The API uses PostgreSQL as its source of truth.
 
 ### Stack
 
@@ -104,9 +103,9 @@ The frontend and backend are separate npm projects in this repository. The front
 | Client profile | `/profile`, `/profile/verification`, `/settings` | Identity and preferences |
 | Provider | `/provider/onboarding/*`, `/provider/dashboard`, `/provider/services/*`, `/provider/requests/*`, `/provider/portfolio`, `/provider/earnings`, `/provider/settings` | Provider setup and operations |
 
-`src/data/access` contains typed query and command contracts, the in-memory mock adapter, the Axios HTTP adapter, validation, and the endpoint registry. `src/data/repositories` exposes server reads for pages. Browser actions call `src/app/api/frontend/route.ts` through `src/data/access/client.ts`; TanStack Query hooks live in `src/lib/query`. HTTP mode is now the default; add remaining feature mappings in `src/data/access/endpoints.ts`. Authentication handlers keep backend tokens in HttpOnly cookies at the same-origin boundary. The `src/features` directory contains interactive forms and actions; `src/components` contains reusable layout and UI pieces.
+`src/data/access` contains typed query and command contracts, the HTTP adapter, validation, and the endpoint registry. `src/data/repositories` exposes server reads for pages. Browser actions call `src/app/api/frontend/route.ts` through `src/data/access/client.ts`; TanStack Query hooks live in `src/lib/query`.  add remaining feature mappings in `src/data/access/endpoints.ts`. Production authentication uses HttpOnly cookies. Development browser requests use access tokens in localStorage; same-origin cookies support server rendering and refresh. The `src/features` directory contains interactive forms and actions; `src/components` contains reusable layout and UI pieces.
 
-`src/proxy.ts` gates private pages on session presence. In HTTP mode, private data and provider eligibility are validated through the backend, and access/refresh credentials stay in HttpOnly cookies. Demo identity/verification cookies are used only in explicit mock mode.
+`src/proxy.ts` gates private pages on session presence. In HTTP mode, private data and provider eligibility are validated through the backend, and access/refresh credentials stay in HttpOnly cookies. Legacy demo cookies do not authorize requests.
 
 ## Backend and API
 
@@ -241,11 +240,11 @@ Requirements: Node.js and npm compatible with Next.js 16/NestJS 11, plus Docker 
    npm run dev
    ```
 
-Open the frontend at `http://localhost:3000`, API health at `http://localhost:4000/api/v1/health`, and Swagger at `http://localhost:4000/api/docs`. The default `KONET_DATA_SOURCE=http` connects the completed frontend adapters to `KONET_API_URL`. Remaining feature operations fail explicitly until their frontend integration is complete. Use `mock` only for fixture previews.
+Open the frontend at `http://localhost:3000`, API health at `http://localhost:4000/api/v1/health`, and Swagger at `http://localhost:4000/api/docs`. `KONET_API_URL` connects the frontend to a local or deployed backend. Remaining feature operations fail explicitly until their frontend integration is complete. Mock fixtures have been deleted.
 
 | Variable | Project | Purpose |
 | --- | --- | --- |
-| `KONET_DATA_SOURCE` | Frontend | `http` (default) or explicit `mock` preview |
+| `CORS_ORIGINS` | Backend | Comma-separated allowed REST and Socket.IO frontend origins |
 | `KONET_API_URL` | Frontend | Backend API base URL when the source is `http` |
 | `DATABASE_URL` | Backend | PostgreSQL connection string |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Backend | Different secrets, at least 32 characters each |
@@ -263,9 +262,9 @@ Useful checks: `npm run typecheck`, `npm run lint`, and `npm run build` in eithe
 | Public discovery | Discover and public provider/service/portfolio/review reads use HTTP | Confirm backend response shapes and complete remaining catalog mappings |
 | Auth and verification | Registration/login/recovery/reset/logout use the API and HttpOnly sessions | Connect student verification submission/code/evidence flows |
 | Provider onboarding | Full-page steps save an in-memory draft | Add real file upload, persistence, and approval operations |
-| Requests, quotes, jobs | Key forms use shared mock commands and server reads | Map backend endpoints and reconcile job and payment statuses |
+| Requests, quotes, jobs | Forms use shared commands; backend mappings are pending | Map backend endpoints and reconcile job and payment statuses |
 | Messaging, notifications, reviews | Notifications are connected; messaging and review submission still need integration | Map backend endpoints; add delivery/update behavior as needed |
-| Payments and earnings | Checkout retains its card-details layout but has no live gateway; earnings read mock transactions | Integrate provider tokenization or hosted fields, signed webhooks, settlement/release/refund handling; raw card data must never reach Konet servers |
+| Payments and earnings | Checkout retains its card-details layout but has no live gateway; earnings mapping is pending | Integrate provider tokenization or hosted fields, signed webhooks, settlement/release/refund handling; raw card data must never reach Konet servers |
 | Password recovery | Frontend recovery/reset forms call the implemented API; reset token remains in the URL fragment | Configure Resend and verify delivery in the deployment |
 
 The frontend's domain types and demo job statuses are currently different from the backend schema. When connecting the two, map API fields and states explicitly or converge on a shared contract.
@@ -276,7 +275,7 @@ The frontend's domain types and demo job statuses are currently different from t
 - Frontend interaction: `konet-frontend/src/features/`
 - Frontend endpoint registry and source switch: `konet-frontend/src/data/access/endpoints.ts`, `src/data/access/server.ts`
 - Frontend browser query/command boundary: `konet-frontend/src/app/api/frontend/route.ts`, `src/lib/query/hooks.ts`
-- Frontend fixtures and session: `konet-frontend/src/data/mock/`, `src/lib/auth/session.ts`, `src/proxy.ts`
+- Frontend session and transport: `konet-frontend/src/lib/auth/`, `src/data/access/`, `src/proxy.ts`
 - Backend HTTP surface: `konet-backend/src/modules/*/*.controller.ts`
 - Backend domain rules: `konet-backend/src/modules/*/*.service.ts`, `src/modules/marketplace/job-state-machine.ts`
 - Database tables and migrations: `konet-backend/src/database/schema/`, `src/database/migrations/`

@@ -11,7 +11,7 @@ The first stage connects account authentication and the common HTTP boundary. Ad
 - Notifications and read actions, including the header count.
 - Public contact submission using the backend's queued support delivery.
 
-Backend tokens are stored in HttpOnly, SameSite=Lax cookies on the frontend origin, with Secure enabled in production. Responses to browser sign-in/register commands return user data, never credentials. Protected API requests forward the access token from the server; user/provider/verification demo cookies cannot authorize HTTP-mode access. Logout revokes the backend refresh session before clearing frontend cookies. Login/logout/reset also clear the client query cache.
+Backend tokens are stored in HttpOnly, SameSite=Lax cookies on the frontend origin, with Secure enabled in production. Production sign-in/register responses return user data without credentials. Development responses additionally return the access token, which the centralized Axios transport stores in localStorage and sends through Authorization. Refresh tokens remain HttpOnly in both modes. Development retains frontend-origin cookies for server rendering and refresh; cross-origin cookies are not required. Protected API requests forward the access token from the server; user/provider/verification demo cookies cannot authorize HTTP-mode access. Logout revokes the backend refresh session before clearing frontend cookies. Login/logout/reset also clear the client query cache.
 
 ## Refresh and recovery
 
@@ -26,16 +26,17 @@ The reset form reads `token` from the recovery link fragment and submits it in t
 In `konet-frontend/.env.local`:
 
 ```dotenv
-KONET_DATA_SOURCE=http
 KONET_API_URL=http://localhost:4000/api/v1
 ```
 
-Start PostgreSQL and the backend, then run `npm run dev` in the frontend. The API needs an active university/campus directory for registration; missing directory data is shown rather than replaced with fixtures. Configure Resend for recovery and SUPPORT_EMAIL for contact delivery. These are backend settings; no backend secrets belong in the frontend environment.
+Run `npm run dev` in the frontend. For a deployed backend, set `KONET_API_URL=https://YOUR_API_HOST/api/v1`; your teammate does not need Docker or a local database. The API needs an active university/campus directory for registration; missing directory data is shown rather than replaced with fixtures. Configure Resend for recovery and SUPPORT_EMAIL for contact delivery. These are backend settings; no backend secrets belong in the frontend environment.
 
-`http` is the default. Explicit `mock` mode remains available for previewing the unfinished fixture screens. Missing HTTP mappings return a visible error and never silently use fixture data.
+Mock mode and fixture data have been removed. Missing HTTP mappings return an explicit error.
+
+Backend `FRONTEND_URL` remains a single canonical frontend URL for email links and redirects. Set `CORS_ORIGINS=https://YOUR_FRONTEND_HOST,http://localhost:3000,http://127.0.0.1:3000` to allow both deployed and local clients for REST and Socket.IO. Exact origins are required, including ports. Frontend development transport depends on the frontend environment, independently of the deployed backend environment.
 
 ## Validation and next stages
 
-Run `npm run typecheck`, `npm run lint`, `npm run build`, then `npm run test:integration`. The integration command starts a production Next server and a disposable mocked HTTP backend; it checks registration mapping, cookie flags/privacy, authoritative user state, forged-cookie rejection, CSRF, refresh rotation/recovery, reset and logout. It does not send emails, make payments or write to the project database. Browser interaction and actual provider delivery remain deployment checks.
+Run `npm run typecheck`, `npm run lint`, `npm run build`, then `npm run test:integration`. The integration command starts a production Next server and a disposable mocked HTTP backend; it checks registration mapping, cookie flags/privacy, authoritative user state, forged-cookie rejection, CSRF, refresh rotation/recovery, reset and logout. It does not send emails, make payments or write to the project database. `npm run test:integration:dev` repeats the HTTP journey under development and checks bearer-only requests and forged-token rejection. `npm run test:auth-transport` checks localStorage persistence, clearing, disabled storage and production privacy. Browser interaction and actual provider delivery remain deployment checks.
 
 Next: student verification and private uploads, provider onboarding/management, request/quote/job actions, Paystack checkout/payout/account settings, then Socket.IO messaging and remaining trust screens. Existing backend endpoints are implemented; their frontend mapping and UI state transitions remain pending. The seven unfinished admin endpoints stay outside this stage.

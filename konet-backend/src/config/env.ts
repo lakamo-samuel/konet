@@ -1,3 +1,4 @@
+import { resolveCorsOrigins } from "./cors";
 import { plainToInstance, Transform, Type } from "class-transformer";
 import {
   IsBoolean,
@@ -50,6 +51,10 @@ class Environment {
 
   @IsUrl({ require_tld: false })
   FRONTEND_URL!: string;
+
+  @IsOptional()
+  @IsString()
+  CORS_ORIGINS?: string;
 
   @IsString()
   LOG_LEVEL = "info";
@@ -199,6 +204,7 @@ export function validateEnvironment(
     !parsed.FRONTEND_URL.startsWith("https://")
   )
     throw new Error("Production payment callback must use HTTPS.");
+  resolveCorsOrigins(parsed.FRONTEND_URL, parsed.CORS_ORIGINS);
   return parsed;
 }
 
@@ -229,6 +235,7 @@ const KNOWN_KEYS = [
   "ACCESS_TOKEN_TTL",
   "REFRESH_TOKEN_TTL_DAYS",
   "FRONTEND_URL",
+  "CORS_ORIGINS",
   "LOG_LEVEL",
   "STORAGE_LOCAL_PATH",
   "SERVICE_NAME",

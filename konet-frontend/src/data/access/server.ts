@@ -4,7 +4,7 @@ import { authenticate, clearSession, logoutAuth } from "@/lib/auth/live";
 import { backendRequest } from "./backend";
 import "server-only";
 import { headers, cookies } from "next/headers";
-import { mockSource } from "./mock";
+import { usesBearerStorage } from "@/lib/auth/transport";
 import { httpSource } from "./http";
 import type {
   CommandInput,
@@ -14,20 +14,18 @@ import type {
   QueryName,
 } from "./contracts";
 
-export function sourceMode() {
-  const mode = process.env.KONET_DATA_SOURCE ?? "http";
-  if (mode !== "mock" && mode !== "http")
-    throw new Error("KONET_DATA_SOURCE must be mock or http");
-  return mode;
+export function sourceMode(): "http" {
+  return "http";
 }
 export async function dataContext(): Promise<DataContext> {
   const store = await cookies();
-  if (sourceMode() === "http")
-    return { accessToken: store.get("konet_access")?.value };
+  const authorization = usesBearerStorage
+    ? (await headers()).get("authorization")
+    : null;
   return {
-    userId: store.get("konet_session")?.value,
-    providerId: store.get("konet_provider")?.value,
-    accessToken: store.get("konet_access")?.value,
+    accessToken: authorization?.startsWith("Bearer ")
+      ? authorization.slice(7)
+      : store.get("konet_access")?.value,
   };
 }
 export async function serverQuery<K extends QueryName>(
@@ -36,11 +34,7 @@ export async function serverQuery<K extends QueryName>(
   page = true,
 ) {
   try {
-    return await (sourceMode() === "mock" ? mockSource : httpSource).query(
-      name,
-      input,
-      await dataContext(),
-    );
+    return await httpSource.query(name, input, await dataContext());
   } catch (error) {
     if (
       page &&
@@ -83,9 +77,5 @@ export async function serverCommand<K extends CommandName>(
       return { accepted: true } as import("./contracts").CommandResult<K>;
     }
   }
-  return (sourceMode() === "mock" ? mockSource : httpSource).command(
-    name,
-    input,
-    await dataContext(),
-  );
+  return httpSource.command(name, input, await dataContext());
 }

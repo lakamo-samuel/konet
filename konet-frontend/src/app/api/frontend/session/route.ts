@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { usesBearerStorage } from "@/lib/auth/transport";
 import { cookies } from "next/headers";
 import { sourceMode } from "@/data/access/server";
 import { accessExpiresAt, refreshAuth } from "@/lib/auth/live";
@@ -10,6 +11,9 @@ export async function GET() {
   return NextResponse.json(
     {
       mode: sourceMode(),
+      ...(usesBearerStorage
+        ? { accessToken: store.get("konet_access")?.value }
+        : {}),
       expiresAt:
         sourceMode() === "http"
           ? accessExpiresAt(store.get("konet_access")?.value)
