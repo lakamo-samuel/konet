@@ -1,4 +1,11 @@
 import type {
+  VerificationMethods,
+  StudentVerification,
+  EmailChallenge,
+  PrivateUpload,
+  UploadTicket,
+} from "@/types/verification";
+import type {
   Conversation,
   EscrowTransaction,
   Job,
@@ -23,6 +30,9 @@ export type SearchCriteria = {
 };
 export type OnboardingDraft = Record<string, Record<string, string>>;
 export type QueryContract = {
+  verificationMethods: [{ universityId: string }, VerificationMethods];
+  studentVerifications: [Record<string, never>, StudentVerification[]];
+  upload: [{ id: string }, PrivateUpload];
   universities: [Record<string, never>, University[]];
   university: [{ id: string }, University | null];
   providers: [SearchCriteria, ProviderProfile[]];
@@ -96,9 +106,29 @@ export type CommandContract = {
   sendMessage: [{ conversationId: string; body: string }, Message];
   readNotification: [{ id: string }, Notification];
   submitReview: [{ jobId: string; rating: number; body: string }, Review];
+  requestVerificationCode: [{ email: string }, EmailChallenge];
+  confirmVerificationCode: [
+    { challengeId: string; code: string },
+    StudentVerification,
+  ];
+  createUpload: [
+    {
+      purpose: "student_evidence" | "provider_evidence";
+      fileName: string;
+      contentType: string;
+      sizeBytes: number;
+    },
+    UploadTicket,
+  ];
+  completeUpload: [{ id: string }, PrivateUpload];
+  deleteUpload: [{ id: string }, { success: boolean }];
   submitVerification: [
-    { universityId: string; studentNumber: string; email: string },
-    { status: "verified" | "pending" },
+    {
+      method: "student_id" | "manual_document";
+      studentNumber?: string;
+      evidenceObjectKey: string;
+    },
+    StudentVerification,
   ];
   saveOnboarding: [
     { step: string; values: Record<string, string> },

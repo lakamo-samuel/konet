@@ -10,7 +10,8 @@
     "lint": "eslint",
     "test:integration": "node test/auth-integration.mjs",
     "test:integration:dev": "node test/auth-integration.mjs --development",
-    "test:auth-transport": "node test/auth-transport.mjs"
+    "test:auth-transport": "node test/auth-transport.mjs",
+    "test:uploads": "node test/private-upload.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.0",

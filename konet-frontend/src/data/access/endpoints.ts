@@ -1,4 +1,11 @@
 import type {
+  VerificationMethods,
+  StudentVerification,
+  EmailChallenge,
+  PrivateUpload,
+  UploadTicket,
+} from "@/types/verification";
+import type {
   CommandContract,
   CommandName,
   QueryContract,
@@ -156,6 +163,22 @@ const notification = (n: ApiNotification): Notification => {
 export const queryEndpoints: {
   [K in QueryName]: Endpoint<QueryContract[K][0], QueryContract[K][1]> | null;
 } = {
+  verificationMethods: {
+    method: "GET",
+    path: (i) =>
+      `/universities/${encodeURIComponent(i.universityId)}/verification-methods`,
+    decode: (data) => data as VerificationMethods,
+  },
+  studentVerifications: {
+    method: "GET",
+    path: () => "/me/student-verification",
+    decode: (data) => data as StudentVerification[],
+  },
+  upload: {
+    method: "GET",
+    path: (i) => `/uploads/${encodeURIComponent(i.id)}`,
+    decode: (data) => data as PrivateUpload,
+  },
   universities: {
     method: "GET",
     path: () => "/universities",
@@ -295,7 +318,40 @@ export const commandEndpoints: {
     decode: (data) => notification(data as ApiNotification),
   },
   submitReview: null,
-  submitVerification: null,
+  requestVerificationCode: {
+    method: "POST",
+    path: () => "/me/student-verification/email-challenges",
+    body: (i) => i,
+    decode: (data) => data as EmailChallenge,
+  },
+  confirmVerificationCode: {
+    method: "POST",
+    path: () => "/me/student-verification/email-challenges/confirm",
+    body: (i) => i,
+    decode: (data) => data as StudentVerification,
+  },
+  createUpload: {
+    method: "POST",
+    path: () => "/uploads/presign",
+    body: (i) => i,
+    decode: (data) => data as UploadTicket,
+  },
+  completeUpload: {
+    method: "POST",
+    path: (i) => `/uploads/${encodeURIComponent(i.id)}/complete`,
+    decode: (data) => data as PrivateUpload,
+  },
+  deleteUpload: {
+    method: "DELETE",
+    path: (i) => `/uploads/${encodeURIComponent(i.id)}`,
+    decode: () => ({ success: true }),
+  },
+  submitVerification: {
+    method: "POST",
+    path: () => "/me/student-verification",
+    body: (i) => i,
+    decode: (data) => data as StudentVerification,
+  },
   saveOnboarding: null,
   publishProvider: null,
   checkout: null,

@@ -3,6 +3,9 @@ import type { CommandName, QueryName } from "./contracts";
 type Rule = "string" | "number" | "boolean" | "strings" | "record";
 type Shape = Record<string, Rule>;
 const queryShapes: Record<QueryName, Shape> = {
+  verificationMethods: { universityId: "string" },
+  studentVerifications: {},
+  upload: { id: "string" },
   universities: {},
   university: { id: "string" },
   providers: {},
@@ -69,11 +72,17 @@ const commandShapes: Record<CommandName, Shape> = {
   sendMessage: { conversationId: "string", body: "string" },
   readNotification: { id: "string" },
   submitReview: { jobId: "string", rating: "number", body: "string" },
-  submitVerification: {
-    universityId: "string",
-    studentNumber: "string",
-    email: "string",
+  requestVerificationCode: { email: "string" },
+  confirmVerificationCode: { challengeId: "string", code: "string" },
+  createUpload: {
+    purpose: "string",
+    fileName: "string",
+    contentType: "string",
+    sizeBytes: "number",
   },
+  completeUpload: { id: "string" },
+  deleteUpload: { id: "string" },
+  submitVerification: { method: "string", evidenceObjectKey: "string" },
   saveOnboarding: { step: "string", values: "record" },
   publishProvider: {},
   checkout: { jobId: "string" },
@@ -112,6 +121,35 @@ export function validateOperation(
     )
       throw new DataError(`Please check ${key}.`);
   }
+  if (
+    name === "confirmVerificationCode" &&
+    !/^\d{6}$/.test(String(values.code))
+  )
+    throw new DataError("Enter the six-digit code from your email.");
+  if (
+    name === "submitVerification" &&
+    (!["student_id", "manual_document"].includes(String(values.method)) ||
+      !String(values.evidenceObjectKey).trim() ||
+      (values.method === "student_id" &&
+        (typeof values.studentNumber !== "string" ||
+          values.studentNumber.trim().length < 3)))
+  )
+    throw new DataError(
+      "Choose a document method and provide the required student details.",
+    );
+  if (
+    name === "createUpload" &&
+    (!["student_evidence", "provider_evidence"].includes(
+      String(values.purpose),
+    ) ||
+      !["image/jpeg", "image/png", "application/pdf"].includes(
+        String(values.contentType),
+      ) ||
+      !Number.isInteger(values.sizeBytes) ||
+      Number(values.sizeBytes) < 1 ||
+      Number(values.sizeBytes) > 10485760)
+  )
+    throw new DataError("Choose a JPEG, PNG or PDF file up to 10 MiB.");
   if (
     typeof values.email === "string" &&
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)

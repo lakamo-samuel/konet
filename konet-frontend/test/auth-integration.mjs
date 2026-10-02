@@ -1,3 +1,4 @@
+import { verificationFixture } from "./verification-fixture.mjs";
 import assert from "node:assert/strict";
 import http from "node:http";
 import { spawn } from "node:child_process";
@@ -14,6 +15,7 @@ const university = {
   state: "Lagos",
   campuses: [{ id: campusId, name: "Main Campus" }],
 };
+const verification = verificationFixture(universityId, campusId);
 const users = new Map();
 let serial = 0;
 const access = new Map();
@@ -118,6 +120,7 @@ const backend = http.createServer(async (req, res) => {
     users.get("student@example.com").password = body.password;
     return send(200, { message: "Password reset." });
   }
+  if (verification.handle(url, req.method, body, auth, send)) return;
   if (!auth)
     return send(401, {
       code: "SESSION_REQUIRED",
@@ -233,7 +236,11 @@ try {
   });
   assert.equal(register.status, 200);
   assert.equal(registered.fullName, "Integration Student");
-  if (development) assert.equal(register.json().authentication.accessToken, jar.get("konet_access"));
+  if (development)
+    assert.equal(
+      register.json().authentication.accessToken,
+      jar.get("konet_access"),
+    );
   else assert.doesNotMatch(register.text, /accessToken|refreshToken/);
   assert.doesNotMatch(register.text, /refreshToken/);
   assert.ok(jar.has("konet_access"));
@@ -251,9 +258,15 @@ try {
   }
   checks++;
   if (development) {
-    const tokenOnly = await call('/api/frontend?name=currentUser&input=%7B%7D', { rawCookie: '', bearer: register.json().authentication.accessToken });
+    const tokenOnly = await call(
+      "/api/frontend?name=currentUser&input=%7B%7D",
+      { rawCookie: "", bearer: register.json().authentication.accessToken },
+    );
     assert.equal(tokenOnly.status, 200);
-    const forged = await call('/api/frontend?name=currentUser&input=%7B%7D', { rawCookie: '', bearer: 'forged.token.value' });
+    const forged = await call("/api/frontend?name=currentUser&input=%7B%7D", {
+      rawCookie: "",
+      bearer: "forged.token.value",
+    });
     assert.equal(forged.status, 401);
     checks++;
   }
@@ -267,6 +280,167 @@ try {
   assert.equal(profile.status, 200);
   assert.match(profile.text, /Verification needed/);
   assert.doesNotMatch(profile.text, /Your university membership is confirmed/);
+  checks++;
+  const methods = await query("verificationMethods", { universityId });
+  assert.deepEqual(methods.json().data.approvedEmailDomains, ["test.edu"]);
+  const unauthenticatedHistory = await call(
+    "/api/frontend?name=studentVerifications&input=%7B%7D",
+    { rawCookie: "" },
+  );
+  assert.equal(unauthenticatedHistory.status, 401);
+  assert.equal((await query("studentVerifications")).json().data.length, 0);
+  checks++;
+  verification.configure({ email: false });
+  assert.equal(
+    (await command("requestVerificationCode", { email: "student@test.edu" }))
+      .status,
+    503,
+  );
+  verification.configure({ email: true });
+  const challenge = await command("requestVerificationCode", {
+    email: "student@test.edu",
+  });
+  assert.equal(challenge.status, 200);
+  assert.equal(challenge.json().data.delivery, "email");
+  assert.doesNotMatch(challenge.text, /000123/);
+  assert.equal(
+    (await query("currentUser")).json().data.studentVerification,
+    "pending",
+  );
+  assert.equal(
+    (
+      await command("confirmVerificationCode", {
+        challengeId: challenge.json().data.challengeId,
+        code: "111111",
+      })
+    ).status,
+    400,
+  );
+  verification.expireChallenge();
+  assert.equal(
+    (
+      await command("confirmVerificationCode", {
+        challengeId: challenge.json().data.challengeId,
+        code: "000123",
+      })
+    ).status,
+    400,
+  );
+  const freshChallenge = await command("requestVerificationCode", {
+    email: "student@test.edu",
+  });
+  assert.equal(
+    (
+      await command("confirmVerificationCode", {
+        challengeId: freshChallenge.json().data.challengeId,
+        code: "000123",
+      })
+    ).json().data.status,
+    "verified",
+  );
+  assert.equal(
+    (await query("currentUser")).json().data.studentVerification,
+    "verified",
+  );
+  checks++;
+  const fixtureUser = users.get("student@example.com").user;
+  fixtureUser.studentVerificationStatus = "not_submitted"; // Independent document scenario.
+  const uploadInput = {
+    purpose: "student_evidence",
+    fileName: "student-card.pdf",
+    contentType: "application/pdf",
+    sizeBytes: 4096,
+  };
+  verification.configure({ storage: false });
+  assert.equal((await command("createUpload", uploadInput)).status, 503);
+  verification.configure({ storage: true });
+  assert.equal(
+    (await command("createUpload", { ...uploadInput, sizeBytes: 10485761 }))
+      .status,
+    400,
+  );
+  assert.equal(
+    (
+      await command("createUpload", {
+        ...uploadInput,
+        contentType: "text/html",
+      })
+    ).status,
+    400,
+  );
+  const ticket = (await command("createUpload", uploadInput)).json().data;
+  assert.equal(ticket.fields.type, "authenticated");
+  assert.doesNotMatch(JSON.stringify(ticket), /api_secret/);
+  assert.equal(
+    (await query("upload", { id: "someone-elses-upload" })).status,
+    404,
+  );
+  const document = {
+    method: "student_id",
+    studentNumber: "MAT/123",
+    evidenceObjectKey: ticket.upload.objectKey,
+  };
+  assert.equal((await command("submitVerification", document)).status, 409);
+  assert.equal(
+    (await command("completeUpload", { id: ticket.upload.id })).json().data
+      .status,
+    "scanning",
+  );
+  assert.equal((await command("submitVerification", document)).status, 409);
+  assert.equal(
+    (await command("completeUpload", { id: ticket.upload.id })).json().data
+      .status,
+    "ready",
+  );
+  assert.equal(
+    (await command("submitVerification", document)).json().data.status,
+    "pending",
+  );
+  assert.equal((await command("submitVerification", document)).status, 409);
+  checks++;
+  verification.decide(
+    fixtureUser,
+    "requires_more_information",
+    "Please upload a legible current student card.",
+  );
+  const review = (await query("studentVerifications")).json().data[0];
+  assert.equal(review.reason, "Please upload a legible current student card.");
+  assert.equal(
+    (await query("currentUser")).json().data.studentVerification,
+    "requires_more_information",
+  );
+  const replacement = (await command("createUpload", uploadInput)).json().data;
+  await command("completeUpload", { id: replacement.upload.id });
+  await command("completeUpload", { id: replacement.upload.id });
+  assert.equal(
+    (
+      await command("submitVerification", {
+        method: "manual_document",
+        evidenceObjectKey: replacement.upload.objectKey,
+      })
+    ).json().data.status,
+    "pending",
+  );
+  checks++;
+  verification.configure({ rejectScan: true });
+  const failedScan = (await command("createUpload", uploadInput)).json().data;
+  assert.equal(
+    (await command("completeUpload", { id: failedScan.upload.id })).json().data
+      .status,
+    "rejected",
+  );
+  assert.equal(
+    (await command("deleteUpload", { id: failedScan.upload.id })).json().data
+      .success,
+    true,
+  );
+  verification.configure({ rejectScan: false });
+  const unused = (await command("createUpload", uploadInput)).json().data;
+  assert.equal(
+    (await command("deleteUpload", { id: unused.upload.id })).json().data
+      .success,
+    true,
+  );
   checks++;
   const forged = await call("/api/frontend?name=currentUser&input=%7B%7D", {
     rawCookie:
@@ -301,7 +475,8 @@ try {
   });
   assert.equal(refreshed.status, 200);
   assert.notEqual(jar.get("konet_refresh"), oldRefresh);
-  if (development) assert.equal(refreshed.json().accessToken, jar.get("konet_access"));
+  if (development)
+    assert.equal(refreshed.json().accessToken, jar.get("konet_access"));
   else assert.doesNotMatch(refreshed.text, /accessToken|refreshToken/);
   assert.equal((await query("currentUser")).status, 200);
   checks++;

@@ -73,7 +73,7 @@ flowchart LR
     Gateway --> Unconfigured[Unconfigured gateway: 503]
 ```
 
-The frontend and backend are separate npm projects in this repository. The frontend uses a same-origin Next route for browser queries and commands. The live API adapter is the only data source. Authentication, public catalog reads, notifications and contact submission use the backend adapter. Mock adapters and fixtures have been removed. Missing mappings fail explicitly; remaining student/provider workflows are being connected feature by feature. The API uses PostgreSQL as its source of truth.
+The frontend and backend are separate npm projects in this repository. The frontend uses a same-origin Next route for browser queries and commands. The live API adapter is the only data source. Authentication, public catalog reads, notifications, contact submission and student verification use the backend adapter. Mock adapters and fixtures have been removed. Missing mappings fail explicitly; remaining student/provider workflows are being connected feature by feature. The API uses PostgreSQL as its source of truth.
 
 ### Stack
 
@@ -96,7 +96,7 @@ The frontend and backend are separate npm projects in this repository. The front
 | Area | Main URLs | Purpose |
 | --- | --- | --- |
 | Marketing | `/`, `/about`, `/how-it-works`, `/for-providers`, legal/trust pages | Explain product and trust model |
-| Account | `/sign-up`, `/sign-in`, `/forgot-password`, `/verify-student` | Demo account and verification flow |
+| Account | `/sign-up`, `/sign-in`, `/forgot-password`, `/verify-student` | Live authentication and student verification |
 | Discovery | `/discover`, `/providers/[providerId]` | Browse, search, filter, and evaluate providers; `/search` redirects to Discover |
 | Hiring | `/requests/[requestId]`, `/quotes/[quoteId]`, `/checkout/[jobId]`, `/jobs`, `/jobs/[jobId]` | Request to job journey |
 | Collaboration | `/messages`, `/messages/[conversationId]`, `/notifications`, `/reviews/[jobId]` | Messages, updates, feedback |
@@ -126,7 +126,7 @@ The NestJS app is assembled in `konet-backend/src/app.module.ts`. Controllers ha
 
 Protected endpoints require `Authorization: Bearer <access token>`. Login and registration return an access token and set an HttpOnly refresh cookie scoped to `/api/v1/auth`; refresh rotates the stored hashed token. The API validates DTOs, applies ownership checks, and rejects invalid job transitions. CORS origins come from `FRONTEND_URL`.
 
-The API implements automatic university email verification, private scanned Cloudinary evidence, and admin/reviewer document decisions. Configure Cloudinary and Resend and connect the frontend to these APIs; see [verification setup](docs/backend-verification.md). Password recovery uses the encrypted Resend outbox; see [account setup](docs/backend-accounts.md). Provider onboarding, evidence review and publication are implemented; see [provider setup](docs/backend-provider-onboarding.md). Payment-provider integration remains pending.
+The API implements automatic university email verification, private scanned Cloudinary evidence, and admin/reviewer document decisions. Configure Cloudinary and Resend for live delivery; student verification is connected in the frontend; see [verification setup](docs/backend-verification.md). Password recovery uses the encrypted Resend outbox; see [account setup](docs/backend-accounts.md). Provider onboarding, evidence review and publication are implemented; see [provider setup](docs/backend-provider-onboarding.md). Payment-provider integration remains pending.
 
 ## Planned stack and requirements
 
@@ -260,7 +260,7 @@ Useful checks: `npm run typecheck`, `npm run lint`, and `npm run build` in eithe
 | Capability | Current state | Needed for an end-to-end product |
 | --- | --- | --- |
 | Public discovery | Discover and public provider/service/portfolio/review reads use HTTP | Confirm backend response shapes and complete remaining catalog mappings |
-| Auth and verification | Registration/login/recovery/reset/logout use the API and HttpOnly sessions | Connect student verification submission/code/evidence flows |
+| Auth and verification | Live authentication, email codes, private evidence, scan gating and review feedback; development bearer and production cookie transport | Deployment checks with configured Resend and Cloudinary accounts |
 | Provider onboarding | Full-page steps save an in-memory draft | Add real file upload, persistence, and approval operations |
 | Requests, quotes, jobs | Forms use shared commands; backend mappings are pending | Map backend endpoints and reconcile job and payment statuses |
 | Messaging, notifications, reviews | Notifications are connected; messaging and review submission still need integration | Map backend endpoints; add delivery/update behavior as needed |

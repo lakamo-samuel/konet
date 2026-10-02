@@ -7,6 +7,7 @@ The first stage connects account authentication and the common HTTP boundary. Ad
 - Registration with real university and campus IDs.
 - Login, logout, recovery requests and password reset at `/reset-password`.
 - Backend-authoritative current user, student status and provider ownership.
+- [Student verification](frontend-student-verification.md): university email codes, private evidence uploads, scan gating, manual review status and feedback.
 - Public university/provider/service/portfolio/review reads.
 - Notifications and read actions, including the header count.
 - Public contact submission using the backend's queued support delivery.
@@ -39,4 +40,4 @@ Backend `FRONTEND_URL` remains a single canonical frontend URL for email links a
 
 Run `npm run typecheck`, `npm run lint`, `npm run build`, then `npm run test:integration`. The integration command starts a production Next server and a disposable mocked HTTP backend; it checks registration mapping, cookie flags/privacy, authoritative user state, forged-cookie rejection, CSRF, refresh rotation/recovery, reset and logout. It does not send emails, make payments or write to the project database. `npm run test:integration:dev` repeats the HTTP journey under development and checks bearer-only requests and forged-token rejection. `npm run test:auth-transport` checks localStorage persistence, clearing, disabled storage and production privacy. Browser interaction and actual provider delivery remain deployment checks.
 
-Next: student verification and private uploads, provider onboarding/management, request/quote/job actions, Paystack checkout/payout/account settings, then Socket.IO messaging and remaining trust screens. Existing backend endpoints are implemented; their frontend mapping and UI state transitions remain pending. The seven unfinished admin endpoints stay outside this stage.
+Next: provider onboarding/management, request/quote/job actions, Paystack checkout/payout/account settings, then Socket.IO messaging and remaining trust screens. Existing backend endpoints are implemented; their frontend mapping and UI state transitions remain pending. The seven unfinished admin endpoints stay outside this stage.

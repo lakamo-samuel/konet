@@ -1,6 +1,6 @@
 # Student verification implementation (F3)
 
-Student verification now supports automatic university email confirmation and admin/reviewer document review. The backend is implemented; the frontend developer still needs to connect the student forms and admin dashboard to these APIs. All paths below are relative to `/api/v1`. Swagger and `konet-backend/openapi.json` describe the request fields and responses.
+Student verification now supports automatic university email confirmation and admin/reviewer document review. The backend and [student verification frontend](frontend-student-verification.md) are implemented. Admin dashboard integration remains deferred. All paths below are relative to `/api/v1`. Swagger and `konet-backend/openapi.json` describe the request fields and responses.
 
 ## What admins actually review
 
