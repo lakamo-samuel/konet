@@ -7,7 +7,8 @@
     "build": "next build --webpack",
     "typecheck": "tsc --noEmit",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:integration": "node test/auth-integration.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.0",

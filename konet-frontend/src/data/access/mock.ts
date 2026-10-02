@@ -48,12 +48,13 @@ const commands: Commands = {
     if (!user) throw new DataError("Invalid email or password.", 401, "INVALID_CREDENTIALS");
     return user;
   },
-  signUp: ({ name, email }) => {
+  signUp: ({ name, email, universityId, campusId }) => {
     if (state.users.some(user => user.email.toLowerCase() === email.toLowerCase())) throw new DataError("An account with this email already exists.");
-    const user = { ...state.users[0], id: id(), name, email, avatar: "", studentVerification: "unverified" as const, identityVerification: "unverified" as const, providerProfileId: undefined };
+    const user = { ...state.users[0], id: id(), name, email, universityId, campus: campusId, avatar: "", studentVerification: "unverified" as const, identityVerification: "unverified" as const, providerProfileId: undefined };
     state.users.push(user); return user;
   },
   forgotPassword: () => ({ accepted: true }),
+  resetPassword: () => { throw new DataError("Password reset requires the live service.",503,"LIVE_SERVICE_REQUIRED"); },
   signOut: () => ({ success: true }),
   saveProfile: (input, context) => Object.assign(current(context), input),
   saveProvider: (input, context) => Object.assign(providerFor(context), input),

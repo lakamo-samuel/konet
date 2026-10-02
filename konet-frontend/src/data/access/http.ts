@@ -1,24 +1,47 @@
-import axios from "axios";
+import { liveUser } from "@/lib/auth/live";
+import { backendRequest } from "./backend";
 import { commandEndpoints, queryEndpoints, type Endpoint } from "./endpoints";
 import type { DataContext, DataSource } from "./contracts";
 import { DataError } from "./errors";
 
-async function execute<I, O>(endpoint: Endpoint<I, O> | null, input: I, context: DataContext): Promise<O> {
-  if (!endpoint) throw new DataError("This action is temporarily unavailable. Please try again later.", 503, "ENDPOINT_NOT_CONFIGURED");
-  const baseURL = process.env.KONET_API_URL;
-  if (!baseURL) throw new DataError("The service is temporarily unavailable.", 503, "API_NOT_CONFIGURED");
-  try {
-    const response = await axios.request({ baseURL, method: endpoint.method, url: endpoint.path(input), params: endpoint.params?.(input), data: endpoint.body?.(input), timeout: 15_000, headers: context.accessToken ? { Authorization: `Bearer ${context.accessToken}` } : undefined });
-    return endpoint.decode(response.data);
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 404) throw new DataError("This item could not be found.", 404, "NOT_FOUND");
-      throw new DataError("We couldn’t complete your request. Please try again.", error.response?.status ?? 502);
-    }
-    throw error;
-  }
+async function execute<I, O>(
+  endpoint: Endpoint<I, O> | null,
+  input: I,
+  context: DataContext,
+): Promise<O> {
+  if (!endpoint)
+    throw new DataError(
+      "This action is temporarily unavailable. Please try again later.",
+      503,
+      "ENDPOINT_NOT_CONFIGURED",
+    );
+  const params = endpoint.params?.(input) as
+    Record<string, unknown> | undefined;
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params ?? {}))
+    if (value !== undefined) query.set(key, String(value));
+  const path = endpoint.path(input) + (query.size ? `?${query}` : "");
+  const response = await backendRequest<unknown>(endpoint.method, path, {
+    body: endpoint.body?.(input),
+    accessToken: context.accessToken,
+  });
+  return endpoint.decode(response.data);
 }
 export const httpSource: DataSource = {
-  query(name, input, context) { return execute(queryEndpoints[name], input, context); },
-  command(name, input, context) { return execute(commandEndpoints[name], input, context); },
+  async query(name, input, context) {
+    if (name === "currentUser" || name === "user") {
+      if (!context.accessToken)
+        throw new DataError("Please sign in again.", 401, "SESSION_REQUIRED");
+      const user = await liveUser(context.accessToken);
+      return (
+        name === "user" && (input as { id: string }).id !== user.id
+          ? null
+          : user
+      ) as import("./contracts").QueryResult<typeof name>;
+    }
+    return execute(queryEndpoints[name], input, context);
+  },
+  command(name, input, context) {
+    return execute(commandEndpoints[name], input, context);
+  },
 };

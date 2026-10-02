@@ -1,3 +1,4 @@
+import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import Link from "next/link";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -55,8 +56,9 @@ export async function SiteHeader() {
                 href="/profile"
                 aria-label="Your profile"
               >
-                S
+                {session.name?.charAt(0)??"Account"}
               </Link>
+              <SignOutButton/>
               {session.providerProfileId ? (
                 <Button className="header-cta" href="/provider/dashboard">
                   My workspace

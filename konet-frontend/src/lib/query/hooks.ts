@@ -13,6 +13,7 @@ export function useDataCommand<K extends CommandName>(name: K) {
   return useMutation({
     mutationFn: (input: CommandInput<K>) => command(name, input),
     onSuccess: async () => {
+      if(["signIn","signUp","signOut","resetPassword"].includes(name)){cache.clear();router.refresh();return;}
       await cache.invalidateQueries({ queryKey: ["konet"] });
       router.refresh();
     },

@@ -2,7 +2,7 @@
 
 Konet is a student service marketplace. A student can discover another student's services, send a brief, receive a quote, hire the provider, discuss the job, confirm delivery, and review the work. Providers can build a profile, publish services, respond to requests, and manage jobs. The product is designed around university identity, provider trust, and protected payments.
 
-> **Current state:** This repository contains a working API foundation and a largely prototype frontend. The frontend uses a shared mock data source for app screens and most actions, with a central switch for future HTTP integration. It does not yet persist these actions through the backend API. The API's payment gateway is deliberately unconfigured, so no real payment is collected or held. Treat the diagrams below as the intended end-to-end product flow, with implementation status called out in [Current implementation and gaps](#current-implementation-and-gaps).
+> **Current state:** The backend has 144 implemented endpoints, with seven admin endpoints pending. Frontend HTTP integration has started: authentication/recovery/reset/logout, server-validated sessions, public catalog reads, notifications and contact submission are connected. Verification, provider management, hiring, payments and messaging screens still need their API adapters. See [frontend integration](docs/frontend-api-integration.md) for the current stage and setup.
 
 ## Contents
 
@@ -74,7 +74,7 @@ flowchart LR
     Gateway --> Unconfigured[Unconfigured gateway: 503]
 ```
 
-The frontend and backend are separate npm projects in this repository. The frontend uses a same-origin Next route for browser queries and commands. `KONET_DATA_SOURCE=mock` is the working default; `http` selects the backend adapter. Only public catalog endpoint mappings are defined so far. Missing mappings fail explicitly, and the live authentication and payment contracts remain to be integrated. The API uses PostgreSQL as its source of truth.
+The frontend and backend are separate npm projects in this repository. The frontend uses a same-origin Next route for browser queries and commands. `KONET_DATA_SOURCE=http` is the default. Authentication, public catalog reads, notifications and contact submission use the backend adapter. `mock` remains an explicit preview option. Missing mappings fail explicitly; remaining student/provider workflows are being connected feature by feature. The API uses PostgreSQL as its source of truth.
 
 ### Stack
 
@@ -104,9 +104,9 @@ The frontend and backend are separate npm projects in this repository. The front
 | Client profile | `/profile`, `/profile/verification`, `/settings` | Identity and preferences |
 | Provider | `/provider/onboarding/*`, `/provider/dashboard`, `/provider/services/*`, `/provider/requests/*`, `/provider/portfolio`, `/provider/earnings`, `/provider/settings` | Provider setup and operations |
 
-`src/data/access` contains typed query and command contracts, the in-memory mock adapter, the Axios HTTP adapter, validation, and the endpoint registry. `src/data/repositories` exposes server reads for pages. Browser actions call `src/app/api/frontend/route.ts` through `src/data/access/client.ts`; TanStack Query hooks live in `src/lib/query`. When backend endpoints are ready, complete `src/data/access/endpoints.ts` and set `KONET_DATA_SOURCE=http`. The `src/features` directory contains interactive forms and actions; `src/components` contains reusable layout and UI pieces.
+`src/data/access` contains typed query and command contracts, the in-memory mock adapter, the Axios HTTP adapter, validation, and the endpoint registry. `src/data/repositories` exposes server reads for pages. Browser actions call `src/app/api/frontend/route.ts` through `src/data/access/client.ts`; TanStack Query hooks live in `src/lib/query`. HTTP mode is now the default; add remaining feature mappings in `src/data/access/endpoints.ts`. Authentication handlers keep backend tokens in HttpOnly cookies at the same-origin boundary. The `src/features` directory contains interactive forms and actions; `src/components` contains reusable layout and UI pieces.
 
-`src/proxy.ts` redirects visitors away from protected client and provider pages based on demo cookies (`konet_session`, `konet_student_verified`, `konet_provider`). In mock mode these cookies are set at the same-origin data boundary; they are **not** the API's JWT authentication or authoritative verification state. Do not use them as proof of identity or payment in production.
+`src/proxy.ts` gates private pages on session presence. In HTTP mode, private data and provider eligibility are validated through the backend, and access/refresh credentials stay in HttpOnly cookies. Demo identity/verification cookies are used only in explicit mock mode.
 
 ## Backend and API
 
@@ -241,11 +241,11 @@ Requirements: Node.js and npm compatible with Next.js 16/NestJS 11, plus Docker 
    npm run dev
    ```
 
-Open the frontend at `http://localhost:3000`, API health at `http://localhost:4000/api/v1/health`, and Swagger at `http://localhost:4000/api/docs`. The default `KONET_DATA_SOURCE=mock` runs the frontend against in-memory records. `KONET_DATA_SOURCE=http` uses `KONET_API_URL`, but the live endpoint registry is incomplete and will reject unmapped operations until their contracts are implemented.
+Open the frontend at `http://localhost:3000`, API health at `http://localhost:4000/api/v1/health`, and Swagger at `http://localhost:4000/api/docs`. The default `KONET_DATA_SOURCE=http` connects the completed frontend adapters to `KONET_API_URL`. Remaining feature operations fail explicitly until their frontend integration is complete. Use `mock` only for fixture previews.
 
 | Variable | Project | Purpose |
 | --- | --- | --- |
-| `KONET_DATA_SOURCE` | Frontend | `mock` (default) or `http` for the backend adapter |
+| `KONET_DATA_SOURCE` | Frontend | `http` (default) or explicit `mock` preview |
 | `KONET_API_URL` | Frontend | Backend API base URL when the source is `http` |
 | `DATABASE_URL` | Backend | PostgreSQL connection string |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Backend | Different secrets, at least 32 characters each |
@@ -260,13 +260,13 @@ Useful checks: `npm run typecheck`, `npm run lint`, and `npm run build` in eithe
 
 | Capability | Current state | Needed for an end-to-end product |
 | --- | --- | --- |
-| Public discovery | Unified Discover page reads the mock source; public HTTP mappings exist | Confirm backend response shapes and complete remaining catalog mappings |
-| Auth and verification | Frontend forms use shared commands and mock session cookies | Map backend auth endpoints, add secure token/refresh handling, and use authoritative verification decisions |
+| Public discovery | Discover and public provider/service/portfolio/review reads use HTTP | Confirm backend response shapes and complete remaining catalog mappings |
+| Auth and verification | Registration/login/recovery/reset/logout use the API and HttpOnly sessions | Connect student verification submission/code/evidence flows |
 | Provider onboarding | Full-page steps save an in-memory draft | Add real file upload, persistence, and approval operations |
 | Requests, quotes, jobs | Key forms use shared mock commands and server reads | Map backend endpoints and reconcile job and payment statuses |
-| Messaging, notifications, reviews | Frontend reads and commands use the shared mock source | Map backend endpoints; add delivery/update behavior as needed |
+| Messaging, notifications, reviews | Notifications are connected; messaging and review submission still need integration | Map backend endpoints; add delivery/update behavior as needed |
 | Payments and earnings | Checkout retains its card-details layout but has no live gateway; earnings read mock transactions | Integrate provider tokenization or hosted fields, signed webhooks, settlement/release/refund handling; raw card data must never reach Konet servers |
-| Password recovery | API queues reset email, verifies single-use links, and updates passwords; frontend still redirects to a demo sent screen | Configure Resend, apply the migration, and connect frontend recovery/reset forms |
+| Password recovery | Frontend recovery/reset forms call the implemented API; reset token remains in the URL fragment | Configure Resend and verify delivery in the deployment |
 
 The frontend's domain types and demo job statuses are currently different from the backend schema. When connecting the two, map API fields and states explicitly or converge on a shared contract.
 
