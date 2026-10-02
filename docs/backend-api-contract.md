@@ -1,6 +1,6 @@
 # Backend API contract handoff
 
-The backend registers **150 operations** under `/api/v1`: 117 existing handlers and 33 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
+The backend registers **150 operations** under `/api/v1`: 120 existing handlers and 30 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
 
 - Swagger UI: `http://localhost:4000/api/docs`
 - OpenAPI JSON: `http://localhost:4000/api/docs/json`
@@ -12,9 +12,9 @@ The backend registers **150 operations** under `/api/v1`: 117 existing handlers 
 
 The frontend developer can generate client types or build API adapters and mocks from the success schemas in Swagger/OpenAPI. Contract-only endpoints currently return **501 `ENDPOINT_NOT_IMPLEMENTED`**, so they cannot yet provide successful data to live frontend screens. Use the documented success schemas for frontend mocks until the backend developer implements each handler.
 
-Each operation has required/optional input fields, validation constraints, path/query parameters, authentication, target success response, error responses, and `x-implementation-status`. Status values are `implemented`, `contract-only`, and `gateway-unconfigured`. Existing handlers remain in their domain modules; new stubs live in `konet-backend/src/modules/contracts/contracts.controller.ts`. When implementing a stub, move its route into the relevant domain controller, remove the stub, and set its registry `existing` flag to true. Update the response/input contract if behavior changes, then regenerate the snapshot.
+Each operation has required/optional input fields, validation constraints, path/query parameters, authentication, target success response, error responses, and `x-implementation-status`. Status values are `implemented` and `contract-only`; implemented integrations can still require credentials. Existing handlers remain in their domain modules; new stubs live in `konet-backend/src/modules/contracts/contracts.controller.ts`. When implementing a stub, move its route into the relevant domain controller, remove the stub, and set its registry `existing` flag to true. Update the response/input contract if behavior changes, then regenerate the snapshot.
 
-Implemented directory, account lookup, audit, and staff-role routes require a live administrator role from the database. Student and provider review routes now require an admin or reviewer role. Other admin routes remain contract-only and return 501. See the [verification integration guide](backend-verification.md). Read the [staff setup guide](backend-universities.md) to bootstrap the first admin. Payment webhook payloads and signature headers are provisional until the payment provider is selected. The webhook stub performs no processing. No client-supplied status can fund a payment or approve verification.
+Implemented directory, account lookup, audit, and staff-role routes require a live administrator role from the database. Student and provider review routes now require an admin or reviewer role. Other admin routes remain contract-only and return 501. See the [verification integration guide](backend-verification.md). Read the [staff setup guide](backend-universities.md) to bootstrap the first admin. Paystack charge webhooks now validate the raw-body signature and verify transactions server-side; see the [payment guide](backend-payments.md). No client-supplied status can fund a payment or approve verification.
 
 Live messaging uses Socket.IO namespace `/chat` on the backend origin, with transport path `/socket.io`. See the [collaboration guide](backend-collaboration.md) for events, authentication, acknowledgements and frontend integration. REST routes support history and reconnect recovery.
 
@@ -54,7 +54,7 @@ Live messaging uses Socket.IO namespace `/chat` on the backend origin, with tran
 ## Current limitations to account for
 
 - Forgot-password queues an encrypted reset email when Resend is configured; otherwise returns 503 `EMAIL_DELIVERY_NOT_CONFIGURED`. Read the [account implementation notes](backend-accounts.md) for setup and frontend reset-link handling.
-- Checkout is blocked by the unconfigured gateway and returns 503.
+- Paystack checkout is implemented; add PAYSTACK_SECRET_KEY to enable it. Empty credentials return 503.
 - Provider category/price filters are implemented and must match the same active service. See the [catalog guide](backend-catalog.md).
 - Quote acceptance is transactional and retry-safe: repeating acceptance of the same quote returns the original job. See the [hiring guide](backend-hiring.md).
 - Client confirmation leaves payment funds held. Payout and refund workflows require payment integration. See the [collaboration guide](backend-collaboration.md).
@@ -254,7 +254,7 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 | POST | `/jobs/{id}/confirm-completion` | authenticated | — | 200 jobs | Existing handler |
 | POST | `/jobs/{id}/disputes` | authenticated | DisputeInput | 201 disputes | Existing handler |
 | GET | `/jobs/{jobId}/payment` | authenticated | — | 200 payments | Existing handler |
-| POST | `/jobs/{jobId}/payments` | authenticated | — | 201 Checkout | Gateway unconfigured (503) |
+| POST | `/jobs/{jobId}/payments` | authenticated | — | 201 Checkout | Existing handler (credentials required) |
 | GET | `/jobs/{id}` | authenticated | — | 200 jobs | Existing handler |
 | POST | `/jobs/{id}/cancel` | authenticated | ReasonInput | 200 jobs | Existing handler |
 | GET | `/jobs/{id}/milestones` | authenticated | — | 200 Milestone[] | Existing handler |
@@ -262,7 +262,7 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 | PATCH | `/jobs/{id}/milestones/{milestoneId}` | authenticated | MilestoneUpdateInput | 200 Milestone | Existing handler |
 | GET | `/jobs/{id}/conversation` | authenticated | — | 200 ConversationDetail | Existing handler |
 | GET | `/jobs/{id}/review` | authenticated | — | 200 reviews | Contract only (501) |
-| POST | `/jobs/{jobId}/payment/verify` | authenticated | — | 200 payments | Contract only (501) |
+| POST | `/jobs/{jobId}/payment/verify` | authenticated | — | 200 payments | Existing handler |
 | GET | `/jobs/{jobId}/payout` | authenticated | — | 200 Payout | Contract only (501) |
 | GET | `/jobs/{jobId}/refunds` | authenticated | — | 200 Refund[] | Contract only (501) |
 
@@ -309,7 +309,7 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 
 | Method | Path | Access | Request schema | Success | Current status |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/webhooks/payments/{gateway}` | webhook | — | 200 Acknowledgement | Contract only (501) |
+| POST | `/webhooks/payments/{gateway}` | webhook | — | 200 Acknowledgement | Existing handler |
 
 ### contact
 
@@ -355,7 +355,7 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 
 | Method | Path | Access | Request schema | Success | Current status |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/me/payments` | authenticated | — | 200 payments[] | Contract only (501) |
+| GET | `/me/payments` | authenticated | — | 200 payments[] | Existing handler |
 
 ### earnings
 

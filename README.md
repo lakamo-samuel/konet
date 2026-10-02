@@ -207,7 +207,7 @@ stateDiagram-v2
     disputed --> cancelled
 ```
 
-The API creates a `pending` payment row when a quote is accepted. Payment states in the schema include `pending`, `processing`, `funded`, `held`, `release_pending`, `released`, `failed`, `refunded`, and `disputed`. The current gateway implementation returns `503 PAYMENT_GATEWAY_NOT_CONFIGURED` for initialization, verification, refunds, and webhooks. A real integration must verify signed gateway events, move payment and job states consistently, and implement real release/refund behavior. Client confirmation records job completion and leaves payment funds held until the payment release workflow is implemented.
+The API creates a `pending` payment row when a quote is accepted. Payment states in the schema include `pending`, `processing`, `funded`, `held`, `release_pending`, `released`, `failed`, `refunded`, and `disputed`. Paystack hosted checkout, signed charge webhooks and server-side verification are implemented. Checkout requires PAYSTACK_SECRET_KEY; missing credentials return 503. Verified collection atomically funds the payment and schedules the job. Provider payout, refund and reconciliation stages remain unfinished. Client confirmation records job completion and leaves payment funds held until the payment release workflow is implemented.
 
 ## Local setup
 

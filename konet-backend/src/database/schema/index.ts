@@ -6,3 +6,4 @@ export * from "./verification";
 
 export * from "./provider-review";
 export * from "./collaboration";
+export * from "./payment-checkouts";

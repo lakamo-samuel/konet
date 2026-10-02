@@ -1,85 +1,62 @@
 import {
   Controller,
   Get,
-  Inject,
-  Param,
   Post,
+  Param,
+  ParseUUIDPipe,
+  Query,
   UseGuards,
+  HttpCode,
+  Req,
+  RawBodyRequest,
+  Headers,
 } from "@nestjs/common";
+import { Request } from "express";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import { and, eq, or } from "drizzle-orm";
 import {
   AuthUser,
   CurrentUser,
 } from "../../common/decorators/current-user.decorator";
-import { DomainError } from "../../common/errors/domain.error";
 import { AuthGuard } from "../../common/guards/auth.guard";
-import { DATABASE, Database } from "../../database/database.module";
-import { jobs, payments, providerProfiles } from "../../database/schema";
-import {
-  PAYMENT_GATEWAY,
-  PaymentGateway,
-} from "../../infrastructure/payments/payment-gateway";
+import { ListQuery } from "../contracts/contract.dto";
+import { PaymentService } from "./payment.service";
 @ApiTags("payments")
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 @Controller({ version: "1" })
 export class PaymentsController {
-  constructor(
-    @Inject(DATABASE) private db: Database,
-    @Inject(PAYMENT_GATEWAY) private gateway: PaymentGateway,
-  ) {}
-  private async owned(userId: string, jobId: string) {
-    const [p] = await this.db
-      .select({ id: providerProfiles.id })
-      .from(providerProfiles)
-      .where(eq(providerProfiles.userId, userId))
-      .limit(1);
-    const [row] = await this.db
-      .select({ payment: payments, job: jobs })
-      .from(payments)
-      .innerJoin(jobs, eq(payments.jobId, jobs.id))
-      .where(
-        and(
-          eq(jobs.id, jobId),
-          p
-            ? or(eq(jobs.clientId, userId), eq(jobs.providerId, p.id))
-            : eq(jobs.clientId, userId),
-        ),
-      )
-      .limit(1);
-    if (!row)
-      throw new DomainError("PAYMENT_NOT_FOUND", "Payment not found.", 404);
-    return row;
-  }
-  @Get("jobs/:jobId/payment") async get(
+  constructor(private s: PaymentService) {}
+  @Get("jobs/:jobId/payment") get(
     @CurrentUser() u: AuthUser,
-    @Param("jobId") id: string,
+    @Param("jobId", ParseUUIDPipe) id: string,
   ) {
-    return (await this.owned(u.userId, id)).payment;
+    return this.s.get(u.userId, id);
   }
-  @Post("jobs/:jobId/payments") async initialize(
+  @Post("jobs/:jobId/payments") initialize(
     @CurrentUser() u: AuthUser,
-    @Param("jobId") id: string,
+    @Param("jobId", ParseUUIDPipe) id: string,
   ) {
-    const row = await this.owned(u.userId, id);
-    if (row.job.clientId !== u.userId)
-      throw new DomainError(
-        "PAYMENT_FORBIDDEN",
-        "Only the client can initialize payment.",
-        403,
-      );
-    if (row.payment.status !== "pending" && row.payment.status !== "failed")
-      throw new DomainError(
-        "PAYMENT_ALREADY_INITIALIZED",
-        "Payment is already being processed.",
-        409,
-      );
-    return this.gateway.initialize({
-      paymentId: row.payment.id,
-      amountMinor: row.payment.amountMinor,
-      currency: row.payment.currency,
-      callbackUrl: "",
-    });
+    return this.s.initialize(u.userId, id);
+  }
+  @Post("jobs/:jobId/payment/verify") @HttpCode(200) verify(
+    @CurrentUser() u: AuthUser,
+    @Param("jobId", ParseUUIDPipe) id: string,
+  ) {
+    return this.s.verify(u.userId, id);
+  }
+  @Get("me/payments") list(@CurrentUser() u: AuthUser, @Query() q: ListQuery) {
+    return this.s.list(u.userId, q);
+  }
+}
+@ApiTags("payment webhooks")
+@Controller({ version: "1" })
+export class PaymentWebhookController {
+  constructor(private s: PaymentService) {}
+  @Post("webhooks/payments/:gateway") @HttpCode(200) webhook(
+    @Param("gateway") gateway: string,
+    @Headers("x-paystack-signature") signature: string,
+    @Req() req: RawBodyRequest<Request>,
+  ) {
+    return this.s.webhook(gateway, signature ?? "", req.rawBody);
   }
 }

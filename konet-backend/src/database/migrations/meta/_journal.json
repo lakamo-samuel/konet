@@ -43,6 +43,13 @@
       "when": 1790920611502,
       "tag": "0005_quick_yellowjacket",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790921626640,
+      "tag": "0006_perpetual_skaar",
+      "breakpoints": true
     }
   ]
 }

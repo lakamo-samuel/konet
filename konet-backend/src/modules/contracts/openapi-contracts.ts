@@ -54,12 +54,12 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
         `Contract has no registered Nest route: ${route.method.toUpperCase()} ${path}`,
       );
     documented.add(`${route.method} ${path}`);
-    const gatewayBlocked = route.path === "jobs/{jobId}/payments";
-    const status = !route.existing
-      ? "contract-only"
-      : gatewayBlocked
-        ? "gateway-unconfigured"
-        : "implemented";
+    const gatewayBlocked = [
+      "jobs/{jobId}/payments",
+      "jobs/{jobId}/payment/verify",
+      "webhooks/payments/{gateway}",
+    ].includes(route.path);
+    const status = !route.existing ? "contract-only" : "implemented";
     (operation as OperationObject & { "x-implementation-status": string })[
       "x-implementation-status"
     ] = status;
@@ -77,7 +77,7 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
             : route.auth === "cookie"
               ? "Uses the HttpOnly konet_refresh cookie; send requests with credentials included."
               : route.auth === "webhook"
-                ? "Payment provider callback only; signature verification will replace browser authentication."
+                ? "Paystack callback only; raw-body HMAC-SHA512 signature verification is mandatory."
                 : "Public endpoint; no authentication required.";
     operation.description = [
       access,
@@ -155,17 +155,17 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
     }
     if (route.auth === "webhook") {
       operation.parameters.push({
-        name: "X-Payment-Signature",
+        name: "x-paystack-signature",
         in: "header",
         required: true,
         description:
-          "Placeholder name: final header and signing algorithm depend on the selected provider. Do not integrate against this header until provider selection.",
+          "HMAC-SHA512 over the exact request bytes, signed with PAYSTACK_SECRET_KEY.",
         schema: { type: "string" },
       });
       operation.requestBody = {
         required: true,
         description:
-          "Unmodified provider JSON event. Exact event schema and signature header are intentionally provider-dependent.",
+          "Unmodified Paystack JSON event. charge.success requires event, data.id and data.reference.",
         content: jsonContent({ type: "object", additionalProperties: true }),
       };
     } else if (route.body) {
@@ -209,6 +209,11 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
       429: { description: "Rate limit exceeded.", content: errorContent },
       500: { description: "Unexpected server error.", content: errorContent },
     };
+    if (route.auth === "webhook")
+      operation.responses[401] = {
+        description: "Missing or invalid Paystack raw-body signature.",
+        content: errorContent,
+      };
     if (route.auth !== "public" && route.auth !== "webhook") {
       operation.responses[401] = {
         description: "Missing, invalid, or expired authentication.",
@@ -259,7 +264,7 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
     )
       operation.responses[503] = {
         description: gatewayBlocked
-          ? "PAYMENT_GATEWAY_NOT_CONFIGURED: real checkout is unavailable."
+          ? "Paystack credentials missing or provider temporarily unavailable."
           : route.path === "auth/forgot-password"
             ? "EMAIL_DELIVERY_NOT_CONFIGURED: set Resend credentials, sender address, and outbox encryption key."
             : "Database unavailable.",

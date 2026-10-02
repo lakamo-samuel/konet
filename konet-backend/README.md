@@ -15,7 +15,7 @@ The REST API is rooted at `/api/v1`; Swagger is at `/api/docs`; health is at `/a
 
 ## Frontend integration contracts
 
-All planned routes are registered and documented: 150 operations, including 33 contract-only endpoints. Swagger specifies authentication, required and optional fields, validation, success schemas, and errors. New endpoints return `501 ENDPOINT_NOT_IMPLEMENTED` until their services are implemented; existing checkout returns 503 until the payment gateway is configured. Documented success schemas support frontend client generation and mocks, rather than successful live calls to unfinished routes.
+All planned routes are registered and documented: 150 operations, including 30 contract-only endpoints. Swagger specifies authentication, required and optional fields, validation, success schemas, and errors. New endpoints return `501 ENDPOINT_NOT_IMPLEMENTED` until their services are implemented; Paystack checkout returns 503 until its secret key is configured. Documented success schemas support frontend client generation and mocks, rather than successful live calls to unfinished routes.
 
 See the [API handoff and full route inventory](../docs/backend-api-contract.md). Share [openapi.json](openapi.json) with the frontend developer, or fetch `/api/docs/json`. Run `npm run docs:export` to regenerate the offline snapshot without a database or running API.
 
@@ -46,3 +46,5 @@ Provider onboarding and approval are implemented. Identity and work are mandator
 Catalog/discovery filters and administrator category management are implemented. The configured local Docker database has migrations 0000–0004 applied; no demo data was seeded. See [catalog APIs and database status](../docs/backend-catalog.md).
 
 Collaboration uses participant-only Socket.IO messaging, persisted conversation reads, notification preferences, milestones and guarded job actions. See the [collaboration guide](../docs/backend-collaboration.md).
+
+Paystack collection, verification and signed charge webhooks are implemented. Set PAYSTACK_SECRET_KEY and optional PAYMENT_CALLBACK_URL; see the [payment integration guide](../docs/backend-payments.md). Payout/refund/reconciliation remain separate stages.

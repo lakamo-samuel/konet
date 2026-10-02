@@ -58,6 +58,13 @@ class Environment {
   STORAGE_LOCAL_PATH = "./uploads";
 
   @IsOptional()
+  @Matches(/^sk_(test|live)_[a-zA-Z0-9]+$/)
+  PAYSTACK_SECRET_KEY?: string;
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  PAYMENT_CALLBACK_URL?: string;
+
+  @IsOptional()
   @IsString()
   RESEND_API_KEY?: string;
 
@@ -109,6 +116,8 @@ export function validateEnvironment(
   // Empty optional placeholders are unset; required settings still validate.
   const normalized = { ...values };
   for (const key of [
+    "PAYSTACK_SECRET_KEY",
+    "PAYMENT_CALLBACK_URL",
     "RESEND_API_KEY",
     "EMAIL_FROM",
     "EMAIL_OUTBOX_KEY",
@@ -164,6 +173,19 @@ export function validateEnvironment(
     !parsed.FRONTEND_URL.startsWith("https://")
   )
     throw new Error("Production recovery links must use HTTPS.");
+  if (
+    parsed.NODE_ENV === "production" &&
+    parsed.PAYMENT_CALLBACK_URL &&
+    !parsed.PAYMENT_CALLBACK_URL.startsWith("https://")
+  )
+    throw new Error("Production payment callback must use HTTPS.");
+  if (
+    parsed.NODE_ENV === "production" &&
+    parsed.PAYSTACK_SECRET_KEY &&
+    !parsed.PAYMENT_CALLBACK_URL &&
+    !parsed.FRONTEND_URL.startsWith("https://")
+  )
+    throw new Error("Production payment callback must use HTTPS.");
   return parsed;
 }
 
@@ -173,6 +195,8 @@ export function resolveSwaggerEnabled(env: EnvironmentConfig): boolean {
 }
 
 const KNOWN_KEYS = [
+  "PAYSTACK_SECRET_KEY",
+  "PAYMENT_CALLBACK_URL",
   "CLOUDINARY_CLOUD_NAME",
   "CLOUDINARY_API_KEY",
   "CLOUDINARY_API_SECRET",

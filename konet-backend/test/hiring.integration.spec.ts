@@ -1,3 +1,6 @@
+import { ConfigService } from "@nestjs/config";
+import { createHmac } from "node:crypto";
+import { PaystackGateway } from "../src/infrastructure/payments/paystack.gateway";
 import { io, Socket } from "socket.io-client";
 import "reflect-metadata";
 import { Test } from "@nestjs/testing";
@@ -46,6 +49,16 @@ describeDatabase("hiring PostgreSQL API integration", () => {
   let providerId: string;
   let serviceId: string;
   let categoryId: string;
+  const signingKey = "sk_test_paymenttests";
+  const signatureGateway = new PaystackGateway(
+    new ConfigService({ PAYSTACK_SECRET_KEY: signingKey }),
+  );
+  const gateway = {
+    assertConfigured: () => {},
+    initialize: jest.fn(),
+    verify: jest.fn(),
+    verifyWebhook: signatureGateway.verifyWebhook.bind(signatureGateway),
+  };
   beforeAll(async () => {
     const admin = new Pool({
       host: process.env.AUTH_TEST_DB_SOCKET,
@@ -66,6 +79,8 @@ describeDatabase("hiring PostgreSQL API integration", () => {
     }
     await migrate(db, { migrationsFolder: "src/database/migrations" });
     const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(PaystackGateway)
+      .useValue(gateway)
       .overrideProvider(DATABASE)
       .useValue(db)
       .overrideProvider(ThrottlerStorage)
@@ -78,7 +93,7 @@ describeDatabase("hiring PostgreSQL API integration", () => {
         }),
       })
       .compile();
-    app = module.createNestApplication({ logger: false });
+    app = module.createNestApplication({ logger: false, rawBody: true });
     app.setGlobalPrefix("api");
     app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
     app.useGlobalPipes(
@@ -92,6 +107,11 @@ describeDatabase("hiring PostgreSQL API integration", () => {
     await app.listen(0, "127.0.0.1");
   });
   beforeEach(async () => {
+    gateway.initialize.mockReset().mockImplementation(async (input) => ({
+      reference: input.reference,
+      checkoutUrl: "https://checkout.paystack.com/test-checkout",
+    }));
+    gateway.verify.mockReset();
     await pool.query(
       "DROP TRIGGER IF EXISTS hiring_test_payment_failure ON payments",
     );
@@ -202,6 +222,155 @@ describeDatabase("hiring PostgreSQL API integration", () => {
         .length,
     };
   }
+  async function initializedPayment() {
+    const j = await acceptedJob();
+    const checkout = (await api("post", `jobs/${j.id}/payments`).expect(201))
+      .body;
+    const payment = (await api("get", `jobs/${j.id}/payment`).expect(200)).body;
+    const [payer] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, client.id));
+    const result = {
+      reference: checkout.reference,
+      status: "success",
+      amountMinor: payment.amountMinor,
+      currency: "NGN",
+      transactionId: "123456",
+      email: payer.email,
+      paymentId: payment.id,
+    };
+    return { j, checkout, payment, result };
+  }
+  it("initializes server-owned checkout once and verifies funding atomically on concurrent retries", async () => {
+    const { j, checkout, payment, result } = await initializedPayment();
+    expect(checkout.paymentId).toBe(payment.id);
+    const retry = (await api("post", `jobs/${j.id}/payments`).expect(201)).body;
+    expect(retry).toEqual(checkout);
+    expect(gateway.initialize).toHaveBeenCalledTimes(1);
+    await api("post", `jobs/${j.id}/payments`, provider.token).expect(403);
+    await api("get", `jobs/${j.id}/payment`, outsider.token).expect(404);
+    gateway.verify.mockResolvedValue(result);
+    const attempts = await Promise.all([
+      api("post", `jobs/${j.id}/payment/verify`),
+      api("post", `jobs/${j.id}/payment/verify`, provider.token),
+    ]);
+    expect(attempts.map((r) => r.status)).toEqual([200, 200]);
+    expect(await db.select().from(schema.paymentEvents)).toHaveLength(1);
+    expect((await db.select().from(schema.payments))[0].status).toBe("funded");
+    expect((await db.select().from(schema.jobs))[0].status).toBe("scheduled");
+    expect((await api("get", "me/payments", outsider.token)).body).toHaveLength(
+      0,
+    );
+    await api("get", "me/payments?status=invalid").expect(400);
+  });
+  it("serializes simultaneous checkout initialization without a second provider call", async () => {
+    const j = await acceptedJob();
+    let unblock!: () => void;
+    let started!: () => void;
+    const waiting = new Promise<void>((resolve) => {
+      unblock = resolve;
+    });
+    const entered = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    gateway.initialize.mockImplementationOnce(async (input) => {
+      started();
+      await waiting;
+      return {
+        reference: input.reference,
+        checkoutUrl: "https://checkout.paystack.com/test-checkout",
+      };
+    });
+    const first = api("post", `jobs/${j.id}/payments`).then((r: any) => r);
+    await entered;
+    try {
+      await api("post", `jobs/${j.id}/payments`).expect(409);
+    } finally {
+      unblock();
+    }
+    expect((await first).status).toBe(201);
+    expect(gateway.initialize).toHaveBeenCalledTimes(1);
+  });
+  it("rolls back funding and event records if scheduling fails", async () => {
+    const { j, result } = await initializedPayment();
+    gateway.verify.mockResolvedValue(result);
+    await pool.query(
+      "CREATE FUNCTION hiring_test_fail_funding() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.status='scheduled' THEN RAISE EXCEPTION 'test scheduling failure'; END IF; RETURN NEW; END; $$",
+    );
+    await pool.query(
+      "CREATE TRIGGER hiring_test_funding_failure BEFORE UPDATE ON jobs FOR EACH ROW EXECUTE FUNCTION hiring_test_fail_funding()",
+    );
+    try {
+      await api("post", `jobs/${j.id}/payment/verify`).expect(500);
+      expect((await db.select().from(schema.payments))[0].status).toBe(
+        "processing",
+      );
+      expect(await db.select().from(schema.paymentEvents)).toHaveLength(0);
+    } finally {
+      await pool.query("DROP TRIGGER hiring_test_funding_failure ON jobs");
+      await pool.query("DROP FUNCTION hiring_test_fail_funding()");
+    }
+    await api("post", `jobs/${j.id}/payment/verify`).expect(200);
+  });
+  it("rejects mismatched verified money, payer and metadata without funding", async () => {
+    const { j, result } = await initializedPayment();
+    for (const bad of [
+      { amountMinor: 1 },
+      { currency: "USD" },
+      { reference: "wrong-reference" },
+      { paymentId: outsider.id },
+      { email: "other@example.com" },
+    ]) {
+      gateway.verify.mockResolvedValue({ ...result, ...bad });
+      await api("post", `jobs/${j.id}/payment/verify`).expect(422);
+    }
+    gateway.verify.mockResolvedValue({ ...result, status: "pending" });
+    await api("post", `jobs/${j.id}/payment/verify`).expect(200);
+    expect((await db.select().from(schema.jobs))[0].status).toBe(
+      "awaiting_payment",
+    );
+    expect(await db.select().from(schema.paymentEvents)).toHaveLength(0);
+  });
+  it("validates exact webhook bytes and deduplicates concurrent charge events", async () => {
+    const { j, result } = await initializedPayment();
+    gateway.verify.mockResolvedValue(result);
+    const payload = JSON.stringify({
+      event: "charge.success",
+      data: { id: 123456, reference: result.reference },
+    });
+    const signature = createHmac("sha512", signingKey)
+      .update(payload)
+      .digest("hex");
+    const post = (body = payload, sig = signature) =>
+      request(app.getHttpServer())
+        .post("/api/v1/webhooks/payments/paystack")
+        .set("Content-Type", "application/json")
+        .set("x-paystack-signature", sig)
+        .send(body);
+    await post(payload + " ").expect(401);
+    await post(payload, "bad-signature").expect(401);
+    const attempts = await Promise.all([post(), post()]);
+    expect(attempts.map((r) => r.status)).toEqual([200, 200]);
+    expect(await db.select().from(schema.paymentEvents)).toHaveLength(1);
+    expect((await api("get", `jobs/${j.id}`)).body.status).toBe("scheduled");
+    await post().expect(200);
+  });
+  it("keeps a durable reference after ambiguous checkout failures and prevents unpaid cancellation during checkout", async () => {
+    const j = await acceptedJob();
+    gateway.initialize.mockRejectedValueOnce(new Error("Simulated timeout"));
+    await api("post", `jobs/${j.id}/payments`).expect(500);
+    const [attempt] = await db.select().from(schema.paymentCheckouts);
+    expect(attempt.checkoutUrl).toBeNull();
+    await api("post", `jobs/${j.id}/cancel`)
+      .send({ reason: "Cancel during checkout" })
+      .expect(409);
+    const retry = (await api("post", `jobs/${j.id}/payments`).expect(201)).body;
+    expect(retry.reference).toBe(attempt.reference);
+    expect(gateway.initialize.mock.calls[0][0].reference).toBe(
+      gateway.initialize.mock.calls[1][0].reference,
+    );
+  });
   async function connectSocket(
     token: string,
     origin?: string,

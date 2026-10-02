@@ -27,13 +27,6 @@ function unavailable(operation: string): never {
 @ApiTags("public contracts")
 @Controller({ version: "1" })
 export class PublicContractsController {
-  @Post("webhooks/payments/:gateway")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Receive signed payment provider event" })
-  postWebhooksPaymentsGateway(@Param("gateway") _gateway: string): never {
-    return unavailable("Receive signed payment provider event");
-  }
-
   @Post("contact")
   @HttpCode(202)
   @ApiOperation({ summary: "Submit support contact message" })
@@ -103,15 +96,6 @@ export class MemberContractsController {
     return unavailable("Read dispute decision history");
   }
 
-  @Post("jobs/:jobId/payment/verify")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Verify payment with provider server-side" })
-  postJobsJobIdPaymentVerify(
-    @Param("jobId", new ParseUUIDPipe()) _jobId: string,
-  ): never {
-    return unavailable("Verify payment with provider server-side");
-  }
-
   @Get("jobs/:jobId/payout")
   @HttpCode(200)
   @ApiOperation({ summary: "Read participant payout status" })
@@ -128,13 +112,6 @@ export class MemberContractsController {
     @Param("jobId", new ParseUUIDPipe()) _jobId: string,
   ): never {
     return unavailable("Read participant refunds");
-  }
-
-  @Get("me/payments")
-  @HttpCode(200)
-  @ApiOperation({ summary: "List own payments" })
-  getMePayments(@Query() _query: Dto.ListQuery): never {
-    return unavailable("List own payments");
   }
 
   @Get("me/earnings")

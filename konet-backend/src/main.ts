@@ -30,6 +30,7 @@ function applySecurityMiddleware(app: NestExpressApplication, env: EnvironmentCo
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
+    rawBody: true,
     abortOnError: false,
   });
 

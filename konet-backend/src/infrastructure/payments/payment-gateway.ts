@@ -1,12 +1,23 @@
+export type VerifiedPayment = {
+  reference: string;
+  status: string;
+  amountMinor: number;
+  currency: string;
+  transactionId: string;
+  email: string;
+  paymentId?: string;
+};
 export type PaymentInitialization = { checkoutUrl: string; reference: string };
 export interface PaymentGateway {
   initialize(input: {
     paymentId: string;
+    reference: string;
+    email: string;
     amountMinor: number;
     currency: string;
     callbackUrl: string;
   }): Promise<PaymentInitialization>;
-  verify(reference: string): Promise<{ reference: string; status: string }>;
+  verify(reference: string): Promise<VerifiedPayment>;
   refund(input: {
     reference: string;
     amountMinor: number;

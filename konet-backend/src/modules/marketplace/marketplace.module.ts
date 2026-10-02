@@ -12,9 +12,13 @@ import { Module } from "@nestjs/common";
 import { CatalogController } from "./catalog.controller";
 import { MarketplaceController } from "./marketplace.controller";
 import { MarketplaceService } from "./marketplace.service";
-import { PaymentsController } from "./payments.controller";
+import {
+  PaymentsController,
+  PaymentWebhookController,
+} from "./payments.controller";
 import { PAYMENT_GATEWAY } from "../../infrastructure/payments/payment-gateway";
-import { UnconfiguredPaymentGateway } from "../../infrastructure/payments/unconfigured.gateway";
+import { PaystackGateway } from "../../infrastructure/payments/paystack.gateway";
+import { PaymentService } from "./payment.service";
 @Module({
   imports: [ProvidersModule, AdministrationModule],
   controllers: [
@@ -24,6 +28,7 @@ import { UnconfiguredPaymentGateway } from "../../infrastructure/payments/unconf
     CollaborationController,
     MarketplaceController,
     PaymentsController,
+    PaymentWebhookController,
   ],
   providers: [
     MarketplaceService,
@@ -32,7 +37,9 @@ import { UnconfiguredPaymentGateway } from "../../infrastructure/payments/unconf
     RealtimePublisher,
     RealtimeServer,
     CategoriesService,
-    { provide: PAYMENT_GATEWAY, useClass: UnconfiguredPaymentGateway },
+    PaystackGateway,
+    PaymentService,
+    { provide: PAYMENT_GATEWAY, useExisting: PaystackGateway },
   ],
 })
 export class MarketplaceModule {}

@@ -17,7 +17,7 @@ Konet serves verified university students who hire other students for services. 
 | F5 | Catalog and discovery | Publish active services and search by query, university, category, availability | Admin category management, hierarchy validation, public filtering/pagination and service visibility implemented |
 | F6 | Hiring | Request, quote, accept one quote, create job and conversation | Implemented; see [hiring guide](backend-hiring.md) |
 | F7 | Collaboration | Participant-only messages, notifications, job milestones | Socket.IO live delivery, private messaging/reads, preferences, milestones and guarded job progression implemented; see [collaboration guide](backend-collaboration.md) |
-| F8 | Protected payment | Collect client payment, track funds, release or refund after decision | Payment records/interface exist; provider integration missing |
+| F8 | Protected payment | Collect client payment, track funds, release or refund after decision | Paystack hosted collection, verified funding and signed webhooks implemented; payout/refund/reconciliation stages remain; see [payment guide](backend-payments.md) |
 | F9 | Trust after work | Client review, dispute case, staff resolution | Review and dispute creation exist; resolution operations missing |
 | F10 | Operations | Admin review queue, support tools, reconciliation, audit log, reporting | Student review queue, roles and audit implemented; other operations pending |
 
@@ -64,7 +64,7 @@ Konet serves verified university students who hire other students for services. 
 
 | Need | Proposal | Decision/constraint |
 | --- | --- | --- |
-| Payment collection and transfers | Paystack as a candidate for an NGN-first pilot | Verify merchant eligibility, settlement timing, transfer access, fees, and support for client-approved delayed payout. Split payments alone do not meet that requirement. |
+| Payment collection and transfers | Paystack selected for the NGN-first pilot | Verify merchant eligibility, settlement timing, transfer access, fees, and support for client-approved delayed payout. Split payments alone do not meet that requirement. |
 | University email | One-time email link/code plus approved per-university domains | Must provide a manual review path for universities without reliable student domains. |
 | Transactional email | Resend (implemented for recovery) | Resend selected; configure verified sending domain, API key, and durable outbox encryption key. |
 | File storage | Cloudinary (student evidence implemented; credentials/add-on required) | Private signed uploads, restricted downloads, malware moderation and retention implemented for student evidence; public portfolio uploads pending; private provider evidence is implemented. |
