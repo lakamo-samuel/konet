@@ -71,6 +71,13 @@
       "when": 1790942915784,
       "tag": "0009_rapid_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790943172039,
+      "tag": "0010_sticky_daredevil",
+      "breakpoints": true
     }
   ]
 }

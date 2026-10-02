@@ -64,6 +64,7 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
     ].includes(route.path);
     const emailBlocked = [
       "auth/forgot-password",
+      "contact",
       "me/email-change",
       "me/email-change/confirm",
     ].includes(route.path);
@@ -272,7 +273,7 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
         description: gatewayBlocked
           ? "Paystack credentials missing or provider temporarily unavailable."
           : emailBlocked
-            ? "EMAIL_DELIVERY_NOT_CONFIGURED: set Resend credentials, sender address, and outbox encryption key."
+            ? "EMAIL_DELIVERY_NOT_CONFIGURED: set Resend credentials, sender address, and outbox encryption key; contact also requires SUPPORT_EMAIL."
             : "Database unavailable.",
         content:
           gatewayBlocked || emailBlocked

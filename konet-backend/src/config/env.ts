@@ -81,6 +81,10 @@ class Environment {
   EMAIL_FROM?: string;
 
   @IsOptional()
+  @IsEmail()
+  SUPPORT_EMAIL?: string;
+
+  @IsOptional()
   @Matches(/^[a-f\d]{64}$/i)
   EMAIL_OUTBOX_KEY?: string;
 
@@ -128,6 +132,7 @@ export function validateEnvironment(
     "PAYMENT_CALLBACK_URL",
     "RESEND_API_KEY",
     "EMAIL_FROM",
+    "SUPPORT_EMAIL",
     "EMAIL_OUTBOX_KEY",
     "PASSWORD_RESET_URL",
     "CLOUDINARY_CLOUD_NAME",
@@ -213,6 +218,7 @@ const KNOWN_KEYS = [
   "EVIDENCE_RETENTION_DAYS",
   "RESEND_API_KEY",
   "EMAIL_FROM",
+  "SUPPORT_EMAIL",
   "EMAIL_OUTBOX_KEY",
   "PASSWORD_RESET_URL",
   "NODE_ENV",

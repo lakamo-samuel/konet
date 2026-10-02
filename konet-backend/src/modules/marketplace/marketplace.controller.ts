@@ -51,6 +51,13 @@ export class MarketplaceController {
   ) {
     await this.s.archiveService(u.userId, id);
   }
+  @Get("jobs/:id/review")
+  jobReview(
+    @CurrentUser() u: AuthUser,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return this.s.jobReview(u.userId, id);
+  }
   @Post("reviews") review(@CurrentUser() u: AuthUser, @Body() d: ReviewDto) {
     return this.s.review(u.userId, d);
   }

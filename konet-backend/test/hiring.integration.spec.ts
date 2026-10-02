@@ -1,3 +1,4 @@
+import { EmailService } from "../src/infrastructure/email/email.service";
 import { SettlementService } from "../src/modules/marketplace/settlement.service";
 import { ConfigService } from "@nestjs/config";
 import { createHmac } from "node:crypto";
@@ -136,7 +137,7 @@ describeDatabase("hiring PostgreSQL API integration", () => {
     );
     await pool.query("DROP FUNCTION IF EXISTS hiring_test_fail_payment()");
     await pool.query(
-      "TRUNCATE TABLE users,universities,service_categories CASCADE",
+      "TRUNCATE TABLE users,universities,service_categories,contact_messages CASCADE",
     );
     const [university] = await db
       .insert(schema.universities)
@@ -332,6 +333,118 @@ describeDatabase("hiring PostgreSQL API integration", () => {
           .where(eq(schema.users.id, client.id))
       )[0].accountStatus,
     ).toBe("deactivated");
+  });
+  it("returns the single completed-job review only to its participants", async () => {
+    const { j } = await queuedPayout();
+    const review = (
+      await api("post", "reviews")
+        .send({
+          jobId: j.id,
+          rating: 5,
+          comment: "Great work delivered on time.",
+        })
+        .expect(201)
+    ).body;
+    expect((await api("get", `jobs/${j.id}/review`)).body.id).toBe(review.id);
+    expect(
+      (await api("get", `jobs/${j.id}/review`, provider.token)).body.id,
+    ).toBe(review.id);
+    await api("get", `jobs/${j.id}/review`, outsider.token).expect(404);
+    await api("post", "reviews")
+      .send({ jobId: j.id, rating: 4, comment: "Another review" })
+      .expect(409);
+  });
+  it("reports a missing review and validates the job UUID without revealing private work", async () => {
+    const { j } = await fundedJob();
+    const result = await api("get", `jobs/${j.id}/review`).expect(404);
+    expect(result.body.code).toBe("REVIEW_NOT_FOUND");
+    await api("get", `jobs/${j.id}/review`, outsider.token).expect(404);
+    await api("get", "jobs/not-a-uuid/review").expect(400);
+  });
+  function supportConfig() {
+    const config = app.get(ConfigService);
+    config.set("RESEND_API_KEY", "test-only-never-sent");
+    config.set("EMAIL_FROM", "support@konet.example");
+    config.set("EMAIL_OUTBOX_KEY", "12".repeat(32));
+    config.set("SUPPORT_EMAIL", "team@konet.example");
+    return config;
+  }
+  const contactInput = () => ({
+    email: "visitor@example.com",
+    topic: "Account help",
+    message: "Please help me understand how to verify my account.",
+  });
+  const contactPost = () =>
+    request(app.getHttpServer()).post("/api/v1/contact");
+  it("persists anonymous support messages and queues encrypted mail only to the configured team", async () => {
+    supportConfig();
+    await contactPost().send(contactInput()).expect(202);
+    const [ticket] = await db.select().from(schema.contactMessages);
+    expect(ticket.email).toBe("visitor@example.com");
+    expect(ticket.message).toBe(contactInput().message);
+    const [outbox] = await db.select().from(schema.emailOutbox);
+    expect(outbox.userId).toBeNull();
+    expect(outbox.payloadCiphertext).not.toContain(contactInput().message);
+    const payload = app.get(EmailService).decrypt(outbox.payloadCiphertext!);
+    expect(payload.to).toBe("team@konet.example");
+    expect(payload.subject).toBe("New Konet support request");
+    expect(payload.text).toContain(ticket.id);
+    expect(payload.text).toContain(
+      "Submitted email (unverified): visitor@example.com",
+    );
+    expect(outbox.status).toBe("pending");
+  });
+  it("requires support delivery configuration and validates contact input limits", async () => {
+    const config = supportConfig();
+    config.set("SUPPORT_EMAIL", "");
+    await contactPost().send(contactInput()).expect(503);
+    expect(await db.select().from(schema.contactMessages)).toHaveLength(0);
+    config.set("SUPPORT_EMAIL", "team@konet.example");
+    config.set("RESEND_API_KEY", "");
+    await contactPost().send(contactInput()).expect(503);
+    config.set("RESEND_API_KEY", "test-only-never-sent");
+    await contactPost()
+      .send({ ...contactInput(), email: "invalid" })
+      .expect(400);
+    await contactPost()
+      .send({ ...contactInput(), topic: "x".repeat(101) })
+      .expect(400);
+    await contactPost()
+      .send({ ...contactInput(), message: "x".repeat(5001) })
+      .expect(400);
+    await contactPost()
+      .send({ ...contactInput(), admin: true })
+      .expect(400);
+    await contactPost()
+      .send({ ...contactInput(), message: "          " })
+      .expect(422);
+  });
+  it("enforces the durable per-email support limit under concurrent submissions", async () => {
+    supportConfig();
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () => contactPost().send(contactInput())),
+    );
+    expect(results.map((r) => r.status).sort()).toEqual([202, 202, 202, 429]);
+    expect(await db.select().from(schema.contactMessages)).toHaveLength(3);
+    expect(await db.select().from(schema.emailOutbox)).toHaveLength(3);
+  });
+  it("rolls back contact acceptance when the encrypted delivery queue cannot be persisted", async () => {
+    supportConfig();
+    await pool.query(
+      "CREATE FUNCTION contact_test_fail_queue() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test queue failure'; END $$",
+    );
+    await pool.query(
+      "CREATE TRIGGER contact_test_queue_failure BEFORE INSERT ON email_outbox FOR EACH ROW EXECUTE FUNCTION contact_test_fail_queue()",
+    );
+    try {
+      await contactPost().send(contactInput()).expect(500);
+      expect(await db.select().from(schema.contactMessages)).toHaveLength(0);
+    } finally {
+      await pool.query(
+        "DROP TRIGGER contact_test_queue_failure ON email_outbox",
+      );
+      await pool.query("DROP FUNCTION contact_test_fail_queue()");
+    }
   });
   const disputeInput = () => ({
     reason: "Work quality",

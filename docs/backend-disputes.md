@@ -28,4 +28,4 @@ The final decision, financial reservation, job/payment transitions, audit and pa
 
 ## Remaining work
 
-Reconciliation, chargeback/reversal resolution, staff assignment, attachment submission and partial settlements remain unfinished. The admin dashboard UI still needs to call these endpoints. Review creation already exists; remaining review read/management endpoints are a separate stage.
+Reconciliation, chargeback/reversal resolution, staff assignment, attachment submission and partial settlements remain unfinished. The admin dashboard UI still needs to call these endpoints. Review creation and participant job review lookup are implemented; see [review integration](backend-contact-and-reviews.md).

@@ -1,3 +1,4 @@
+import { ContactModule } from "./modules/contact/contact.module";
 import { Module, RequestMethod } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
@@ -16,7 +17,11 @@ import { FavoritesModule } from "./modules/favorites/favorites.module";
 import { ContractsModule } from "./modules/contracts/contracts.module";
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment, cache: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: validateEnvironment,
+      cache: true,
+    }),
     LoggerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -34,6 +39,7 @@ import { ContractsModule } from "./modules/contracts/contracts.module";
     VerificationsModule,
     FavoritesModule,
     ContractsModule,
+    ContactModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

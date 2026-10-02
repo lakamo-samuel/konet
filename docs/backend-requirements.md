@@ -18,7 +18,7 @@ Konet serves verified university students who hire other students for services. 
 | F6 | Hiring | Request, quote, accept one quote, create job and conversation | Implemented; see [hiring guide](backend-hiring.md) |
 | F7 | Collaboration | Participant-only messages, notifications, job milestones | Socket.IO live delivery, private messaging/reads, preferences, milestones and guarded job progression implemented; see [collaboration guide](backend-collaboration.md) |
 | F8 | Protected payment | Collect client payment, track funds, release or refund after decision | Paystack collection, verified accounts, durable client-approved transfers and full refunds implemented; reconciliation remains; see [payment guide](backend-payments.md) |
-| F9 | Trust after work | Client review, dispute case, staff resolution | Review creation and participant dispute cases/admin-finance resolution implemented; remaining review read/management operations pending |
+| F9 | Trust after work | Client review, dispute case, staff resolution | Review creation/read and participant dispute cases/admin-finance resolution implemented; see [trust integration](backend-disputes.md) |
 | F10 | Operations | Admin review queue, support tools, reconciliation, audit log, reporting | Student review queue, roles and audit implemented; other operations pending |
 
 ## Functional requirements and acceptance rules

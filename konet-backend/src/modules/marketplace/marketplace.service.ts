@@ -82,6 +82,26 @@ export class MarketplaceService {
       );
     }
   }
+  async jobReview(userId: string, jobId: string) {
+    const [row] = await this.db
+      .select({ job: jobs, owner: providerProfiles.userId })
+      .from(jobs)
+      .innerJoin(providerProfiles, eq(providerProfiles.id, jobs.providerId))
+      .where(eq(jobs.id, jobId));
+    if (!row || (row.job.clientId !== userId && row.owner !== userId))
+      throw new DomainError("JOB_NOT_FOUND", "Job not found.", 404);
+    const [review] = await this.db
+      .select()
+      .from(reviews)
+      .where(eq(reviews.jobId, jobId));
+    if (!review)
+      throw new DomainError(
+        "REVIEW_NOT_FOUND",
+        "This job has no review yet.",
+        404,
+      );
+    return review;
+  }
   async dispute(userId: string, jobId: string, d: DisputeDto) {
     return this.disputes.open(userId, jobId, d);
   }

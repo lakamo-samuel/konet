@@ -34,9 +34,7 @@ export const emailOutbox = pgTable(
   "email_outbox",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id")
-      .references(() => users.id, { onDelete: "cascade" })
-      .notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     payloadCiphertext: text("payload_ciphertext"),
     idempotencyKey: varchar("idempotency_key", { length: 255 }).notNull(),
     status: varchar("status", { length: 20 }).default("pending").notNull(),

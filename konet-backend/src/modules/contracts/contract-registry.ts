@@ -3768,15 +3768,18 @@ export const contractSchemas: Record<string, SchemaObject> = {
       email: {
         type: "string",
         format: "email",
+        maxLength: 255,
         example: "student@example.com",
       },
       topic: {
         type: "string",
         minLength: 3,
+        maxLength: 100,
       },
       message: {
         type: "string",
         minLength: 10,
+        maxLength: 5000,
       },
     },
     required: ["email", "topic", "message"],
@@ -4959,9 +4962,9 @@ export const routeContracts: RouteContract[] = [
     response: "reviews",
     body: null,
     auth: "user",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Participants only; returns the job review, or 404 if the job is unrelated or has no review yet. UUID required.",
     code: 200,
   },
   {
@@ -5228,9 +5231,9 @@ export const routeContracts: RouteContract[] = [
     response: "Contact",
     body: "ContactInput",
     auth: "public",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Public support form. Email max 255, topic 3–100, message 10–5000 characters. Persists the request and queues a plain-text Resend message to configured SUPPORT_EMAIL. Requires Resend/sender/outbox key and support recipient; otherwise 503. Three submissions per IP/minute and per email/hour. Returns 202 after persistence; delivery is asynchronous. No automatic email is sent to the submitted address.",
     code: 202,
   },
   {

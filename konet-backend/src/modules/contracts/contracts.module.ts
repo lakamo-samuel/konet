@@ -1,15 +1,7 @@
 import { Module } from "@nestjs/common";
-import {
-  PublicContractsController,
-  MemberContractsController,
-  AdminContractsController,
-} from "./contracts.controller";
+import { AdminContractsController } from "./contracts.controller";
 
 @Module({
-  controllers: [
-    PublicContractsController,
-    MemberContractsController,
-    AdminContractsController,
-  ],
+  controllers: [AdminContractsController],
 })
 export class ContractsModule {}

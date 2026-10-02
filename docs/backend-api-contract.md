@@ -1,6 +1,6 @@
 # Backend API contract handoff
 
-The backend registers **151 operations** under `/api/v1`: 142 existing handlers and 9 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
+The backend registers **151 operations** under `/api/v1`: 144 existing handlers and 7 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
 
 - Swagger UI: `http://localhost:4000/api/docs`
 - OpenAPI JSON: `http://localhost:4000/api/docs/json`
@@ -261,7 +261,7 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 | POST | `/jobs/{id}/milestones` | authenticated | MilestoneInput | 201 Milestone | Existing handler |
 | PATCH | `/jobs/{id}/milestones/{milestoneId}` | authenticated | MilestoneUpdateInput | 200 Milestone | Existing handler |
 | GET | `/jobs/{id}/conversation` | authenticated | — | 200 ConversationDetail | Existing handler |
-| GET | `/jobs/{id}/review` | authenticated | — | 200 reviews | Contract only (501) |
+| GET | `/jobs/{id}/review` | authenticated | — | 200 reviews | Implemented |
 | POST | `/jobs/{jobId}/payment/verify` | authenticated | — | 200 payments | Existing handler |
 | GET | `/jobs/{jobId}/payout` | authenticated | — | 200 Payout | Implemented |
 | GET | `/jobs/{jobId}/refunds` | authenticated | — | 200 Refund[] | Implemented |
@@ -315,7 +315,7 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 
 | Method | Path | Access | Request schema | Success | Current status |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/contact` | public | ContactInput | 202 Contact | Contract only (501) |
+| POST | `/contact` | public | ContactInput | 202 Contact | Implemented |
 
 ### profile
 
@@ -382,3 +382,5 @@ Authenticated `GET /payout-banks` returns the supported Nigerian bank list (`Ban
 Dispute reads and admin/finance final resolution are implemented; see [dispute integration](backend-disputes.md).
 
 Student profile editing, email changes and account deactivation are implemented; see [account management](backend-account-management.md).
+
+Contact submission and participant job review lookup are implemented; see [integration guide](backend-contact-and-reviews.md). Contact requires SUPPORT_EMAIL and the existing Resend settings.

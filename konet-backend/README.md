@@ -15,7 +15,7 @@ The REST API is rooted at `/api/v1`; Swagger is at `/api/docs`; health is at `/a
 
 ## Frontend integration contracts
 
-All planned routes are registered and documented: 151 operations, including 9 contract-only endpoints. Swagger specifies authentication, required and optional fields, validation, success schemas, and errors. New endpoints return `501 ENDPOINT_NOT_IMPLEMENTED` until their services are implemented; Paystack checkout returns 503 until its secret key is configured. Documented success schemas support frontend client generation and mocks, rather than successful live calls to unfinished routes.
+All planned routes are registered and documented: 151 operations, including 7 contract-only endpoints. Swagger specifies authentication, required and optional fields, validation, success schemas, and errors. New endpoints return `501 ENDPOINT_NOT_IMPLEMENTED` until their services are implemented; Paystack checkout returns 503 until its secret key is configured. Documented success schemas support frontend client generation and mocks, rather than successful live calls to unfinished routes.
 
 See the [API handoff and full route inventory](../docs/backend-api-contract.md). Share [openapi.json](openapi.json) with the frontend developer, or fetch `/api/docs/json`. Run `npm run docs:export` to regenerate the offline snapshot without a database or running API.
 
@@ -52,3 +52,5 @@ Paystack collection, verification and signed charge webhooks are implemented. Se
 Participant dispute cases and admin/finance resolution are implemented; see the [dispute guide](../docs/backend-disputes.md).
 
 Student profile, email changes and deactivation are implemented; see [account management](../docs/backend-account-management.md).
+
+Public support submissions and participant job review lookup are implemented; see [contact/review integration](../docs/backend-contact-and-reviews.md). Set SUPPORT_EMAIL for contact delivery.

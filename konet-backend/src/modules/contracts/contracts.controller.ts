@@ -23,30 +23,6 @@ function unavailable(operation: string): never {
   );
 }
 
-@ApiTags("public contracts")
-@Controller({ version: "1" })
-export class PublicContractsController {
-  @Post("contact")
-  @HttpCode(202)
-  @ApiOperation({ summary: "Submit support contact message" })
-  postContact(@Body() _body: Dto.ContactInput): never {
-    return unavailable("Submit support contact message");
-  }
-}
-
-@ApiTags("member contracts")
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
-@Controller({ version: "1" })
-export class MemberContractsController {
-  @Get("jobs/:id/review")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Read review for participant job" })
-  getJobsIdReview(@Param("id", new ParseUUIDPipe()) _id: string): never {
-    return unavailable("Read review for participant job");
-  }
-}
-
 @ApiTags("admin contracts")
 @ApiBearerAuth()
 @UseGuards(AuthGuard)

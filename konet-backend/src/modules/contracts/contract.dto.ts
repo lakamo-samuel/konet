@@ -808,14 +808,17 @@ export class ReconciliationInput {
 export class ContactInput {
   @ApiProperty({ type: "string", format: "email" })
   @IsEmail()
+  @MaxLength(255)
   email!: string;
   @ApiProperty({ type: "string", minLength: 3 })
   @IsString()
   @MinLength(3)
+  @MaxLength(100)
   topic!: string;
   @ApiProperty({ type: "string", minLength: 10 })
   @IsString()
   @MinLength(10)
+  @MaxLength(5000)
   message!: string;
 }
 
