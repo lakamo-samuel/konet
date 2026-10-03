@@ -11,10 +11,7 @@ import {
 import { Reflector } from "@nestjs/core";
 import { and, eq, inArray } from "drizzle-orm";
 import { DATABASE, Database } from "../../database/database.module";
-import {
-  userRoles,
-  users,
-} from "../../database/schema";
+import { userRoles, users } from "../../database/schema";
 export type StaffRole = "admin" | "reviewer" | "support" | "finance";
 const SETUP_KEY = "konet.staffSecuritySetup";
 export const StaffSecuritySetup = () => SetMetadata(SETUP_KEY, true);
@@ -54,7 +51,13 @@ export class StaffGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (!setup) await requireStaffMfa(this.db,this.config,userId,context.switchToHttp().getRequest().user?.sid);
+    if (!setup)
+      await requireStaffMfa(
+        this.db,
+        this.config,
+        userId,
+        context.switchToHttp().getRequest().user?.sid,
+      );
     return true;
   }
 }

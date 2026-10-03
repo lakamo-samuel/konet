@@ -8554,11 +8554,11 @@
           }
         ],
         "tags": [
-          "administration"
+          "admin"
         ],
         "x-implementation-status": "implemented",
         "summary": "List payments for authorized staff",
-        "description": "Requires an active administrator role from the database, in addition to a live Bearer session. Reviewer, support, finance, and ordinary student accounts cannot manage the directory or read the audit log.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+        "description": "Requires an active admin or finance role from the database and a live Bearer session. Financial actions are audited.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
     "/api/v1/admin/payments/{id}": {
@@ -8674,11 +8674,11 @@
           }
         ],
         "tags": [
-          "administration"
+          "admin"
         ],
         "x-implementation-status": "implemented",
         "summary": "Read payments for authorized staff",
-        "description": "Requires an active administrator role from the database, in addition to a live Bearer session. Reviewer, support, finance, and ordinary student accounts cannot manage the directory or read the audit log.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+        "description": "Requires an active admin or finance role from the database and a live Bearer session. Financial actions are audited.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
     "/api/v1/admin/reports": {
@@ -8783,11 +8783,11 @@
           }
         ],
         "tags": [
-          "administration"
+          "admin"
         ],
         "x-implementation-status": "implemented",
         "summary": "Read operational and financial report",
-        "description": "Requires an active administrator role from the database, in addition to a live Bearer session. Reviewer, support, finance, and ordinary student accounts cannot manage the directory or read the audit log.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+        "description": "Requires an active admin or finance role from the database and a live Bearer session. Financial actions are audited.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
     "/api/v1/admin/reconciliations": {
@@ -8902,11 +8902,11 @@
           }
         ],
         "tags": [
-          "administration"
+          "admin"
         ],
         "x-implementation-status": "implemented",
         "summary": "Queue payment reconciliation",
-        "description": "Requires an active administrator role from the database, in addition to a live Bearer session. Reviewer, support, finance, and ordinary student accounts cannot manage the directory or read the audit log.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nRange uses record creation time, inclusive start and exclusive end. Maximum 31 days and 1,000 records. Verification only; never initiates a charge, transfer or refund. One active run; identical pending range is idempotent. Missing credentials and gateway mismatches are reported per item.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+        "description": "Requires an active admin or finance role from the database and a live Bearer session. Financial actions are audited.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nRange uses record creation time, inclusive start and exclusive end. Maximum 31 days and 1,000 records. Verification only; never initiates a charge, transfer or refund. One active run; identical pending range is idempotent. Missing credentials and gateway mismatches are reported per item.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       },
       "get": {
         "operationId": "get_admin_reconciliations",
@@ -9042,11 +9042,11 @@
           }
         ],
         "tags": [
-          "administration"
+          "admin"
         ],
         "x-implementation-status": "implemented",
         "summary": "List reconciliation runs",
-        "description": "Requires an active administrator role from the database, in addition to a live Bearer session. Reviewer, support, finance, and ordinary student accounts cannot manage the directory or read the audit log.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+        "description": "Requires an active admin or finance role from the database and a live Bearer session. Financial actions are audited.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
     "/api/v1/admin/reconciliations/{id}": {
@@ -9162,11 +9162,11 @@
           }
         ],
         "tags": [
-          "administration"
+          "admin"
         ],
         "x-implementation-status": "implemented",
         "summary": "Read reconciliation result",
-        "description": "Requires an active administrator role from the database, in addition to a live Bearer session. Reviewer, support, finance, and ordinary student accounts cannot manage the directory or read the audit log.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+        "description": "Requires an active admin or finance role from the database and a live Bearer session. Financial actions are audited.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
     "/api/v1/auth/socket-ticket": {
@@ -9826,7 +9826,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/disputes"
+                  "$ref": "#/components/schemas/StaffDispute"
                 }
               }
             }
@@ -18737,7 +18737,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/studentVerifications"
+                  "$ref": "#/components/schemas/StudentReviewDetail"
                 }
               }
             }
@@ -20519,6 +20519,44 @@
           "message"
         ]
       },
+      "StudentReviewDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/studentVerifications"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "applicant": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "fullName": {
+                    "type": "string"
+                  },
+                  "universityId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "campusId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "accountStatus": {
+                    "type": "string"
+                  },
+                  "studentVerificationStatus": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
       "StaffDispute": {
         "allOf": [
           {
@@ -20536,7 +20574,7 @@
               "decisions": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/DisputeDecisionRecord"
+                  "$ref": "#/components/schemas/Decision"
                 }
               },
               "milestones": {

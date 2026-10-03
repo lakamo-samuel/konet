@@ -281,15 +281,13 @@ export class VerificationsService {
         .update(users)
         .set({ studentVerificationStatus: "pending", updatedAt: new Date() })
         .where(eq(users.id, userId));
-      await tx
-        .insert(auditEvents)
-        .values({
-          actorId: userId,
-          action: "student_verification.submitted",
-          resourceType: "student_verification",
-          resourceId: row.id,
-          details: { method: input.method },
-        });
+      await tx.insert(auditEvents).values({
+        actorId: userId,
+        action: "student_verification.submitted",
+        resourceType: "student_verification",
+        resourceId: row.id,
+        details: { method: input.method },
+      });
       return this.view(row, null, evidence.id);
     });
   }
@@ -378,44 +376,38 @@ export class VerificationsService {
             verifiedEmail: email,
           })
           .returning();
-      await tx
-        .insert(verificationChallenges)
-        .values({
-          id,
-          verificationId: row.id,
-          userId,
-          universityId: user.universityId,
-          campusId: user.campusId,
-          email,
-          codeHash: this.hash(`code:${id}:${code}`),
-          expiresAt,
-          createdAt: now,
-        });
-      await tx
-        .insert(emailOutbox)
-        .values({
-          userId,
-          idempotencyKey: `student-verification:${id}`,
-          payloadCiphertext: this.email.encrypt({
-            to: email,
-            subject: "Verify your Konet student account",
-            text: `Your Konet verification code is ${code}. It expires in 10 minutes. Do not share it. If you did not request this, ignore this email.`,
-          }),
-          expiresAt,
-        });
+      await tx.insert(verificationChallenges).values({
+        id,
+        verificationId: row.id,
+        userId,
+        universityId: user.universityId,
+        campusId: user.campusId,
+        email,
+        codeHash: this.hash(`code:${id}:${code}`),
+        expiresAt,
+        createdAt: now,
+      });
+      await tx.insert(emailOutbox).values({
+        userId,
+        idempotencyKey: `student-verification:${id}`,
+        payloadCiphertext: this.email.encrypt({
+          to: email,
+          subject: "Verify your Konet student account",
+          text: `Your Konet verification code is ${code}. It expires in 10 minutes. Do not share it. If you did not request this, ignore this email.`,
+        }),
+        expiresAt,
+      });
       await tx
         .update(users)
         .set({ studentVerificationStatus: "pending", updatedAt: now })
         .where(eq(users.id, userId));
-      await tx
-        .insert(auditEvents)
-        .values({
-          actorId: userId,
-          action: "student_verification.email_requested",
-          resourceType: "student_verification",
-          resourceId: row.id,
-          details: {},
-        });
+      await tx.insert(auditEvents).values({
+        actorId: userId,
+        action: "student_verification.email_requested",
+        resourceType: "student_verification",
+        resourceId: row.id,
+        details: {},
+      });
       return {
         challengeId: id,
         expiresAt,
@@ -541,26 +533,22 @@ export class VerificationsService {
       .insert(verificationDecisions)
       .values({ verificationId: row.id, actorId, decision, reason, source })
       .returning();
-    await tx
-      .insert(auditEvents)
-      .values({
-        actorId,
-        action: "student_verification.decided",
-        resourceType: "student_verification",
-        resourceId: row.id,
-        reason,
-        details: { decision, source },
-      });
-    await tx
-      .insert(notifications)
-      .values({
-        userId: row.userId,
-        type: "student_verification",
-        title: "Student verification updated",
-        body: reason,
-        resourceType: "student_verification",
-        resourceId: row.id,
-      });
+    await tx.insert(auditEvents).values({
+      actorId,
+      action: "student_verification.decided",
+      resourceType: "student_verification",
+      resourceId: row.id,
+      reason,
+      details: { decision, source },
+    });
+    await tx.insert(notifications).values({
+      userId: row.userId,
+      type: "student_verification",
+      title: "Student verification updated",
+      body: reason,
+      resourceType: "student_verification",
+      resourceId: row.id,
+    });
     return {
       id: result.id,
       resourceType: "student_verification",
@@ -617,7 +605,21 @@ export class VerificationsService {
         "Verification not found.",
         404,
       );
-    return this.view(result.row, result.reason, result.uploadId);
+    const [applicant] = await this.db
+      .select({
+        id: users.id,
+        fullName: users.fullName,
+        universityId: users.universityId,
+        campusId: users.campusId,
+        accountStatus: users.accountStatus,
+        studentVerificationStatus: users.studentVerificationStatus,
+      })
+      .from(users)
+      .where(eq(users.id, result.row.userId));
+    return {
+      ...this.view(result.row, result.reason, result.uploadId),
+      applicant,
+    };
   }
   async decide(actorId: string, id: string, input: DecisionInput) {
     const [initial] = await this.db

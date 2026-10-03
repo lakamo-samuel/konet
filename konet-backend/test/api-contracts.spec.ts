@@ -60,16 +60,14 @@ describe("v1 frontend API contracts", () => {
     );
     app.useGlobalFilters(new DomainExceptionFilter());
     await app.listen(0, "127.0.0.1");
-    token = await app
-      .get(JwtService)
-      .signAsync(
-        {
-          userId: "00000000-0000-4000-8000-000000000001",
-          sid: "00000000-0000-4000-8000-000000000002",
-          type: "access",
-        },
-        { secret: app.get(ConfigService).getOrThrow("JWT_ACCESS_SECRET") },
-      );
+    token = await app.get(JwtService).signAsync(
+      {
+        userId: "00000000-0000-4000-8000-000000000001",
+        sid: "00000000-0000-4000-8000-000000000002",
+        type: "access",
+      },
+      { secret: app.get(ConfigService).getOrThrow("JWT_ACCESS_SECRET") },
+    );
   });
   afterAll(async () => {
     await app?.close();
@@ -115,57 +113,8 @@ describe("v1 frontend API contracts", () => {
     await request(app.getHttpServer()).get("/api/v1/admin/users").expect(401);
   });
 
-  it("fails closed for every valid contract-only route without calling database operations", async () => {
-    function sample(schema: Record<string, any>): any {
-      if (schema.enum) return schema.enum[0];
-      if (schema.type === "object")
-        return Object.fromEntries(
-          (schema.required ?? []).map((key: string) => [
-            key,
-            sample(schema.properties[key]),
-          ]),
-        );
-      if (schema.type === "array") return [sample(schema.items)];
-      if (schema.type === "integer") return Math.max(schema.minimum ?? 1, 1);
-      if (schema.type === "boolean") return true;
-      if (schema.format === "uuid")
-        return "00000000-0000-4000-8000-000000000001";
-      if (schema.format === "email") return "student@example.com";
-      if (schema.format === "uri") return "https://example.com/image.png";
-      if (schema.format === "date-time") return "2026-10-01T12:00:00.000Z";
-      if (schema.pattern) return "0123456789";
-      return "a".repeat(Math.max(schema.minLength ?? 1, 10));
-    }
-    for (const route of routeContracts.filter((route) => !route.existing)) {
-      const path = `/api/v1/${route.path}`.replace(/\{(\w+)\}/g, (_, name) =>
-        name === "step"
-          ? "profile"
-          : name === "gateway"
-            ? "candidate"
-            : "00000000-0000-4000-8000-000000000001",
-      );
-      const client = request(app.getHttpServer()) as any;
-      const req = client[route.method](path).set(
-        "Authorization",
-        `Bearer ${token}`,
-      );
-      if (route.body) req.send(sample(contractSchemas[route.body]));
-      const response = await req;
-      expect({
-        route: `${route.method} ${path}`,
-        status: response.status,
-        body: response.body,
-      }).toEqual({
-        route: `${route.method} ${path}`,
-        status: 501,
-        body: {
-          statusCode: 501,
-          code: "ENDPOINT_NOT_IMPLEMENTED",
-          message: `${route.summary} is contract-only; backend implementation is pending.`,
-          path,
-        },
-      });
-    }
+  it("has no remaining contract-only route", () => {
+    expect(routeContracts.filter((route) => !route.existing)).toEqual([]);
   });
 
   it("validates required fields, UUIDs, file size, and unknown request fields", async () => {

@@ -1,3 +1,4 @@
+import { CloudinaryGateway } from "../src/modules/uploads/cloudinary.gateway";
 import { ConfigService } from "@nestjs/config";
 import { TOTP } from "otpauth";
 import "reflect-metadata";
@@ -149,6 +150,54 @@ describeDatabase("staff authenticator PostgreSQL API integration", () => {
       .send({ password: "directory-test-password" })
       .expect(201);
   }
+  it("requires reviewer MFA for another person's private document while preserving owner access", async () => {
+    const [student] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.email, "student@example.com"));
+    const [verification] = await db
+      .insert(schema.studentVerifications)
+      .values({
+        userId: student.id,
+        universityId,
+        campusId,
+        method: "student_id",
+      })
+      .returning();
+    const [upload] = await db
+      .insert(schema.uploads)
+      .values({
+        userId: student.id,
+        objectKey: "private-test-evidence",
+        purpose: "student_evidence",
+        contentType: "image/png",
+        expectedBytes: 100,
+        status: "ready",
+        verificationId: verification.id,
+        expiresAt: new Date(Date.now() + 600000),
+        retainUntil: new Date(Date.now() + 86400000),
+      })
+      .returning();
+    const download = jest
+      .spyOn(app.get(CloudinaryGateway), "download")
+      .mockReturnValue({
+        downloadUrl: "https://api.cloudinary.com/test-download",
+        expiresAt: new Date(Date.now() + 300000),
+      });
+    try {
+      await api("get", `uploads/${upload.id}/download`).expect(403);
+      await api("get", `uploads/${upload.id}/download`, studentToken).expect(
+        200,
+      );
+      const started = await enrollment();
+      const code = new TOTP({ secret: started.body.secret }).generate();
+      await api("post", "me/staff-security/confirm").send({ code }).expect(201);
+      await api("get", `uploads/${upload.id}/download`).expect(200);
+      expect(download).toHaveBeenCalledTimes(2);
+    } finally {
+      download.mockRestore();
+    }
+  });
   it("requires MFA before staff data, but allows the setup flow only for staff", async () => {
     const denied = await api("get", "admin/users").expect(403);
     expect(denied.body.code).toBe("STAFF_MFA_REQUIRED");
@@ -177,12 +226,10 @@ describeDatabase("staff authenticator PostgreSQL API integration", () => {
     await api("post", "me/staff-security/verify")
       .send({ code: recovery })
       .expect(422);
-    const second = await app
-      .get(AuthService)
-      .login({
-        email: "admin@example.com",
-        password: "directory-test-password",
-      });
+    const second = await app.get(AuthService).login({
+      email: "admin@example.com",
+      password: "directory-test-password",
+    });
     await api("get", "admin/users", second.accessToken).expect(403);
     await db
       .update(schema.sessions)
