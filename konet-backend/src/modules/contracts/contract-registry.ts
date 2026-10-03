@@ -3539,6 +3539,7 @@ export const contractSchemas: Record<string, SchemaObject> = {
       reason: {
         type: "string",
         minLength: 3,
+        maxLength: 2000,
         example: "The submitted document needs a clearer photograph.",
       },
     },

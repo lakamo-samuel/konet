@@ -1,6 +1,6 @@
 # Backend API contract handoff
 
-The backend registers **153 operations** under `/api/v1`: 146 implemented handlers and 7 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
+The backend registers **158 implemented operations** under `/api/v1`. There are no remaining contract-only handlers. Configured integrations and deployment verification are still required; an implemented endpoint is not a guarantee that external credentials are present.
 
 - Swagger UI: `http://localhost:4000/api/docs`
 - OpenAPI JSON: `http://localhost:4000/api/docs/json`
@@ -10,11 +10,9 @@ The backend registers **153 operations** under `/api/v1`: 146 implemented handle
 
 ## How the team should use this
 
-The frontend developer can generate client types or build API adapters and mocks from the success schemas in Swagger/OpenAPI. Contract-only endpoints currently return **501 `ENDPOINT_NOT_IMPLEMENTED`**, so they cannot yet provide successful data to live frontend screens. Use the documented success schemas for frontend mocks until the backend developer implements each handler.
+The frontend developer can generate client types or build API adapters from the success schemas in Swagger/OpenAPI. The fixed registry documents required/optional fields, validation, authentication, success schemas and error responses. Domain controllers implement every registered operation; the old contract-only controller has been removed.
 
-Each operation has required/optional input fields, validation constraints, path/query parameters, authentication, target success response, error responses, and `x-implementation-status`. Status values are `implemented` and `contract-only`; implemented integrations can still require credentials. Existing handlers remain in their domain modules; new stubs live in `konet-backend/src/modules/contracts/contracts.controller.ts`. When implementing a stub, move its route into the relevant domain controller, remove the stub, and set its registry `existing` flag to true. Update the response/input contract if behavior changes, then regenerate the snapshot.
-
-Implemented directory, account lookup, audit, and staff-role routes require a live administrator role from the database. Student and provider review routes now require an admin or reviewer role. Other admin routes remain contract-only and return 501. See the [verification integration guide](backend-verification.md). Read the [staff setup guide](backend-universities.md) to bootstrap the first admin. Paystack charge webhooks now validate the raw-body signature and verify transactions server-side; see the [payment guide](backend-payments.md). No client-supplied status can fund a payment or approve verification.
+Staff endpoints require current database roles and production session MFA. Administrators manage directory/accounts/audits; administrators or reviewers handle verification; administrators or finance staff handle disputes, payments, settlements, reports and reconciliation. See [staff dashboard setup](admin-dashboard.md) for bootstrap, authenticator enrollment, permissions and financial semantics. No client-supplied status can fund a payment or approve verification.
 
 Live messaging uses Socket.IO namespace `/chat` on the backend origin, with transport path `/socket.io`. See the [collaboration guide](backend-collaboration.md) for events, authentication, acknowledgements and frontend integration. REST routes support history and reconnect recovery.
 
@@ -58,8 +56,8 @@ Live messaging uses Socket.IO namespace `/chat` on the backend origin, with tran
 - Provider category/price filters are implemented and must match the same active service. See the [catalog guide](backend-catalog.md).
 - Quote acceptance is transactional and retry-safe: repeating acceptance of the same quote returns the original job. See the [hiring guide](backend-hiring.md).
 - Client confirmation atomically queues payout and sets payment to release_pending. Only server-verified transfers mark funds released. Finance-authorized full refunds are durably queued. See the [collaboration guide](backend-collaboration.md).
-- The existing frontend mock statuses differ from backend statuses. Use the OpenAPI job, payment, verification, and availability enums.
-- Permissions for remaining contract-only resources, financial reconciliation and reporting remain unfinished. New quotes snapshot the implemented 10% commission; see [commission policy](backend-commission.md).
+- The frontend uses canonical backend statuses. Use the OpenAPI job, payment, verification, and availability enums.
+- All staff permissions, financial reconciliation and reporting are implemented; live provider credentials and deployment verification remain required. New quotes snapshot the implemented 10% commission; see [commission policy](backend-commission.md).
 
 - Student verification and provider onboarding/review are implemented; live email and evidence uploads need Resend and Cloudinary malware moderation configured. See the [verification setup guide](backend-verification.md) and [provider onboarding guide](backend-provider-onboarding.md).
 
@@ -128,22 +126,22 @@ All paths are relative to `/api/v1`. Request and success schema names refer to O
 | GET | `/admin/providers/{id}` | admin/reviewer | — | 200 ProviderReviewDetail | Existing handler |
 | POST | `/admin/providers/{id}/decision` | admin/reviewer | ProviderDecisionInput | 201 ProviderReviewDecision | Existing handler |
 | GET | `/admin/student-verifications` | admin/reviewer | — | 200 studentVerifications[] | Existing handler |
-| GET | `/admin/student-verifications/{id}` | admin/reviewer | — | 200 studentVerifications | Existing handler |
+| GET | `/admin/student-verifications/{id}` | admin/reviewer | — | 200 StudentReviewDetail | Implemented |
 | POST | `/admin/student-verifications/{id}/decision` | admin/reviewer | DecisionInput | 201 Decision | Existing handler |
 | GET | `/admin/disputes` | admin or finance | — | 200 disputes[] | Implemented |
-| GET | `/admin/disputes/{id}` | admin or finance | — | 200 disputes | Implemented |
-| GET | `/admin/payments` | admin | — | 200 payments[] | Contract only (501) |
-| GET | `/admin/payments/{id}` | admin | — | 200 payments | Contract only (501) |
+| GET | `/admin/disputes/{id}` | admin or finance | — | 200 StaffDispute | Implemented |
+| GET | `/admin/payments` | admin or finance | — | 200 payments[] | Implemented |
+| GET | `/admin/payments/{id}` | admin or finance | — | 200 payments | Implemented |
 | GET | `/admin/payouts` | admin or finance | — | 200 Payout[] | Implemented |
 | GET | `/admin/payouts/{id}` | admin or finance | — | 200 Payout | Implemented |
-| PATCH | `/admin/users/{id}/status` | admin | AccountStatusInput | 200 user | Contract only (501) |
+| PATCH | `/admin/users/{id}/status` | admin | AccountStatusInput | 200 user | Implemented |
 | POST | `/admin/disputes/{id}/decision` | admin or finance | DisputeDecisionInput | 201 Decision | Implemented |
 | POST | `/admin/payments/{id}/refunds` | admin or finance | RefundInput | 202 Refund | Implemented |
 | POST | `/admin/payouts/{id}/retry` | admin or finance | ReasonInput | 202 Payout | Implemented |
-| POST | `/admin/reconciliations` | admin | ReconciliationInput | 202 Reconciliation | Contract only (501) |
-| GET | `/admin/reconciliations` | admin | — | 200 Reconciliation[] | Contract only (501) |
-| GET | `/admin/reconciliations/{id}` | admin | — | 200 Reconciliation | Contract only (501) |
-| GET | `/admin/reports` | admin | — | 200 Report | Contract only (501) |
+| POST | `/admin/reconciliations` | admin or finance | ReconciliationInput | 202 Reconciliation | Implemented |
+| GET | `/admin/reconciliations` | admin or finance | — | 200 Reconciliation[] | Implemented |
+| GET | `/admin/reconciliations/{id}` | admin or finance | — | 200 Reconciliation | Implemented |
+| GET | `/admin/reports` | admin or finance | — | 200 Report | Implemented |
 | GET | `/admin/categories` | admin | — | 200 serviceCategories[] | Existing handler |
 | POST | `/admin/categories` | admin | CategoryInput | 201 serviceCategories | Existing handler |
 | PATCH | `/admin/categories/{id}` | admin | CategoryUpdateInput | 200 serviceCategories | Existing handler |
@@ -384,3 +382,5 @@ Dispute reads and admin/finance final resolution are implemented; see [dispute i
 Student profile editing, email changes and account deactivation are implemented; see [account management](backend-account-management.md).
 
 Contact submission and participant job review lookup are implemented; see [integration guide](backend-contact-and-reviews.md). Contact requires SUPPORT_EMAIL and the existing Resend settings.
+
+Staff security routes: `GET /me/staff-security`, `POST /me/staff-security/enrollment`, `POST /me/staff-security/confirm`, and `POST /me/staff-security/verify`. Administrator directory detail: `GET /admin/universities/{id}` includes inactive entries. See Swagger for their full request/response contracts.

@@ -33,7 +33,7 @@ async function main() {
       .setTitle("Konet API")
       .setVersion("1.0")
       .setDescription(
-        "Frontend integration contract. [contract only] endpoints currently return 501. Paystack checkout requires PAYSTACK_SECRET_KEY; empty credentials return 503. Money is integer NGN kobo; timestamps are ISO 8601; lists are arrays.",
+        "Frontend integration contract. All registered routes are implemented; configured integrations remain required. Paystack checkout requires PAYSTACK_SECRET_KEY; empty credentials return 503. Money is integer NGN kobo; timestamps are ISO 8601; lists are arrays.",
       )
       .addBearerAuth()
       .addServer("http://localhost:4000", "Local")

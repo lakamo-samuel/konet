@@ -26,12 +26,12 @@ Active admin/finance staff submit the full original `amountMinor` and a `reason`
 
 The transaction cancels the job and durably queues the refund. HTTP 202 acknowledges the queue, not returned money. The worker verifies provider ID, original transaction, amount, currency and local marker. Only verified `processed` status marks payment `refunded`. Participants read `/jobs/{jobId}/refunds`.
 
-If creation has an ambiguous outcome without a provider ID, the worker never blindly creates a second refund. A signed, independently verified refund webhook can recover it through the local marker. Otherwise reconciliation/manual operational recovery is needed; reconciliation endpoints remain contract-only.
+If creation has an ambiguous outcome without a provider ID, the worker never blindly creates a second refund. A signed, independently verified refund webhook can recover it through the local marker. Otherwise manual operational recovery is needed when no provider identifier exists. Verification-only reconciliation is implemented for recorded references; see [admin operations](admin-dashboard.md). It never blindly creates a second refund.
 
 ## Events and remaining work
 
 Paystack uses `/webhooks/payments/paystack` and `x-paystack-signature`. The API checks raw-body HMAC-SHA512 and verifies relevant financial details with Paystack. Repeated events cannot duplicate financial transitions. Audits and participant notifications commit with financial changes; Socket.IO events publish after commit.
 
-Reconciliation, partial refunds and operational recovery tooling remain unfinished. Collection and ledger states do not establish regulated escrow. New quote commission is 10%, with transaction fees absorbed by Konet; see [commission policy](backend-commission.md).
+Verification-only durable reconciliation is implemented; partial refunds and broader operational recovery tooling remain outside the implemented scope. See [admin operations](admin-dashboard.md). Collection and ledger states do not establish regulated escrow. New quote commission is 10%, with transaction fees absorbed by Konet; see [commission policy](backend-commission.md).
 
 Admin/finance dispute outcomes can also authorize a payout or full refund. See [dispute integration](backend-disputes.md).

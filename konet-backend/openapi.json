@@ -19417,7 +19417,7 @@
   },
   "info": {
     "title": "Konet API",
-    "description": "Frontend integration contract. [contract only] endpoints currently return 501. Paystack checkout requires PAYSTACK_SECRET_KEY; empty credentials return 503. Money is integer NGN kobo; timestamps are ISO 8601; lists are arrays.\n\nLive chat uses Socket.IO at /chat (transport path /socket.io). Handshake auth: {ticket} from POST /auth/socket-ticket (30-second single-use ticket), or {token: accessToken} for trusted clients. Client events with acknowledgements: conversation.join/leave/read {conversationId}, message.send {conversationId, content}. Server events: message.new, conversation.read, notification.new. REST routes load history and recover after reconnect. See docs/backend-collaboration.md for the frontend example and delivery limits.",
+    "description": "Frontend integration contract. All registered routes are implemented; configured integrations remain required. Paystack checkout requires PAYSTACK_SECRET_KEY; empty credentials return 503. Money is integer NGN kobo; timestamps are ISO 8601; lists are arrays.\n\nLive chat uses Socket.IO at /chat (transport path /socket.io). Handshake auth: {ticket} from POST /auth/socket-ticket (30-second single-use ticket), or {token: accessToken} for trusted clients. Client events with acknowledgements: conversation.join/leave/read {conversationId}, message.send {conversationId, content}. Server events: message.new, conversation.read, notification.new. REST routes load history and recover after reconnect. See docs/backend-collaboration.md for the frontend example and delivery limits.",
     "version": "1.0",
     "contact": {}
   },
@@ -19752,6 +19752,7 @@
           "reason": {
             "type": "string",
             "minLength": 3,
+            "maxLength": 2000,
             "example": "The submitted document needs a clearer photograph."
           }
         },

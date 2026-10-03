@@ -15,7 +15,7 @@ The REST API is rooted at `/api/v1`; Swagger is at `/api/docs`; health is at `/a
 
 ## Frontend integration contracts
 
-All planned routes are registered and documented: 152 operations, including 7 contract-only endpoints. Swagger specifies authentication, required and optional fields, validation, success schemas, and errors. New endpoints return `501 ENDPOINT_NOT_IMPLEMENTED` until their services are implemented; Paystack checkout returns 503 until its secret key is configured. Documented success schemas support frontend client generation and mocks, rather than successful live calls to unfinished routes.
+All 158 registered operations are implemented and documented. Swagger specifies authentication, required and optional fields, validation, success schemas and errors. External services still require configured credentials; Paystack checkout returns 503 until its secret key is configured. Staff endpoints require live roles and production MFA. See the [staff dashboard and operations guide](../docs/admin-dashboard.md) for first-admin bootstrap, authenticator setup, reports and durable reconciliation.
 
 See the [API handoff and full route inventory](../docs/backend-api-contract.md). Share [openapi.json](openapi.json) with the frontend developer, or fetch `/api/docs/json`. Run `npm run docs:export` to regenerate the offline snapshot without a database or running API.
 
@@ -23,7 +23,7 @@ See the [API handoff and full route inventory](../docs/backend-api-contract.md).
 
 Access tokens are short-lived. Refresh tokens are held in an HttpOnly cookie, hashed in PostgreSQL, rotated atomically on every refresh, and revocable. Access tokens are bound to a live session; logout and password changes revoke access immediately. Reusing a rotated refresh token revokes its session family. Protected resources validate the current user against request, provider, job, conversation, notification, review, and dispute ownership. Quote acceptance is retry-safe and creates the job, payment, and participant conversation in one database transaction, reinforced with unique constraints. See the [hiring integration guide](../docs/backend-hiring.md).
 
-Provider publishing requires a verified student and an active provider profile. Payment records model pending, held, released, refunded, and disputed states. The included gateway abstraction deliberately remains unconfigured until a real gateway and webhook signature verifier are supplied; the API never claims money is protected without a verified gateway event.
+Provider publishing requires a verified student and an active provider profile. Payment records model pending, held, released, refunded, and disputed states. The implemented Paystack gateway requires merchant credentials and verified webhook evidence; the API never marks money received or paid out from client-supplied status.
 
 ## Commands
 
@@ -47,7 +47,7 @@ Catalog/discovery filters and administrator category management are implemented.
 
 Collaboration uses participant-only Socket.IO messaging, persisted conversation reads, notification preferences, milestones and guarded job actions. See the [collaboration guide](../docs/backend-collaboration.md).
 
-Paystack collection, verification and signed charge webhooks are implemented. Set PAYSTACK_SECRET_KEY and optional PAYMENT_CALLBACK_URL; see the [payment integration guide](../docs/backend-payments.md). Verified payout accounts, client-approved transfers and finance-authorized full refunds are implemented; see the [settlement guide](../docs/backend-settlements.md). Reconciliation remains unfinished.
+Paystack collection, verification and signed charge webhooks are implemented. Set PAYSTACK_SECRET_KEY and optional PAYMENT_CALLBACK_URL; see the [payment integration guide](../docs/backend-payments.md). Verified payout accounts, client-approved transfers and finance-authorized full refunds are implemented; see the [settlement guide](../docs/backend-settlements.md). Durable verification-only reconciliation is implemented; see the [admin operations guide](../docs/admin-dashboard.md).
 
 Participant dispute cases and admin/finance resolution are implemented; see the [dispute guide](../docs/backend-disputes.md).
 

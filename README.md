@@ -2,7 +2,7 @@
 
 Konet is a student service marketplace. A student can discover another student's services, send a brief, receive a quote, hire the provider, discuss the job, confirm delivery, and review the work. Providers can build a profile, publish services, respond to requests, and manage jobs. The product is designed around university identity, provider trust, and protected payments.
 
-> **Current state:** The backend has 146 implemented endpoints, with seven admin endpoints pending. Frontend authentication, verification, provider onboarding, hiring/jobs, payments/earnings, Socket.IO messaging, reviews, participant disputes and account/provider settings are connected. New quotes carry a saved 10% commission. Admin frontend work remains paused. Deployment verification, escrow custody and financial reconciliation remain outstanding. See [frontend integration](docs/frontend-api-integration.md) for setup.
+> **Current state:** The backend implements all 158 registered endpoints. Frontend marketplace workflows and the separate `/admin` staff dashboard are connected. Staff access requires live roles and production MFA; finance reports and durable reconciliation are implemented. New quotes carry a saved 10% commission. Deployment verification, actual escrow custody and shared infrastructure for multi-instance messaging remain outstanding. See [staff dashboard setup](docs/admin-dashboard.md) and [frontend integration](docs/frontend-api-integration.md).
 
 ## Contents
 
@@ -144,7 +144,7 @@ The [backend requirements](docs/backend-requirements.md) and [frontend requireme
 | Backend async jobs | BullMQ + Redis when needed | Email delivery, payment event processing, reconciliation |
 | Payment provider | Paystack for NGN collection and transfers | Hosted checkout, backend verification and queued payouts; merchant configuration required |
 
-University verification should use a delivered one-time code/link for approved university email domains, plus manual document review for campuses without dependable student email. A submitted form is only `pending`; backend approval sets `verified`. The payment target is collection before work and provider payout only after client confirmation or an authorized dispute decision. Hosted checkout, signed webhooks, server-side verification, an idempotent ledger, and payout records are required. Payment splits alone do not establish escrow. Collection, verification and queued payouts are implemented; live merchant configuration and reconciliation remain deployment/operational work; see the [backend](docs/backend-requirements.md) and [frontend](docs/frontend-requirements.md) requirements for detail.
+University verification should use a delivered one-time code/link for approved university email domains, plus manual document review for campuses without dependable student email. A submitted form is only `pending`; backend approval sets `verified`. The payment target is collection before work and provider payout only after client confirmation or an authorized dispute decision. Hosted checkout, signed webhooks, server-side verification, an idempotent ledger, and payout records are required. Payment splits alone do not establish escrow. Collection, verification and queued payouts are implemented; live merchant configuration and reconciliation review remain deployment/operational work; see the [backend](docs/backend-requirements.md) and [frontend](docs/frontend-requirements.md) requirements for detail.
 
 ## Database schema
 
@@ -206,7 +206,7 @@ stateDiagram-v2
     disputed --> cancelled
 ```
 
-The API creates a `pending` payment row when a quote is accepted. Payment states in the schema include `pending`, `processing`, `funded`, `held`, `release_pending`, `released`, `failed`, `refunded`, and `disputed`. Paystack hosted checkout, signed charge webhooks and server-side verification are implemented. Checkout requires PAYSTACK_SECRET_KEY; missing credentials return 503. Verified collection atomically funds the payment and schedules the job. Verified provider accounts, durable client-approved payouts and finance-authorized full refunds are implemented. Client confirmation sets release_pending; only verified transfer success marks released. Reconciliation remains unfinished. Transfers default to disabled until merchant setup is ready; see [settlement integration](docs/backend-settlements.md).
+The API creates a `pending` payment row when a quote is accepted. Payment states in the schema include `pending`, `processing`, `funded`, `held`, `release_pending`, `released`, `failed`, `refunded`, and `disputed`. Paystack hosted checkout, signed charge webhooks and server-side verification are implemented. Checkout requires PAYSTACK_SECRET_KEY; missing credentials return 503. Verified collection atomically funds the payment and schedules the job. Verified provider accounts, durable client-approved payouts and finance-authorized full refunds are implemented. Client confirmation sets release_pending; only verified transfer success marks released. Durable verification-only reconciliation is implemented. Transfers default to disabled until merchant setup is ready; see [settlement integration](docs/backend-settlements.md).
 
 ## Local setup
 
@@ -268,7 +268,7 @@ Useful checks: `npm run typecheck`, `npm run lint`, and `npm run build` in eithe
 | Account settings | Profile/affiliation, email-code changes, password changes, deactivation and session clearing are connected | Validate Resend delivery and browser behavior |
 | Password recovery | Frontend recovery/reset forms call the implemented API; reset token remains in the URL fragment | Configure Resend and verify delivery in the deployment |
 
-Hiring, payment, dispute and account/provider settings screens use canonical backend fields and states. See [disputes](docs/frontend-disputes.md) and [settings](docs/frontend-settings.md). Admin UI remains paused; seven admin backend endpoints, financial reconciliation, escrow custody and deployment verification remain outstanding.
+Hiring, payment, dispute and account/provider settings screens use canonical backend fields and states. See [disputes](docs/frontend-disputes.md) and [settings](docs/frontend-settings.md). The separate admin dashboard, all admin endpoints and durable financial reconciliation are implemented. Actual escrow custody and deployment verification remain outstanding; see [staff setup](docs/admin-dashboard.md).
 
 ## Where to change things
 
@@ -284,6 +284,6 @@ Hiring, payment, dispute and account/provider settings screens use canonical bac
 
 See the backend's own [README](konet-backend/README.md) for its shorter operational summary. The frontend's [README](konet-frontend/README.md) is currently the generated Next.js starter document; this root README is the project-wide guide. The planned frontend experience is detailed in the [frontend requirements](docs/frontend-requirements.md).
 
-Paystack checkout, backend-confirmed payment status, provider bank accounts and earnings are connected on the frontend. See [frontend payments](docs/frontend-payments.md). Socket.IO messaging is connected; see [frontend messaging](docs/frontend-messaging.md). Completed-job reviews are connected; see [frontend reviews](docs/frontend-reviews.md). Disputes and account/provider settings are next; admin frontend work remains deferred.
+Paystack checkout, backend-confirmed payment status, provider bank accounts and earnings are connected on the frontend. See [frontend payments](docs/frontend-payments.md). Socket.IO messaging is connected; see [frontend messaging](docs/frontend-messaging.md). Completed-job reviews are connected; see [frontend reviews](docs/frontend-reviews.md). Disputes, account/provider settings and the separate staff dashboard are connected; deployment verification remains.
 
 Commission policy and preservation of existing zero-commission agreements are documented in [backend commission](docs/backend-commission.md). The frontend previews the backend policy before a provider submits a quote.
