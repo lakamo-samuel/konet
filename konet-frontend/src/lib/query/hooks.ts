@@ -1,4 +1,5 @@
 "use client";
+import { authenticationCommands } from "@/lib/auth/commands";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { command, query } from "@/data/access/client";
@@ -30,7 +31,7 @@ export function useDataCommand<K extends CommandName>(name: K) {
   return useMutation({
     mutationFn: (input: CommandInput<K>) => command(name, input),
     onSuccess: async () => {
-      if (["signIn", "signUp", "signOut", "resetPassword"].includes(name)) {
+      if (authenticationCommands.includes(name)) {
         cache.clear();
         router.refresh();
         return;

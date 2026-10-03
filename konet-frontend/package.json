@@ -14,7 +14,8 @@
     "test:uploads": "node test/private-upload.mjs",
     "test:money-input": "node test/money-input.mjs",
     "test:payment-redirect": "node test/payment-redirect.mjs",
-    "test:realtime": "node test/realtime.mjs"
+    "test:realtime": "node test/realtime.mjs",
+    "test:settings-client": "node test/settings-client.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.0",

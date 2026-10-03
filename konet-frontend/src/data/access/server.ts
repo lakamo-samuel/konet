@@ -1,3 +1,4 @@
+import { sessionEndingCommands } from "@/lib/auth/commands";
 import { redirect } from "next/navigation";
 import { DataError } from "./errors";
 import { authenticate, clearSession, logoutAuth } from "@/lib/auth/live";
@@ -77,5 +78,7 @@ export async function serverCommand<K extends CommandName>(
       return { accepted: true } as import("./contracts").CommandResult<K>;
     }
   }
-  return httpSource.command(name, input, await dataContext());
+  const result = await httpSource.command(name, input, await dataContext());
+  if (sessionEndingCommands.includes(name)) await clearSession();
+  return result;
 }

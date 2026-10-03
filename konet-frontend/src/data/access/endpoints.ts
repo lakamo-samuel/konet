@@ -1,3 +1,4 @@
+import type { EmailChangeChallenge } from "@/types/account-settings";
 import type { Dispute, DisputeDecision } from "@/types/disputes";
 import { socketConfiguration } from "@/lib/realtime/config";
 import type { RealtimeTicket, ReadResult } from "@/types/messaging";
@@ -214,6 +215,11 @@ const notification = (n: ApiNotification): Notification => {
 export const queryEndpoints: {
   [K in QueryName]: Endpoint<QueryContract[K][0], QueryContract[K][1]> | null;
 } = {
+  ownProviderProfile: {
+    method: "GET",
+    path: () => "/me/provider-profile",
+    decode: (d) => d as OwnProviderProfile,
+  },
   disputes: {
     method: "GET",
     path: () => "/disputes",
@@ -529,8 +535,62 @@ export const commandEndpoints: {
     decode: () => ({ accepted: true }),
   },
   signOut: null,
-  saveProfile: null,
-  saveProvider: null,
+  updateAccountProfile: {
+    method: "PATCH",
+    path: () => "/me/profile",
+    body: (i) => ({
+      fullName: i.fullName,
+      avatarUrl: i.avatarUrl,
+      universityId: i.universityId,
+      campusId: i.campusId,
+    }),
+    decode: () => ({ success: true }),
+  },
+  requestEmailChange: {
+    method: "POST",
+    path: () => "/me/email-change",
+    body: (i) => ({ email: i.email.trim(), password: i.password }),
+    decode: (d) => d as EmailChangeChallenge,
+  },
+  confirmEmailChange: {
+    method: "POST",
+    path: () => "/me/email-change/confirm",
+    body: (i) => ({ challengeId: i.challengeId, code: i.code }),
+    decode: () => ({ success: true }),
+  },
+  changePassword: {
+    method: "POST",
+    path: () => "/me/password",
+    body: (i) => ({
+      currentPassword: i.currentPassword,
+      newPassword: i.newPassword,
+    }),
+    decode: () => ({ success: true }),
+  },
+  deactivateAccount: {
+    method: "DELETE",
+    path: () => "/me/account",
+    body: (i) => ({ reason: i.reason.trim() }),
+    decode: () => ({ success: true }),
+  },
+  updateProviderSettings: {
+    method: "PATCH",
+    path: () => "/me/provider-profile",
+    body: (i) => ({
+      professionalTitle: i.professionalTitle,
+      bio: i.bio,
+      coverImageUrl: i.coverImageUrl,
+      responseTimeMinutes: i.responseTimeMinutes,
+      availability: i.availability,
+    }),
+    decode: (d) => d as OwnProviderProfile,
+  },
+  setProviderStatus: {
+    method: "PATCH",
+    path: () => "/me/provider-profile/status",
+    body: (i) => ({ status: i.status }),
+    decode: (d) => d as OwnProviderProfile,
+  },
   createRequest: {
     method: "POST",
     path: () => "/requests",

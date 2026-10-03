@@ -22,6 +22,25 @@ export function hiringFixture(providerId, ownerId, isPublished) {
     (row.clientId === user.id ||
       (row.providerId === providerId && user.id === ownerId));
   return {
+    hasObligations: (userId) =>
+      jobs.some(
+        (j) =>
+          (j.clientId === userId ||
+            (j.providerId === providerId && userId === ownerId)) &&
+          !["completed", "cancelled"].includes(j.status),
+      ) ||
+      payments.some(
+        (p) =>
+          (p.payerId === userId ||
+            (p.providerId === providerId && userId === ownerId)) &&
+          [
+            "processing",
+            "funded",
+            "held",
+            "release_pending",
+            "disputed",
+          ].includes(p.status),
+      ),
     resolveDispute: (caseId) => {
       const item = disputes.find((d) => d.id === caseId);
       item.status = "resolved_for_client";

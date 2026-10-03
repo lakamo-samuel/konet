@@ -1,3 +1,7 @@
+import {
+  authenticationCommands,
+  sessionEndingCommands,
+} from "@/lib/auth/commands";
 import axios from "axios";
 import { readAccessToken, saveAccessToken } from "@/lib/auth/transport";
 import { refreshSession } from "@/lib/auth/refresh-client";
@@ -41,11 +45,9 @@ http.interceptors.response.use(
       config &&
       !config.renewed &&
       ![
-        "signIn",
-        "signUp",
+        ...authenticationCommands,
         "forgotPassword",
-        "resetPassword",
-        "signOut",
+        "requestEmailChange",
       ].includes(commandName)
     ) {
       config.renewed = true;
@@ -98,6 +100,6 @@ export async function command<K extends CommandName>(
   });
   if (["signIn", "signUp"].includes(name))
     saveAccessToken(response.data.authentication?.accessToken);
-  if (["signOut", "resetPassword"].includes(name)) saveAccessToken();
+  if (sessionEndingCommands.includes(name)) saveAccessToken();
   return response.data.data;
 }

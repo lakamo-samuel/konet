@@ -3,6 +3,7 @@ import type { CommandName, QueryName } from "./contracts";
 type Rule = "string" | "number" | "boolean" | "strings" | "record" | "object";
 type Shape = Record<string, Rule>;
 const queryShapes: Record<QueryName, Shape> = {
+  ownProviderProfile: {},
   disputes: {},
   dispute: { id: "string" },
   disputeDecisions: { id: "string" },
@@ -79,12 +80,13 @@ const commandShapes: Record<CommandName, Shape> = {
   forgotPassword: { email: "string" },
   resetPassword: { token: "string", password: "string" },
   signOut: {},
-  saveProfile: { name: "string", email: "string", campus: "string" },
-  saveProvider: {
-    professionalTitle: "string",
-    responseTime: "string",
-    available: "boolean",
-  },
+  updateAccountProfile: {},
+  requestEmailChange: { email: "string", password: "string" },
+  confirmEmailChange: { challengeId: "string", code: "string" },
+  changePassword: { currentPassword: "string", newPassword: "string" },
+  deactivateAccount: { reason: "string" },
+  updateProviderSettings: {},
+  setProviderStatus: { status: "string" },
   createRequest: {
     providerId: "string",
     serviceId: "string",
@@ -174,6 +176,86 @@ export function validateOperation(
       "Provide a reason of 3–100 characters and a description of 20–5,000 characters.",
     );
   if (
+    ["confirmEmailChange", "confirmVerificationCode"].includes(name) &&
+    !/^\d{6}$/.test(String(values.code))
+  )
+    throw new DataError("Enter the six-digit code from your email.");
+  if (
+    name === "requestEmailChange" &&
+    (String(values.password).length < 1 ||
+      String(values.password).length > 1024)
+  )
+    throw new DataError("Enter your current password.");
+  if (
+    name === "changePassword" &&
+    (!String(values.currentPassword).length ||
+      String(values.newPassword).length < 8)
+  )
+    throw new DataError(
+      "Enter your current password and a new password of at least eight characters.",
+    );
+  if (
+    name === "deactivateAccount" &&
+    (String(values.reason).trim().length < 3 ||
+      String(values.reason).trim().length > 2000)
+  )
+    throw new DataError("Provide a reason of 3–2,000 characters.");
+  if (
+    name === "setProviderStatus" &&
+    !["active", "paused"].includes(String(values.status))
+  )
+    throw new DataError("Choose active or paused status.");
+  if (name === "updateAccountProfile" || name === "updateProviderSettings") {
+    const allowed =
+      name === "updateAccountProfile"
+        ? ["fullName", "avatarUrl", "universityId", "campusId"]
+        : [
+            "professionalTitle",
+            "bio",
+            "coverImageUrl",
+            "responseTimeMinutes",
+            "availability",
+          ];
+    if (!allowed.some((key) => values[key] !== undefined))
+      throw new DataError("Change at least one profile field.");
+    for (const key of allowed)
+      if (
+        values[key] !== undefined &&
+        (key === "responseTimeMinutes"
+          ? !Number.isInteger(values[key]) ||
+            Number(values[key]) < 1 ||
+            Number(values[key]) > 10080
+          : typeof values[key] !== "string")
+      )
+        throw new DataError(`Please check ${key}.`);
+    for (const [key, min, max] of [
+      ["fullName", 2, 150],
+      ["professionalTitle", 3, 255],
+      ["bio", 40, 10000],
+    ] as const)
+      if (
+        values[key] !== undefined &&
+        (String(values[key]).trim().length < min ||
+          String(values[key]).length > max)
+      )
+        throw new DataError(`Please check ${key}.`);
+    for (const key of ["avatarUrl", "coverImageUrl"])
+      if (
+        values[key] !== undefined &&
+        (!URL.canParse(String(values[key])) ||
+          new URL(String(values[key])).protocol !== "https:" ||
+          String(values[key]).length > 2048)
+      )
+        throw new DataError("Use a valid HTTPS image URL.");
+    if (
+      values.availability !== undefined &&
+      !["available", "unavailable", "limited"].includes(
+        String(values.availability),
+      )
+    )
+      throw new DataError("Choose a valid availability.");
+  }
+  if (
     name === "sendMessage" &&
     (!String(values.content).trim() || String(values.content).length > 10000)
   )
@@ -184,11 +266,6 @@ export function validateOperation(
       !/^\d{10}$/.test(String(values.accountNumber)))
   )
     throw new DataError("Choose a bank and enter a ten-digit account number.");
-  if (
-    name === "confirmVerificationCode" &&
-    !/^\d{6}$/.test(String(values.code))
-  )
-    throw new DataError("Enter the six-digit code from your email.");
   if (
     name === "submitVerification" &&
     (!["student_id", "manual_document"].includes(String(values.method)) ||
@@ -218,7 +295,11 @@ export function validateOperation(
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)
   )
     throw new DataError("Enter a valid email address.");
-  if (typeof values.password === "string" && values.password.length < 8)
+  if (
+    typeof values.password === "string" &&
+    name !== "requestEmailChange" &&
+    values.password.length < 8
+  )
     throw new DataError("Use a password of at least 8 characters.");
   if (
     name === "closeRequest" &&

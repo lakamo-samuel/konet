@@ -1,3 +1,7 @@
+import type {
+  AccountProfileInput,
+  EmailChangeChallenge,
+} from "@/types/account-settings";
 import type { Dispute, DisputeDecision, DisputeStatus } from "@/types/disputes";
 import type { RealtimeTicket, ReadResult } from "@/types/messaging";
 import type {
@@ -58,6 +62,7 @@ export type SearchCriteria = {
   available?: boolean;
 };
 export type QueryContract = {
+  ownProviderProfile: [Record<string, never>, OwnProviderProfile];
   disputes: [{ offset?: number; status?: DisputeStatus }, Dispute[]];
   dispute: [{ id: string }, Dispute];
   disputeDecisions: [{ id: string }, DisputeDecision[]];
@@ -152,11 +157,27 @@ export type CommandContract = {
   forgotPassword: [{ email: string }, { accepted: boolean }];
   resetPassword: [{ token: string; password: string }, { accepted: boolean }];
   signOut: [Record<string, never>, { success: boolean }];
-  saveProfile: [{ name: string; email: string; campus: string }, User];
-  saveProvider: [
-    { professionalTitle: string; responseTime: string; available: boolean },
-    ProviderProfile,
+  updateAccountProfile: [AccountProfileInput, { success: boolean }];
+  requestEmailChange: [
+    { email: string; password: string },
+    EmailChangeChallenge,
   ];
+  confirmEmailChange: [
+    { challengeId: string; code: string },
+    { success: boolean },
+  ];
+  changePassword: [
+    { currentPassword: string; newPassword: string },
+    { success: boolean },
+  ];
+  deactivateAccount: [{ reason: string }, { success: boolean }];
+  updateProviderSettings: [
+    Partial<ProviderProfileInput> & {
+      availability?: "available" | "unavailable" | "limited";
+    },
+    OwnProviderProfile,
+  ];
+  setProviderStatus: [{ status: "active" | "paused" }, OwnProviderProfile];
   createRequest: [RequestInput, HiringRequest];
   createQuote: [QuoteInput, HiringQuote];
   acceptQuote: [{ quoteId: string }, HiringJob];

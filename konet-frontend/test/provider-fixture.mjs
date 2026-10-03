@@ -179,11 +179,33 @@ export function providerFixture(verification) {
         url.pathname === "/api/v1/me/provider-profile" &&
         method === "PATCH"
       ) {
-        Object.assign(profile, body, {
-          status: "draft",
-          reviewStatus: "not_submitted",
-          approvedAt: null,
-        });
+        assert.ok(
+          Object.keys(body).every((k) =>
+            [
+              "professionalTitle",
+              "bio",
+              "responseTimeMinutes",
+              "coverImageUrl",
+              "availability",
+            ].includes(k),
+          ),
+        );
+        const substantive = ["professionalTitle", "bio", "coverImageUrl"].some(
+          (k) => body[k] !== undefined,
+        );
+        Object.assign(
+          profile,
+          body,
+          ...(substantive
+            ? [
+                {
+                  status: "draft",
+                  reviewStatus: "not_submitted",
+                  approvedAt: null,
+                },
+              ]
+            : []),
+        );
         return reply(200, profile);
       }
       if (url.pathname.startsWith("/api/v1/me/provider-onboarding/steps/")) {
@@ -281,6 +303,17 @@ export function providerFixture(verification) {
         profile.reviewStatus = "pending";
         profile.reviewRevision++;
         return reply(202, profile);
+      }
+      if (url.pathname === "/api/v1/me/provider-profile/status") {
+        assert.equal(method, "PATCH");
+        assert.deepEqual(Object.keys(body), ["status"]);
+        if (!combined().canPublish)
+          return reply(403, {
+            code: "PROVIDER_APPROVAL_REQUIRED",
+            message: "Wait for admin approval.",
+          });
+        profile.status = body.status;
+        return reply(200, profile);
       }
       if (url.pathname.endsWith("/publish")) {
         if (!combined().canPublish)

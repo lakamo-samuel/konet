@@ -1,3 +1,4 @@
+import { accountFixture } from "./account-fixture.mjs";
 import { hiringFixture } from "./hiring-fixture.mjs";
 import { providerFixture } from "./provider-fixture.mjs";
 import { verificationFixture } from "./verification-fixture.mjs";
@@ -28,6 +29,7 @@ const users = new Map();
 let serial = 0;
 const access = new Map();
 const refresh = new Map();
+const accounts = accountFixture(users, access, refresh, university, hiring);
 let forgotAvailable = true;
 let registered;
 const issue = (user) => {
@@ -89,7 +91,7 @@ const backend = http.createServer(async (req, res) => {
   }
   if (url.pathname === "/api/v1/auth/login") {
     const found = users.get(body.email);
-    if (!found || found.password !== body.password)
+    if (!found || found.deactivated || found.password !== body.password)
       return send(401, {
         code: "INVALID_CREDENTIALS",
         message: "Invalid email or password.",
@@ -137,6 +139,7 @@ const backend = http.createServer(async (req, res) => {
       expiresAt: new Date(Date.now() + 30000).toISOString(),
     });
   }
+  if (accounts.handle(url, req.method, body, auth, send)) return;
   if (verification.handle(url, req.method, body, auth, send)) return;
   if (hiring.handle(url, req.method, body, auth, send)) return;
   if (provider.handle(url, req.method, body, auth, send)) return;
@@ -698,7 +701,11 @@ try {
   assert.equal(hiredQuote.commissionBasisPoints, 1000);
   assert.equal(hiredQuote.platformFeeMinor, 15005);
   assert.equal(hiredQuote.providerAmountMinor, 135045);
-  assert.deepEqual((await query("commissionPolicy", {})).json().data, { commissionBasisPoints: 1000, transactionFeePayer: "platform", rounding: "floor" });
+  assert.deepEqual((await query("commissionPolicy", {})).json().data, {
+    commissionBasisPoints: 1000,
+    transactionFeePayer: "platform",
+    rounding: "floor",
+  });
   checks++;
   assert.equal(
     (await command("acceptQuote", { quoteId: hiredQuote.id })).status,
@@ -713,7 +720,8 @@ try {
   ).json().data;
   assert.equal(acceptedJob.status, "awaiting_payment");
   assert.equal(acceptedJob.agreedAmountMinor, 150050);
-  const feePayment = (await query("payment", { jobId: acceptedJob.id })).json().data;
+  const feePayment = (await query("payment", { jobId: acceptedJob.id })).json()
+    .data;
   assert.equal(feePayment.platformFeeMinor, hiredQuote.platformFeeMinor);
   assert.equal(feePayment.providerAmountMinor, hiredQuote.providerAmountMinor);
   assert.equal(feePayment.amountMinor, 150050);
@@ -1079,41 +1087,112 @@ try {
     },
     password: "outsider-test-password",
   });
-  const disputeRequest = (await command("createRequest", hiringInput)).json().data;
-  await command("signIn", { email: "student@example.com", password: "original-test-password" });
-  const disputeQuote = (await command("createQuote", { requestId: disputeRequest.id, amountMinor: 10000, scope: ["Resolve service task"], expiresAt: new Date(Date.now()+86400000).toISOString() })).json().data;
-  await command("signIn", { email: "client@example.com", password: "client-test-password" });
-  const disputeJob = (await command("acceptQuote", { quoteId: disputeQuote.id })).json().data;
-  const caseInput = { jobId: disputeJob.id, reason: "Incomplete work", description: "The agreed deliverables have not been supplied." };
-  assert.equal((await command("openDispute", caseInput)).status,409);
-  assert.equal((await command("openDispute", { ...caseInput, description: "short" })).status,400);
+  const disputeRequest = (await command("createRequest", hiringInput)).json()
+    .data;
+  await command("signIn", {
+    email: "student@example.com",
+    password: "original-test-password",
+  });
+  const disputeQuote = (
+    await command("createQuote", {
+      requestId: disputeRequest.id,
+      amountMinor: 10000,
+      scope: ["Resolve service task"],
+      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+    })
+  ).json().data;
+  await command("signIn", {
+    email: "client@example.com",
+    password: "client-test-password",
+  });
+  const disputeJob = (
+    await command("acceptQuote", { quoteId: disputeQuote.id })
+  ).json().data;
+  const caseInput = {
+    jobId: disputeJob.id,
+    reason: "Incomplete work",
+    description: "The agreed deliverables have not been supplied.",
+  };
+  assert.equal((await command("openDispute", caseInput)).status, 409);
+  assert.equal(
+    (await command("openDispute", { ...caseInput, description: "short" }))
+      .status,
+    400,
+  );
   await command("checkout", { jobId: disputeJob.id });
   await command("verifyPayment", { jobId: disputeJob.id });
-  const disputeCase = (await command("openDispute", { ...caseInput, reason: "  Incomplete work  ", description: `  ${caseInput.description}  `, openedByUserId: "forged" })).json().data;
-  assert.equal(disputeCase.reason,caseInput.reason);
-  assert.equal(disputeCase.openedByUserId,clientId);
-  assert.equal((await command("openDispute", caseInput)).json().data.id,disputeCase.id);
-  assert.equal((await query("job",{ id: disputeJob.id })).json().data.status,"disputed");
-  assert.equal((await query("payment",{ jobId: disputeJob.id })).json().data.status,"disputed");
-  assert.equal((await query("disputes",{ status:"open" })).json().data[0].id,disputeCase.id);
-  assert.deepEqual((await query("disputes",{ offset:20 })).json().data,[]);
-  assert.deepEqual((await query("disputeDecisions",{ id:disputeCase.id })).json().data,[]);
+  const disputeCase = (
+    await command("openDispute", {
+      ...caseInput,
+      reason: "  Incomplete work  ",
+      description: `  ${caseInput.description}  `,
+      openedByUserId: "forged",
+    })
+  ).json().data;
+  assert.equal(disputeCase.reason, caseInput.reason);
+  assert.equal(disputeCase.openedByUserId, clientId);
+  assert.equal(
+    (await command("openDispute", caseInput)).json().data.id,
+    disputeCase.id,
+  );
+  assert.equal(
+    (await query("job", { id: disputeJob.id })).json().data.status,
+    "disputed",
+  );
+  assert.equal(
+    (await query("payment", { jobId: disputeJob.id })).json().data.status,
+    "disputed",
+  );
+  assert.equal(
+    (await query("disputes", { status: "open" })).json().data[0].id,
+    disputeCase.id,
+  );
+  assert.deepEqual((await query("disputes", { offset: 20 })).json().data, []);
+  assert.deepEqual(
+    (await query("disputeDecisions", { id: disputeCase.id })).json().data,
+    [],
+  );
   checks++;
-  await command("signIn", { email: "student@example.com", password: "original-test-password" });
-  assert.equal((await query("dispute",{ id:disputeCase.id })).json().data.id,disputeCase.id);
-  assert.equal((await command("openDispute",caseInput)).status,409);
-  assert.equal((await command("markJobComplete",{ jobId:disputeJob.id })).status,409);
+  await command("signIn", {
+    email: "student@example.com",
+    password: "original-test-password",
+  });
+  assert.equal(
+    (await query("dispute", { id: disputeCase.id })).json().data.id,
+    disputeCase.id,
+  );
+  assert.equal((await command("openDispute", caseInput)).status, 409);
+  assert.equal(
+    (await command("markJobComplete", { jobId: disputeJob.id })).status,
+    409,
+  );
   hiring.resolveDispute(disputeCase.id);
-  assert.equal((await query("dispute",{ id:disputeCase.id })).json().data.status,"resolved_for_client");
-  assert.equal((await query("disputeDecisions",{ id:disputeCase.id })).json().data[0].refundAmountMinor,10000);
+  assert.equal(
+    (await query("dispute", { id: disputeCase.id })).json().data.status,
+    "resolved_for_client",
+  );
+  assert.equal(
+    (await query("disputeDecisions", { id: disputeCase.id })).json().data[0]
+      .refundAmountMinor,
+    10000,
+  );
   checks++;
-  await command("signIn", { email: "outsider@example.com", password: "outsider-test-password" });
-  assert.equal((await query("dispute",{ id:disputeCase.id })).status,404);
-  assert.equal((await query("disputeDecisions",{ id:disputeCase.id })).status,404);
-  assert.deepEqual((await query("disputes",{})).json().data,[]);
-  assert.equal((await command("openDispute",caseInput)).status,404);
+  await command("signIn", {
+    email: "outsider@example.com",
+    password: "outsider-test-password",
+  });
+  assert.equal((await query("dispute", { id: disputeCase.id })).status, 404);
+  assert.equal(
+    (await query("disputeDecisions", { id: disputeCase.id })).status,
+    404,
+  );
+  assert.deepEqual((await query("disputes", {})).json().data, []);
+  assert.equal((await command("openDispute", caseInput)).status, 404);
   checks++;
-  await command("signIn", { email: "client@example.com", password: "client-test-password" });
+  await command("signIn", {
+    email: "client@example.com",
+    password: "client-test-password",
+  });
   const withdrawn = (await command("createRequest", hiringInput)).json().data;
   assert.equal(
     (
@@ -1285,6 +1364,246 @@ try {
     200,
   );
   checks++;
+  const ownProfile = (await query("ownProviderProfile")).json().data;
+  assert.equal(ownProfile.id, "00000000-0000-4000-8000-000000000021");
+  const responseUpdate = (
+    await command("updateProviderSettings", {
+      responseTimeMinutes: 15,
+      availability: "limited",
+      status: "suspended",
+    })
+  ).json().data;
+  assert.equal(responseUpdate.responseTimeMinutes, 15);
+  assert.equal(responseUpdate.availability, "limited");
+  assert.equal(responseUpdate.reviewStatus, "approved");
+  assert.equal(
+    (await command("setProviderStatus", { status: "paused" })).json().data
+      .status,
+    "paused",
+  );
+  assert.equal((await query("ownProviderProfile")).status, 200);
+  assert.equal((await query("provider", { id: ownProfile.id })).status, 404);
+  assert.equal(
+    (await command("setProviderStatus", { status: "active" })).json().data
+      .status,
+    "active",
+  );
+  assert.equal(
+    (await command("updateProviderSettings", { responseTimeMinutes: 0 }))
+      .status,
+    400,
+  );
+  assert.equal(
+    (await command("setProviderStatus", { status: "suspended" })).status,
+    400,
+  );
+  const revised = (
+    await command("updateProviderSettings", {
+      professionalTitle: "Updated event photographer",
+    })
+  ).json().data;
+  assert.equal(revised.reviewStatus, "not_submitted");
+  assert.equal(
+    (await command("setProviderStatus", { status: "active" })).status,
+    403,
+  );
+  provider.approve();
+  await command("publishProvider", {});
+  checks++;
+  const profileUpdate = await command("updateAccountProfile", {
+    fullName: "Updated Integration Student",
+    avatarUrl: "https://example.com/avatar.png",
+    roles: ["admin"],
+    email: "forged@example.com",
+  });
+  assert.equal(profileUpdate.status, 200);
+  assert.equal(
+    (await query("currentUser")).json().data.name,
+    "Updated Integration Student",
+  );
+  assert.equal(
+    (await query("currentUser")).json().data.email,
+    "student@example.com",
+  );
+  assert.equal(
+    (
+      await command("updateAccountProfile", {
+        avatarUrl: "http://example.com/image.png",
+      })
+    ).status,
+    400,
+  );
+  assert.equal((await command("updateAccountProfile", {})).status, 400);
+  const liveCookie = cookie();
+  assert.equal(
+    (
+      await command("requestEmailChange", {
+        email: "blocked@example.com",
+        password: "replacement-test-password",
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (await command("deactivateAccount", { reason: "Leaving platform" })).status,
+    409,
+  );
+  assert.equal(cookie(), liveCookie);
+  checks++;
+  users.set("settings@example.com", {
+    user: {
+      ...fixtureUser,
+      id: "00000000-0000-4000-8000-000000000062",
+      email: "settings@example.com",
+    },
+    password: "settings-test-password",
+  });
+  await command("signIn", {
+    email: "settings@example.com",
+    password: "settings-test-password",
+  });
+  const secondCampus="00000000-0000-4000-8000-000000000063";
+  university.campuses.push({id:secondCampus,name:"Second Campus"});
+  assert.equal((await command("updateAccountProfile",{universityId,campusId:secondCampus})).status,200);
+  const movedUser=(await query("currentUser")).json().data;
+  assert.equal(movedUser.campusId,secondCampus); assert.equal(movedUser.campus,"Second Campus"); assert.equal(movedUser.studentVerification,"unverified");
+  assert.equal((await command("updateAccountProfile",{campusId:"Unknown campus"})).status,422);
+  checks++;
+  assert.equal(
+    (
+      await command("changePassword", {
+        currentPassword: "wrong-password",
+        newPassword: "settings-new-password",
+      })
+    ).status,
+    401,
+  );
+  assert.equal((await query("currentUser")).status, 200);
+  assert.equal(
+    (
+      await command("changePassword", {
+        currentPassword: "settings-test-password",
+        newPassword: "short",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await command("changePassword", {
+        currentPassword: "settings-test-password",
+        newPassword: "settings-new-password",
+        email: "forged@example.com",
+      })
+    ).status,
+    200,
+  );
+  assert.ok(!jar.has("konet_access"));
+  assert.ok(!jar.has("konet_refresh"));
+  assert.equal(
+    (
+      await command("signIn", {
+        email: "settings@example.com",
+        password: "settings-test-password",
+      })
+    ).status,
+    401,
+  );
+  await command("signIn", {
+    email: "settings@example.com",
+    password: "settings-new-password",
+  });
+  checks++;
+  assert.equal(
+    (
+      await command("requestEmailChange", {
+        email: "updated-settings@example.com",
+        password: "wrong-password",
+      })
+    ).status,
+    401,
+  );
+  const emailChallenge = (
+    await command("requestEmailChange", {
+      email: "updated-settings@example.com",
+      password: "settings-new-password",
+    })
+  ).json().data;
+  assert.ok(emailChallenge.challengeId);
+  assert.ok(Date.parse(emailChallenge.expiresAt) > Date.now());
+  assert.equal(
+    (
+      await command("confirmEmailChange", {
+        challengeId: emailChallenge.challengeId,
+        code: "123",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await command("confirmEmailChange", {
+        challengeId: emailChallenge.challengeId,
+        code: "654321",
+      })
+    ).status,
+    422,
+  );
+  assert.equal((await query("currentUser")).status, 200);
+  assert.equal(
+    (
+      await command("confirmEmailChange", {
+        challengeId: emailChallenge.challengeId,
+        code: "123456",
+      })
+    ).status,
+    200,
+  );
+  assert.ok(!jar.has("konet_access"));
+  assert.ok(!jar.has("konet_refresh"));
+  assert.equal(
+    (
+      await command("signIn", {
+        email: "settings@example.com",
+        password: "settings-new-password",
+      })
+    ).status,
+    401,
+  );
+  await command("signIn", {
+    email: "updated-settings@example.com",
+    password: "settings-new-password",
+  });
+  assert.equal(
+    (await query("currentUser")).json().data.email,
+    "updated-settings@example.com",
+  );
+  checks++;
+  assert.equal(
+    (await command("deactivateAccount", { reason: " " })).status,
+    400,
+  );
+  assert.equal(
+    (await command("deactivateAccount", { reason: "Leaving the platform" }))
+      .status,
+    200,
+  );
+  assert.ok(!jar.has("konet_access"));
+  assert.ok(!jar.has("konet_refresh"));
+  assert.equal(
+    (
+      await command("signIn", {
+        email: "updated-settings@example.com",
+        password: "settings-new-password",
+      })
+    ).status,
+    401,
+  );
+  checks++;
+  await command("signIn", {
+    email: "student@example.com",
+    password: "replacement-test-password",
+  });
   const saved = cookie();
   assert.equal((await command("signOut", {})).status, 200);
   assert.ok(!jar.has("konet_access"));
