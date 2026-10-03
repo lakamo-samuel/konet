@@ -144,6 +144,11 @@ function JobDetails({
           action={(reason) => cancel.mutateAsync({ jobId: job.id, reason })}
         />
       )}
+      {(client || provider) && job.status === "completed" && (
+        <Button href={`/reviews/${job.id}`} variant="secondary">
+          Job review
+        </Button>
+      )}
       <Button href={`/requests/${job.requestId}`} variant="secondary">
         View original request
       </Button>

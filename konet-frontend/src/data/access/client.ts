@@ -59,6 +59,11 @@ http.interceptors.response.use(
     throw error;
   },
 );
+export function errorCode(error: unknown): string | undefined {
+  return axios.isAxiosError(error)
+    ? error.response?.data?.error?.code
+    : undefined;
+}
 export function errorMessage(error: unknown): string {
   if (axios.isAxiosError(error))
     return (

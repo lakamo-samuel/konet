@@ -1,29 +1,18 @@
-import { notFound } from "next/navigation";
-import { getJobById } from "@/data/repositories/job.repository";
-import { getSession } from "@/lib/auth/session";
-import { ReviewForm } from "@/features/reviews/components/review-form";
-type Props = { params: Promise<{ jobId: string }> };
-export const metadata = { title: "Review job" };
-export default async function Page({ params }: Props) {
-  const [job, session] = await Promise.all([
-    getJobById((await params).jobId),
-    getSession(),
-  ]);
-  if (!job || job.clientId !== session?.userId) notFound();
+import { ReviewWorkspace } from "@/features/reviews/components/review-workspace";
+export const metadata = { title: "Job review" };
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ jobId: string }>;
+}) {
+  const { jobId } = await params;
   return (
     <section className="workspace-page narrow">
       <div className="page-heading">
-        <span className="eyebrow">Verified review</span>
-        <h1>How did the job go?</h1>
-        <p>Your review will be connected to this completed job.</p>
+        <span className="eyebrow">Job feedback</span>
+        <h1>Review the completed job.</h1>
       </div>
-      <div className="surface-panel">
-        {job.status === "completed" ? (
-          <ReviewForm jobId={job.id} />
-        ) : (
-          <p>{"Reviews are available after the completed work is approved."}</p>
-        )}
-      </div>
+      <ReviewWorkspace jobId={jobId} />
     </section>
   );
 }

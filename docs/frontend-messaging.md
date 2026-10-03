@@ -41,4 +41,4 @@ Run frontend typecheck, lint and build, both HTTP integration modes, and `npm ru
 
 Backend tests use a disposable PostgreSQL database for ticket issuance, one-time redemption, REST rejection, session/participant enforcement and existing socket delivery. A separate ticket unit test checks expiry and unknown credentials. Swagger contract checks and export validate all 152 operations.
 
-Browser interaction across two real accounts and deployed proxy/CORS behavior still need deployment checks. Typing indicators and message attachments are not implemented. Backend multi-instance live delivery remains a separate infrastructure stage. Next frontend work is reviews, disputes and account/provider settings; admin frontend remains deferred.
+Browser interaction across two real accounts and deployed proxy/CORS behavior still need deployment checks. Typing indicators and message attachments are not implemented. Backend multi-instance live delivery remains a separate infrastructure stage. Completed-job reviews are connected; see [frontend reviews](frontend-reviews.md). Next frontend work is disputes and account/provider settings; admin frontend remains deferred.

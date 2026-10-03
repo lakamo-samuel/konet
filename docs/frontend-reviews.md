@@ -1,0 +1,15 @@
+# Frontend completed-job reviews
+
+`/reviews/{jobId}` reads the authenticated job and `GET /jobs/{jobId}/review`. Both participants may view recorded feedback. Only the client of a completed job sees the submission form. Completed job workspaces link to the review page. Client completion is the eligibility trigger; queued or processing payout does not prevent feedback.
+
+The central endpoint registry maps `{jobId,rating,body}` to the backend's `{jobId,rating,comment}`. Public provider review lists, private job lookup and successful submission share the same decoder. The backend chooses author/provider IDs; browser-supplied author fields are not forwarded. Ratings are integer 1–5. Comments must contain at least five trimmed characters; the form limits input to 10,000 characters. The backend does not currently declare that maximum in its ReviewDto.
+
+A private `REVIEW_NOT_FOUND` response becomes `null` so an eligible client may submit. `JOB_NOT_FOUND`, authorization, validation, service and network errors remain errors; they never become an empty review. This distinction is implemented as an explicit endpoint error code, not a blanket conversion of 404s.
+
+Submission disables duplicate interaction while pending and displays the actual returned review. On a `REVIEW_EXISTS` conflict, the screen reloads the authoritative record, covering another tab or a lost earlier submission response. A failed write keeps the draft and exposes the backend error; a reload action is always available. The database's one-review-per-job constraint remains the final protection. There is no automatic write retry after a network failure.
+
+Recorded feedback renders as plain text with its actual rating and date. Provider participants see the stored review or a no-review explanation, with no editing/submission controls. The screen does not fabricate author names or infer payout success. Public provider reviews continue using the existing public endpoint; mutation success invalidates the shared cache and refreshes server-rendered views. Review editing/deletion is not provided by the current participant API. Live cross-tab review updates depend on refetch/navigation; this stage does not add a review socket emitter.
+
+Validation: frontend typecheck, lint, production build, and HTTP integration in both production-cookie and development-token modes. Disposable HTTP fixtures exercise missing review handling, unfinished-job rejection, invalid rating/blank comment, trimmed payload mapping, author spoofing rejection, duplicate conflicts, public/private decoding, provider read-only access and outsider privacy. No project database writes or real reviews occur during these tests. Browser interaction and deployment checks remain separate.
+
+No backend changes, migration, environment settings or credentials are needed for this stage. Next frontend stages are disputes and account/provider settings. Admin frontend remains deferred. Backend contract details are in [contact and reviews](backend-contact-and-reviews.md).
