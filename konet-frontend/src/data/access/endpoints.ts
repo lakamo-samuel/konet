@@ -307,7 +307,7 @@ export const queryEndpoints: {
   notifications: {
     method: "GET",
     path: () => "/notifications",
-    params: () => ({ limit: 100 }),
+    params: (i) => ({ limit: 100, status: i.status }),
     decode: (data) => (data as ApiNotification[]).map(notification),
   },
   currentUser: null,

@@ -86,7 +86,10 @@ export type QueryContract = {
     Message[],
   ];
   jobConversation: [{ jobId: string }, Conversation];
-  notifications: [{ userId: string }, Notification[]];
+  notifications: [
+    { userId: string; status?: "read" | "unread" },
+    Notification[],
+  ];
   payment: [{ jobId: string }, Payment];
   payments: [
     { offset?: number; limit?: number; status?: PaymentStatus },

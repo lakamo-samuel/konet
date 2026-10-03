@@ -1,17 +1,16 @@
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import Link from "next/link";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { primaryNavigation } from "@/lib/constants/navigation";
 import { getSession } from "@/lib/auth/session";
-import { getNotificationsForUser } from "@/data/repositories/notification.repository";
+import { getUnreadNotificationsForUser } from "@/data/repositories/notification.repository";
 export async function SiteHeader() {
   const session = await getSession();
-  const unreadCount = session
-    ? (await getNotificationsForUser(session.userId)).filter(
-        (item) => !item.read,
-      ).length
-    : 0;
+  const notifications = session
+    ? await getUnreadNotificationsForUser(session.userId)
+    : [];
   return (
     <header className="site-header">
       <div className="header-inner">
@@ -37,28 +36,18 @@ export async function SiteHeader() {
         <div className="header-actions">
           {session ? (
             <>
-              <Link
-                className="icon-button notification-trigger"
-                href="/notifications"
-                aria-label={
-                  unreadCount
-                    ? `Notifications, ${unreadCount} unread`
-                    : "Notifications"
-                }
-              >
-                <Icon name="bell" />
-                {unreadCount > 0 && (
-                  <span className="absolute -right-2 -top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--clay)] px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[var(--canvas)]" aria-hidden="true">{unreadCount > 99 ? "99+" : unreadCount}</span>
-                )}
-              </Link>
+              <NotificationBell
+                userId={session.userId}
+                initialNotifications={notifications}
+              />
               <Link
                 className="account-avatar"
                 href="/profile"
                 aria-label="Your profile"
               >
-                {session.name?.charAt(0)??"Account"}
+                {session.name?.charAt(0) ?? "Account"}
               </Link>
-              <SignOutButton/>
+              <SignOutButton />
               {session.providerProfileId ? (
                 <Button className="header-cta" href="/provider/dashboard">
                   My workspace
