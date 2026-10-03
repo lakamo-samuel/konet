@@ -1,11 +1,12 @@
 import { DataError } from "./errors";
 import type { CommandName, QueryName } from "./contracts";
-type Rule = "string" | "number" | "boolean" | "strings" | "record";
+type Rule = "string" | "number" | "boolean" | "strings" | "record" | "object";
 type Shape = Record<string, Rule>;
 const queryShapes: Record<QueryName, Shape> = {
   verificationMethods: { universityId: "string" },
   studentVerifications: {},
   upload: { id: "string" },
+  categories: {},
   universities: {},
   university: { id: "string" },
   providers: {},
@@ -28,6 +29,29 @@ const queryShapes: Record<QueryName, Shape> = {
   onboarding: {},
 };
 const commandShapes: Record<CommandName, Shape> = {
+  createProviderProfile: {
+    professionalTitle: "string",
+    bio: "string",
+    responseTimeMinutes: "number",
+  },
+  updateProviderProfile: {
+    professionalTitle: "string",
+    bio: "string",
+    responseTimeMinutes: "number",
+  },
+  createProviderService: {
+    categoryId: "string",
+    title: "string",
+    description: "string",
+    pricingType: "string",
+    currency: "string",
+  },
+  updateProviderService: { id: "string", values: "object" },
+  createPortfolioItem: { type: "string", title: "string" },
+  updatePortfolioItem: { id: "string", values: "object" },
+  deletePortfolioItem: { id: "string" },
+  submitProviderEvidence: { dimension: "string", evidenceObjectKey: "string" },
+  submitProviderProfile: {},
   signIn: { email: "string", password: "string" },
   signUp: {
     name: "string",
@@ -44,13 +68,6 @@ const commandShapes: Record<CommandName, Shape> = {
     professionalTitle: "string",
     responseTime: "string",
     available: "boolean",
-  },
-  saveService: {
-    providerId: "string",
-    name: "string",
-    description: "string",
-    startingPrice: "number",
-    pricingUnit: "string",
   },
   createRequest: {
     providerId: "string",
@@ -83,7 +100,7 @@ const commandShapes: Record<CommandName, Shape> = {
   completeUpload: { id: "string" },
   deleteUpload: { id: "string" },
   submitVerification: { method: "string", evidenceObjectKey: "string" },
-  saveOnboarding: { step: "string", values: "record" },
+  saveOnboarding: { step: "string", values: "object" },
   publishProvider: {},
   checkout: { jobId: "string" },
   confirmCompletion: { jobId: "string" },
@@ -109,12 +126,14 @@ export function validateOperation(
         ? Array.isArray(value) &&
           value.length > 0 &&
           value.every((item) => typeof item === "string")
-        : rule === "record"
-          ? value !== null &&
-            typeof value === "object" &&
-            !Array.isArray(value) &&
-            Object.values(value).every((item) => typeof item === "string")
-          : typeof value === rule;
+        : rule === "object"
+          ? value !== null && typeof value === "object" && !Array.isArray(value)
+          : rule === "record"
+            ? value !== null &&
+              typeof value === "object" &&
+              !Array.isArray(value) &&
+              Object.values(value).every((item) => typeof item === "string")
+            : typeof value === rule;
     if (
       !valid ||
       (rule === "number" && (!Number.isFinite(value) || (value as number) < 0))

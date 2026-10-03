@@ -9,8 +9,15 @@ import type { PrivateUpload } from "@/types/verification";
 type Props = {
   onReady: (upload: PrivateUpload | null) => void;
   disabled?: boolean;
+  purpose?: "student_evidence" | "provider_evidence";
+  label?: string;
 };
-export function PrivateEvidenceUpload({ onReady, disabled }: Props) {
+export function PrivateEvidenceUpload({
+  onReady,
+  disabled,
+  purpose = "student_evidence",
+  label = "Student document",
+}: Props) {
   const [upload, setUpload] = useState<PrivateUpload | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -69,7 +76,7 @@ export function PrivateEvidenceUpload({ onReady, disabled }: Props) {
   return (
     <div className="form-stack">
       <label className="field">
-        Student document
+        {label}
         <input
           ref={input}
           type="file"
@@ -86,7 +93,7 @@ export function PrivateEvidenceUpload({ onReady, disabled }: Props) {
             try {
               const result = await uploadPrivateFile(
                 file,
-                "student_evidence",
+                purpose,
                 abort.signal,
                 setUpload,
               );

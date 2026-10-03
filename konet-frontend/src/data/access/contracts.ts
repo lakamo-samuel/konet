@@ -1,4 +1,16 @@
 import type {
+  ProviderOnboarding,
+  OwnProviderProfile,
+  ProviderProfileInput,
+  OwnProviderService,
+  ProviderServiceInput,
+  OwnPortfolioItem,
+  PortfolioInput,
+  ProviderVerification,
+  ProviderDimension,
+  Category,
+} from "@/types/provider-onboarding";
+import type {
   VerificationMethods,
   StudentVerification,
   EmailChallenge,
@@ -28,8 +40,8 @@ export type SearchCriteria = {
   maxPrice?: number;
   available?: boolean;
 };
-export type OnboardingDraft = Record<string, Record<string, string>>;
 export type QueryContract = {
+  categories: [Record<string, never>, Category[]];
   verificationMethods: [{ universityId: string }, VerificationMethods];
   studentVerifications: [Record<string, never>, StudentVerification[]];
   upload: [{ id: string }, PrivateUpload];
@@ -52,9 +64,32 @@ export type QueryContract = {
   messages: [{ conversationId: string }, Message[]];
   notifications: [{ userId: string }, Notification[]];
   transaction: [{ jobId: string }, EscrowTransaction | null];
-  onboarding: [Record<string, never>, OnboardingDraft];
+  onboarding: [Record<string, never>, ProviderOnboarding];
 };
 export type CommandContract = {
+  createProviderProfile: [ProviderProfileInput, OwnProviderProfile];
+  updateProviderProfile: [ProviderProfileInput, OwnProviderProfile];
+  createProviderService: [ProviderServiceInput, OwnProviderService];
+  updateProviderService: [
+    {
+      id: string;
+      values: Partial<Omit<ProviderServiceInput, "categoryId" | "currency">> & {
+        status?: OwnProviderService["status"];
+      };
+    },
+    OwnProviderService,
+  ];
+  createPortfolioItem: [PortfolioInput, OwnPortfolioItem];
+  updatePortfolioItem: [
+    { id: string; values: PortfolioInput },
+    OwnPortfolioItem,
+  ];
+  deletePortfolioItem: [{ id: string }, { success: boolean }];
+  submitProviderEvidence: [
+    { dimension: ProviderDimension; evidenceObjectKey: string },
+    ProviderVerification,
+  ];
+  submitProviderProfile: [Record<string, never>, OwnProviderProfile];
   signIn: [{ email: string; password: string }, User];
   signUp: [
     {
@@ -73,17 +108,6 @@ export type CommandContract = {
   saveProvider: [
     { professionalTitle: string; responseTime: string; available: boolean },
     ProviderProfile,
-  ];
-  saveService: [
-    {
-      id?: string;
-      providerId: string;
-      name: string;
-      description: string;
-      startingPrice: number;
-      pricingUnit: string;
-    },
-    Service,
   ];
   createRequest: [
     {
@@ -131,10 +155,10 @@ export type CommandContract = {
     StudentVerification,
   ];
   saveOnboarding: [
-    { step: string; values: Record<string, string> },
-    OnboardingDraft,
+    { step: string; values: Record<string, unknown> },
+    ProviderOnboarding,
   ];
-  publishProvider: [Record<string, never>, { providerId: string }];
+  publishProvider: [Record<string, never>, OwnProviderProfile];
   checkout: [
     { jobId: string },
     { status: "protected" | "pending"; checkoutUrl?: string },

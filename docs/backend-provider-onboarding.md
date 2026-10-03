@@ -1,6 +1,6 @@
 # Provider onboarding and approval (F4)
 
-The backend now implements provider drafts, onboarding form persistence, services created during onboarding, portfolio metadata, private provider evidence, reviewer decisions, and controlled publication. Identity and work checks are both required, as selected by the team; CAC is optional. All paths below are relative to `/api/v1`. The frontend forms and admin dashboard still need to be connected to these APIs.
+The backend now implements provider drafts, onboarding form persistence, services created during onboarding, portfolio metadata, private provider evidence, reviewer decisions, and controlled publication. Identity and work checks are both required, as selected by the team; CAC is optional. All paths below are relative to `/api/v1`. The [provider onboarding frontend](frontend-provider-onboarding.md) is connected. Admin dashboard integration remains deferred.
 
 ## Student email verification clarification
 

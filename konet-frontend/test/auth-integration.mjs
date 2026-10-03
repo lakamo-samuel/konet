@@ -1,3 +1,4 @@
+import { providerFixture } from "./provider-fixture.mjs";
 import { verificationFixture } from "./verification-fixture.mjs";
 import assert from "node:assert/strict";
 import http from "node:http";
@@ -16,6 +17,7 @@ const university = {
   campuses: [{ id: campusId, name: "Main Campus" }],
 };
 const verification = verificationFixture(universityId, campusId);
+const provider = providerFixture(verification);
 const users = new Map();
 let serial = 0;
 const access = new Map();
@@ -121,6 +123,7 @@ const backend = http.createServer(async (req, res) => {
     return send(200, { message: "Password reset." });
   }
   if (verification.handle(url, req.method, body, auth, send)) return;
+  if (provider.handle(url, req.method, body, auth, send)) return;
   if (!auth)
     return send(401, {
       code: "SESSION_REQUIRED",
@@ -441,6 +444,184 @@ try {
       .success,
     true,
   );
+  checks++;
+  const profileInput = {
+    professionalTitle: "Campus photographer",
+    bio: "I create portraits and event photography for students on campus.",
+    responseTimeMinutes: 60,
+  };
+  assert.equal((await query("onboarding")).json().data.profile, null);
+  assert.equal(
+    (await command("createProviderProfile", profileInput)).status,
+    403,
+  );
+  fixtureUser.studentVerificationStatus = "verified";
+  const profileRecord = await command("createProviderProfile", profileInput);
+  assert.equal(profileRecord.json().data.status, "draft");
+  assert.equal(
+    (await query("currentUser")).json().data.providerProfileId,
+    profileRecord.json().data.id,
+  );
+  assert.equal((await command("publishProvider", {})).status, 403);
+  assert.equal((await command("submitProviderProfile", {})).status, 409);
+  assert.deepEqual(
+    (await query("categories")).json().data[0].id,
+    provider.categoryId,
+  );
+  checks++;
+  const serviceRecord = await command("createProviderService", {
+    categoryId: provider.categoryId,
+    title: "Campus portraits",
+    description:
+      "A portrait session with edited photographs delivered digitally.",
+    pricingType: "starting_from",
+    priceMinor: 150050,
+    currency: "NGN",
+  });
+  assert.equal(serviceRecord.json().data.priceMinor, 150050);
+  assert.equal(serviceRecord.json().data.status, "draft");
+  assert.equal(
+    (
+      await command("updateProviderService", {
+        id: serviceRecord.json().data.id,
+        values: { status: "active" },
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await command("saveOnboarding", {
+        step: "service",
+        values: { pricingType: "custom_quote" },
+      })
+    ).json().data.steps.services.values.pricingType,
+    "custom_quote",
+  );
+  const portfolioRecord = await command("createPortfolioItem", {
+    type: "external_link",
+    title: "Student portrait project",
+    externalUrl: "https://portfolio.example/project",
+  });
+  assert.equal(portfolioRecord.json().data.type, "external_link");
+  assert.equal(
+    (
+      await command("updatePortfolioItem", {
+        id: portfolioRecord.json().data.id,
+        values: {
+          type: "project",
+          title: "Updated project",
+          description: "Portrait project case study",
+        },
+      })
+    ).status,
+    200,
+  );
+  checks++;
+  assert.equal(
+    (
+      await command("submitProviderEvidence", {
+        dimension: "identity",
+        evidenceObjectKey: "unscanned-upload",
+      })
+    ).status,
+    409,
+  );
+  async function providerEvidence(dimension) {
+    const ticket = (
+      await command("createUpload", {
+        ...uploadInput,
+        purpose: "provider_evidence",
+      })
+    ).json().data;
+    assert.equal(ticket.upload.purpose, "provider_evidence");
+    await command("completeUpload", { id: ticket.upload.id });
+    await command("completeUpload", { id: ticket.upload.id });
+    return command("submitProviderEvidence", {
+      dimension,
+      evidenceObjectKey: ticket.upload.objectKey,
+    });
+  }
+  assert.equal(
+    (await providerEvidence("identity")).json().data.status,
+    "pending",
+  );
+  assert.equal((await query("onboarding")).json().data.canSubmit, false);
+  assert.equal((await providerEvidence("work")).json().data.status, "pending");
+  const completeDraft = (await query("onboarding")).json().data;
+  assert.equal(completeDraft.canSubmit, true);
+  assert.equal(
+    completeDraft.verification.find((v) => v.dimension === "cac").status,
+    "not_submitted",
+  );
+  assert.equal(
+    (await command("submitProviderProfile", {})).json().data.reviewStatus,
+    "pending",
+  );
+  assert.equal(
+    (await command("updateProviderProfile", profileInput)).status,
+    409,
+  );
+  assert.equal((await command("publishProvider", {})).status, 403);
+  checks++;
+  provider.requestCorrection();
+  const correction = (await query("onboarding")).json().data;
+  assert.equal(correction.profile.reviewReason, "Correct identity evidence.");
+  assert.equal(
+    correction.verification[0].reason,
+    "Upload a clearer identity document.",
+  );
+  assert.equal((await providerEvidence("identity")).json().data.revision, 2);
+  assert.equal((await command("submitProviderProfile", {})).status, 200);
+  provider.approve();
+  assert.equal((await query("onboarding")).json().data.profile.status, "draft");
+  assert.equal((await query("onboarding")).json().data.canPublish, true);
+  assert.equal(
+    (await command("publishProvider", {})).json().data.status,
+    "active",
+  );
+  assert.equal(
+    (
+      await command("updateProviderService", {
+        id: serviceRecord.json().data.id,
+        values: { status: "active" },
+      })
+    ).json().data.status,
+    "active",
+  );
+  checks++;
+  const publicPortfolio = await query("portfolio", {
+    providerId: profileRecord.json().data.id,
+  });
+  assert.equal(publicPortfolio.json().data[0].title, "Updated project");
+  assert.equal(publicPortfolio.json().data[0].image, "");
+  assert.equal(
+    publicPortfolio.json().data[0].externalUrl,
+    "https://portfolio.example/project",
+  );
+  const publicPage = await call(`/providers/${profileRecord.json().data.id}`);
+  assert.equal(publicPage.status, 200);
+  assert.match(publicPage.text, /Updated project/);
+  assert.match(publicPage.text, /View project/);
+  checks++;
+  assert.equal(
+    (
+      await command("deletePortfolioItem", {
+        id: portfolioRecord.json().data.id,
+      })
+    ).json().data.success,
+    true,
+  );
+  assert.equal(
+    (
+      await command("updateProviderProfile", {
+        ...profileInput,
+        bio: "Updated public bio describing my portrait photography and campus event work.",
+      })
+    ).json().data.reviewStatus,
+    "not_submitted",
+  );
+  assert.equal((await query("onboarding")).json().data.canPublish, false);
   checks++;
   const forged = await call("/api/frontend?name=currentUser&input=%7B%7D", {
     rawCookie:

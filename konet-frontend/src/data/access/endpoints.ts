@@ -1,4 +1,12 @@
 import type {
+  ProviderOnboarding,
+  OwnProviderProfile,
+  OwnProviderService,
+  OwnPortfolioItem,
+  ProviderVerification,
+  Category,
+} from "@/types/provider-onboarding";
+import type {
   VerificationMethods,
   StudentVerification,
   EmailChallenge,
@@ -75,7 +83,8 @@ const provider = (data: ApiProvider): ProviderProfile => ({
   professionalTitle: data.professionalTitle,
   category: data.services?.[0]?.title ?? data.professionalTitle,
   bio: data.bio,
-  startingPrice: (data.services?.[0]?.priceMinor ?? 0) / 100,
+  startingPrice:
+    (data.services?.find((s) => s.priceMinor !== null)?.priceMinor ?? 0) / 100,
   available: data.availability === "available",
   responseTime: `Usually responds within ${data.responseTimeMinutes} minutes`,
   verification: {
@@ -179,6 +188,11 @@ export const queryEndpoints: {
     path: (i) => `/uploads/${encodeURIComponent(i.id)}`,
     decode: (data) => data as PrivateUpload,
   },
+  categories: {
+    method: "GET",
+    path: () => "/categories",
+    decode: (data) => data as Category[],
+  },
   universities: {
     method: "GET",
     path: () => "/universities",
@@ -226,20 +240,22 @@ export const queryEndpoints: {
           title: string;
           type: string;
           assetUrl: string | null;
+          description: string | null;
+          externalUrl: string | null;
         }[]
-      )
-        .filter((p) => p.assetUrl)
-        .map(
-          (p) =>
-            ({
-              id: p.id,
-              providerId: p.providerId,
-              title: p.title,
-              category: p.type,
-              image: p.assetUrl!,
-              alt: p.title,
-            }) satisfies PortfolioItem,
-        ),
+      ).map(
+        (p) =>
+          ({
+            id: p.id,
+            providerId: p.providerId,
+            title: p.title,
+            category: p.type,
+            image: p.assetUrl ?? "",
+            description: p.description ?? "",
+            externalUrl: p.externalUrl ?? undefined,
+            alt: p.title,
+          }) satisfies PortfolioItem,
+      ),
   },
   reviews: {
     method: "GET",
@@ -287,7 +303,11 @@ export const queryEndpoints: {
   conversation: null,
   messages: null,
   transaction: null,
-  onboarding: null,
+  onboarding: {
+    method: "GET",
+    path: () => "/me/provider-onboarding",
+    decode: (data) => data as ProviderOnboarding,
+  },
 };
 export const commandEndpoints: {
   [K in CommandName]: Endpoint<
@@ -295,6 +315,58 @@ export const commandEndpoints: {
     CommandContract[K][1]
   > | null;
 } = {
+  createProviderProfile: {
+    method: "POST",
+    path: () => "/me/provider-profile",
+    body: (i) => i,
+    decode: (d) => d as OwnProviderProfile,
+  },
+  updateProviderProfile: {
+    method: "PATCH",
+    path: () => "/me/provider-profile",
+    body: (i) => i,
+    decode: (d) => d as OwnProviderProfile,
+  },
+  createProviderService: {
+    method: "POST",
+    path: () => "/services",
+    body: (i) => i,
+    decode: (d) => d as OwnProviderService,
+  },
+  updateProviderService: {
+    method: "PATCH",
+    path: (i) => `/me/services/${encodeURIComponent(i.id)}`,
+    body: (i) => i.values,
+    decode: (d) => d as OwnProviderService,
+  },
+  createPortfolioItem: {
+    method: "POST",
+    path: () => "/me/portfolio",
+    body: (i) => i,
+    decode: (d) => d as OwnPortfolioItem,
+  },
+  updatePortfolioItem: {
+    method: "PATCH",
+    path: (i) => `/me/portfolio/${encodeURIComponent(i.id)}`,
+    body: (i) => i.values,
+    decode: (d) => d as OwnPortfolioItem,
+  },
+  deletePortfolioItem: {
+    method: "DELETE",
+    path: (i) => `/me/portfolio/${encodeURIComponent(i.id)}`,
+    decode: () => ({ success: true }),
+  },
+  submitProviderEvidence: {
+    method: "POST",
+    path: () => "/me/provider-verifications",
+    body: (i) => i,
+    decode: (d) => d as ProviderVerification,
+  },
+  submitProviderProfile: {
+    method: "POST",
+    path: () => "/me/provider-profile/submit",
+    decode: (d) => d as OwnProviderProfile,
+  },
   signIn: null,
   signUp: null,
   resetPassword: null,
@@ -307,7 +379,6 @@ export const commandEndpoints: {
   signOut: null,
   saveProfile: null,
   saveProvider: null,
-  saveService: null,
   createRequest: null,
   createQuote: null,
   acceptQuote: null,
@@ -352,8 +423,18 @@ export const commandEndpoints: {
     body: (i) => i,
     decode: (data) => data as StudentVerification,
   },
-  saveOnboarding: null,
-  publishProvider: null,
+  saveOnboarding: {
+    method: "PATCH",
+    path: (i) =>
+      `/me/provider-onboarding/steps/${encodeURIComponent(({ service: "services", verification: "evidence" } as Record<string, string>)[i.step] ?? i.step)}`,
+    body: (i) => ({ values: i.values }),
+    decode: (d) => d as ProviderOnboarding,
+  },
+  publishProvider: {
+    method: "POST",
+    path: () => "/me/provider-profile/publish",
+    decode: (d) => d as OwnProviderProfile,
+  },
   checkout: null,
   confirmCompletion: null,
   contact: {

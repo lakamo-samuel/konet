@@ -14,6 +14,7 @@ import { usesBearerStorage } from "@/lib/auth/transport";
 export const dynamic = "force-dynamic";
 const publicQueries = new Set([
   "verificationMethods",
+  "categories",
   "universities",
   "university",
   "providers",

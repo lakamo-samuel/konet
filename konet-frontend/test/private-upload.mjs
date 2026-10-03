@@ -7,6 +7,7 @@ const compiled = ts.transpileModule(
   { compilerOptions: { module: ts.ModuleKind.CommonJS } },
 ).outputText;
 let ticketCalls = 0;
+let expectedPurpose = "student_evidence";
 let fetched = 0;
 let url = "https://api.cloudinary.com/v1_1/test/image/upload";
 let failTransfer = false;
@@ -28,7 +29,7 @@ const context = {
     command: async (name, input) => {
       ticketCalls++;
       assert.equal(name, "createUpload");
-      assert.equal(input.purpose, "student_evidence");
+      assert.equal(input.purpose, expectedPurpose);
       assert.equal(input.fileName, "student.pdf");
       assert.equal(input.sizeBytes, 7);
       return { upload, uploadUrl: url, method: "POST", fields };
@@ -95,6 +96,9 @@ await assert.rejects(
   send(file, "student_evidence", signal, () => {}),
   /upload failed/,
 );
+failTransfer = false;
+expectedPurpose = "provider_evidence";
+assert.equal(await send(file, expectedPurpose, signal, () => {}), upload);
 console.log(
   "Private upload checks passed: file limits, multipart fields, credential isolation, destination validation and transfer failure.",
 );

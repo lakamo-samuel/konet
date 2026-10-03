@@ -8,7 +8,7 @@ export function verificationFixture(universityId, campusId) {
   let challenge;
   let scans = 0;
   let rejectScan = false;
-  const uploadId = "00000000-0000-4000-8000-000000000011";
+  let uploadSerial = 10;
   const challengeId = "00000000-0000-4000-8000-000000000012";
   const record = (auth, method, status, uploadId = null) => ({
     id: `verification-${history.length}`,
@@ -24,6 +24,8 @@ export function verificationFixture(universityId, campusId) {
     uploadId,
   });
   return {
+    getUpload: (key) =>
+      [...uploads.values()].find((item) => item.upload.objectKey === key),
     configure: (settings) => {
       emailConfigured = settings.email ?? emailConfigured;
       storageConfigured = settings.storage ?? storageConfigured;
@@ -112,9 +114,10 @@ export function verificationFixture(universityId, campusId) {
             code: "STORAGE_NOT_CONFIGURED",
             message: "Storage is not configured.",
           });
+        const uploadId = `00000000-0000-4000-8000-${String(++uploadSerial).padStart(12, "0")}`;
         const upload = {
           id: uploadId,
-          objectKey: `konet/student-evidence/${auth.id}/${uploadId}`,
+          objectKey: `konet/${body.purpose === "provider_evidence" ? "provider-evidence" : "student-evidence"}/${auth.id}/${uploadId}`,
           purpose: body.purpose,
           status: "pending",
           createdAt: new Date().toISOString(),

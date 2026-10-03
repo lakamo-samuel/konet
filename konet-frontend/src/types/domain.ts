@@ -80,6 +80,8 @@ export interface Service {
   active: boolean;
 }
 export interface PortfolioItem {
+  description?: string;
+  externalUrl?: string;
   id: string;
   providerId: string;
   title: string;
