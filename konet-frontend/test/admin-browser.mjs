@@ -135,6 +135,7 @@ const backend = http.createServer(async (req, res) => {
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(data === undefined ? "" : JSON.stringify(data));
   };
+  if (path === "/api/v1/providers" || path === "/api/v1/categories") return send(200, []);
   if (path === "/api/v1/universities") return send(200, [university]);
   if (path === "/api/v1/auth/login" || (path === "/api/v1/auth/refresh" && req.headers.cookie?.includes("konet_refresh=test-refresh"))) {
     res.setHeader(
@@ -303,6 +304,24 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base + "/admin");
   await expect(page).toHaveURL(/sign-in/);
+  // Shared user-facing layouts must fit both desktop and mobile viewports.
+  for (const width of [1440, 1024, 768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of ["/", "/sign-in", "/sign-up", "/forgot-password", "/how-it-works", "/for-providers", "/trust-and-safety"]) {
+      await page.goto(base + route);
+      await expect(page.locator(".wordmark:visible").first()).toBeVisible();
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${route} overflows at ${width}px`);
+      if (route === "/sign-in" && [1440, 390].includes(width)) await page.screenshot({ path: `/tmp/konet-login-${width}.png`, fullPage: true });
+      if (route === "/how-it-works" && width === 1440) {
+        await expect(page.locator(".desktop-nav")).toBeVisible();
+      const nav = await page.locator(".desktop-nav").evaluate(el => { const r=el.getBoundingClientRect(); return {x:r.x,width:r.width}; });
+        await expect(page.locator(".header-actions")).toBeVisible();
+      const actions = await page.locator(".header-actions").evaluate(el => { const r=el.getBoundingClientRect(); return {x:r.x,width:r.width}; });
+        assert.ok(nav && actions && nav.x + nav.width <= actions.x, "Header navigation overlaps account actions");
+      }
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
   const login = await context.request.post(base + "/api/frontend", {
     headers: { Origin: base },
     data: {
@@ -311,6 +330,21 @@ try {
     },
   });
   assert.equal(login.status(), 200);
+  for (const width of [1440, 1024, 768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(base + "/discover");
+    await expect(page.getByRole("heading", { name: "Find your next great collaborator." })).toBeVisible();
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Discover overflows at ${width}px`);
+    if (width === 1440) {
+      await expect(page.locator(".desktop-nav")).toBeVisible();
+      const nav = await page.locator(".desktop-nav").evaluate(el => { const r=el.getBoundingClientRect(); return {x:r.x,width:r.width}; });
+      await expect(page.locator(".header-actions")).toBeVisible();
+      const actions = await page.locator(".header-actions").evaluate(el => { const r=el.getBoundingClientRect(); return {x:r.x,width:r.width}; });
+      assert.ok(nav && actions && nav.x + nav.width <= actions.x, "Signed-in header navigation overlaps account actions");
+    }
+    if ([1440,390].includes(width)) await page.screenshot({ path: `/tmp/konet-discover-${width}.png`, fullPage: true });
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(base + "/admin");
   await expect(
     page.getByRole("heading", { name: "Verify staff access", exact: true }),
@@ -432,7 +466,7 @@ try {
   ).toBeVisible();
   assert.deepEqual(errors, []);
   console.log(
-    "Passed admin browser checks: anonymous and role gates, MFA QR setup and recovery codes, confirmation before suspension, all admin sections, university subresources, reconciliation and mobile layout. Backend is a local test fixture; no external messages or money movement.",
+    "Passed regular-page layout checks at four widths and admin browser checks: anonymous and role gates, MFA QR setup and recovery codes, confirmation before suspension, all admin sections, university subresources, reconciliation and mobile layout. Backend is a local test fixture; no external messages or money movement.",
   );
 } catch (error) {
   if (page) {
