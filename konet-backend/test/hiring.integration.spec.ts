@@ -1124,9 +1124,10 @@ describeDatabase("hiring PostgreSQL API integration", () => {
   async function connectSocket(
     token: string,
     origin?: string,
+    ticket?: string,
   ): Promise<Socket> {
     const socket = io(`${await app.getUrl()}/chat`, {
-      auth: { token },
+      auth: ticket ? { ticket } : { token },
       transports: ["websocket"],
       reconnection: false,
       timeout: 2000,
@@ -1159,6 +1160,25 @@ describeDatabase("hiring PostgreSQL API integration", () => {
       });
     });
   }
+  it("authenticates a single-use socket ticket without exposing or accepting it as a REST token", async () => {
+    const j = await acceptedJob();
+    const c = (await api("get", `jobs/${j.id}/conversation`)).body;
+    const response = await api("post", "auth/socket-ticket").expect(200);
+    expect(response.headers["cache-control"]).toContain("no-store");
+    expect(response.body.ticket).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(JSON.stringify(response.body)).not.toContain(client.token);
+    const socket = await connectSocket("", undefined, response.body.ticket);
+    expect(
+      (await ack(socket, "conversation.join", { conversationId: c.id })).ok,
+    ).toBe(true);
+    await expect(
+      connectSocket("", undefined, response.body.ticket),
+    ).rejects.toThrow();
+    await api("get", "conversations", response.body.ticket).expect(401);
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/socket-ticket")
+      .expect(401);
+  });
   it("delivers committed socket messages, notifications and read receipts to participants", async () => {
     const j = await acceptedJob();
     const c = (await api("get", `jobs/${j.id}/conversation`)).body;

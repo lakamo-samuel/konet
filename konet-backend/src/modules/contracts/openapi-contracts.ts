@@ -13,12 +13,13 @@ const errorContent = jsonContent({ $ref: "#/components/schemas/Error" });
 
 /** Enrich actual Nest routes; fail document generation if any declared route is missing. */
 export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
-  document.info.description = `${document.info.description ?? ""}\n\nLive chat uses Socket.IO at /chat (transport path /socket.io). Handshake auth: {token: accessToken}. Client events with acknowledgements: conversation.join/leave/read {conversationId}, message.send {conversationId, content}. Server events: message.new, conversation.read, notification.new. REST routes load history and recover after reconnect. See docs/backend-collaboration.md for the frontend example and delivery limits.`;
+  document.info.description = `${document.info.description ?? ""}\n\nLive chat uses Socket.IO at /chat (transport path /socket.io). Handshake auth: {ticket} from POST /auth/socket-ticket (30-second single-use ticket), or {token: accessToken} for trusted clients. Client events with acknowledgements: conversation.join/leave/read {conversationId}, message.send {conversationId, content}. Server events: message.new, conversation.read, notification.new. REST routes load history and recover after reconnect. See docs/backend-collaboration.md for the frontend example and delivery limits.`;
   Object.assign(document, {
     "x-socket-io": {
       namespace: "/chat",
       path: "/socket.io",
-      authentication: "handshake.auth.token (live access JWT)",
+      authentication:
+        "handshake.auth.ticket (single-use 30-second ticket) or handshake.auth.token (live access JWT)",
       clientEvents: {
         "conversation.join": ["conversationId"],
         "conversation.leave": ["conversationId"],

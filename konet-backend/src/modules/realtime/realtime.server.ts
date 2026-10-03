@@ -1,3 +1,4 @@
+import { SocketTicketService } from "./socket-ticket.service";
 import {
   Inject,
   Injectable,
@@ -27,6 +28,7 @@ export class RealtimeServer
     @Inject(DATABASE) private db: Database,
     private collaboration: CollaborationService,
     private publisher: RealtimePublisher,
+    private tickets: SocketTicketService,
   ) {}
   private async authenticate(token: unknown) {
     if (typeof token !== "string" || token.length > 4096)
@@ -90,8 +92,12 @@ export class RealtimeServer
     );
     namespace.use(async (socket, next) => {
       try {
-        const p = await this.authenticate(socket.handshake.auth?.token);
-        socket.data = { userId: p.userId, token: socket.handshake.auth.token };
+        const token =
+          socket.handshake.auth?.ticket !== undefined
+            ? this.tickets.consume(socket.handshake.auth.ticket)
+            : socket.handshake.auth?.token;
+        const p = await this.authenticate(token);
+        socket.data = { userId: p.userId, token };
         next();
       } catch {
         const error = new Error("Authentication required");

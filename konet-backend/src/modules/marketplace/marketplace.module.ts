@@ -1,3 +1,5 @@
+import { SocketTicketController } from "../realtime/socket-ticket.controller";
+import { SocketTicketService } from "../realtime/socket-ticket.service";
 import { DisputeService } from "./dispute.service";
 import {
   DisputeController,
@@ -32,6 +34,7 @@ import { PaymentService } from "./payment.service";
 @Module({
   imports: [ProvidersModule, AdministrationModule],
   controllers: [
+    SocketTicketController,
     DisputeController,
     StaffDisputeController,
     CategoriesController,
@@ -51,6 +54,7 @@ import { PaymentService } from "./payment.service";
     CollaborationService,
     RealtimePublisher,
     RealtimeServer,
+    SocketTicketService,
     CategoriesService,
     PaystackGateway,
     PaymentService,

@@ -32,7 +32,7 @@ Messages, conversation activity, and recipient notifications are committed toget
 
 Delivery uses **Socket.IO** on the same backend port, namespace `/chat`, transport path `/socket.io`. It supports WebSocket with Socket.IO HTTP fallback. Use the Socket.IO client rather than the browser's raw WebSocket API. REST remains available for history and reconnect recovery. No typing indicators, message attachments or email message delivery is implemented.
 
-Connect using `auth: { token: accessToken }`. The server checks the JWT, active account, and live database session at connection, before each action and before each outbound delivery. Idle sessions are checked every 30 seconds. Revoked/expired sessions disconnect; refresh through REST and reconnect with the new access token. Browser origins must match the origin of `FRONTEND_URL`; do not place tokens in query strings.
+Browsers can request `POST /auth/socket-ticket` through their authenticated frontend server, then connect with `auth: { ticket }`. The response contains `ticket` and `expiresAt`; tickets expire after 30 seconds, are single-use, and do not authenticate REST requests. JWTs stay server-side in production. Trusted clients may continue using `auth: { token: accessToken }`. The server checks the JWT, active account, and live database session at connection, before each action and before each outbound delivery. Idle sessions are checked every 30 seconds. Revoked/expired sessions disconnect; refresh through REST and reconnect with the new access token. Browser origins must match an exact entry in `CORS_ORIGINS` (falling back to the origin of `FRONTEND_URL`); do not place tokens in query strings.
 
 | Client event | Payload | Acknowledgement data |
 | --- | --- | --- |
@@ -73,11 +73,11 @@ socket.emit("message.send", { conversationId, content }, result => {
 });
 ```
 
-Install `socket.io-client` in the frontend. Join again on every connection and load history after joining. De-duplicate incoming and acknowledged messages by persisted message ID. On a connection authentication error, refresh the token, set `socket.auth = {token: newAccessToken}`, and call `socket.connect()`.
+The frontend now uses `socket.io-client` and single-use tickets. The example above describes the trusted JWT handshake; browser connections replace `auth.token` with `auth.ticket` and obtain a new ticket for every reconnect. Join again on every connection and load history after joining. De-duplicate incoming and acknowledged messages by persisted message ID. On a connection authentication error, refresh the token, set `socket.auth = {token: newAccessToken}`, and call `socket.connect()`.
 
 Live events are best effort and are not replayed after disconnection or process failure. PostgreSQL is the source of truth; refetch history/notifications on reconnect. Message submission has no idempotency key: do not enable automatic send retries after acknowledgement timeouts. Load history to resolve an uncertain submission before retrying.
 
-The current socket adapter runs on one API instance. Multiple API replicas require a shared adapter (such as Redis) and deployment routing configuration before enabling cross-instance live delivery. No Redis credentials are required for the current single-instance setup. Protocol references: [Socket.IO transport](https://socket.io/docs/v4/how-it-works) and [delivery guarantees](https://socket.io/docs/v4/delivery-guarantees/).
+The current socket adapter runs on one API instance. Multiple API replicas require a shared adapter (such as Redis) and deployment routing configuration before enabling cross-instance live delivery. Tickets also live in memory on one API instance. Ticket issuance and handshakes must reach that instance; shared ticket storage is needed for multiple replicas. No Redis credentials are required for the current single-instance setup. Protocol references: [Socket.IO transport](https://socket.io/docs/v4/how-it-works) and [delivery guarantees](https://socket.io/docs/v4/delivery-guarantees/).
 
 ## Notifications and preferences
 

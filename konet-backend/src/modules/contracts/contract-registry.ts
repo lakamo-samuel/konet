@@ -14,6 +14,19 @@ export interface RouteContract {
 }
 
 export const contractSchemas: Record<string, SchemaObject> = {
+  SocketTicket: {
+    type: "object",
+    required: ["ticket", "expiresAt"],
+    properties: {
+      ticket: {
+        type: "string",
+        description: "Single-use opaque connection ticket",
+        minLength: 43,
+        maxLength: 43,
+      },
+      expiresAt: { type: "string", format: "date-time" },
+    },
+  },
   ProviderEvidenceDecisionInput: {
     type: "object",
     properties: {
@@ -3910,6 +3923,18 @@ export const contractSchemas: Record<string, SchemaObject> = {
 };
 
 export const routeContracts: RouteContract[] = [
+  {
+    method: "post",
+    path: "auth/socket-ticket",
+    summary: "Issue a single-use Socket.IO connection ticket",
+    response: "SocketTicket",
+    body: null,
+    auth: "user",
+    existing: true,
+    query: null,
+    code: 200,
+    note: "Opaque ticket expires after 30 seconds and is consumed once by handshake.auth.ticket in /chat. No request body. Does not authorize REST requests. Account/session and conversation checks remain enforced. Single-instance in-memory ticket store; issuance and socket handshake must reach the same API instance.",
+  },
   {
     method: "get",
     path: "payout-banks",
