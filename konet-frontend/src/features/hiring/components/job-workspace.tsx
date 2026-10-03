@@ -5,6 +5,7 @@ import { errorMessage } from "@/data/access/client";
 import { formatNaira } from "@/lib/formatters/currency";
 import { ReasonAction } from "./reason-action";
 import { MilestoneWorkspace } from "./milestone-workspace";
+import { PaymentPanel } from "@/features/payments/components/payment-panel";
 import type { HiringJob } from "@/types/hiring";
 export function JobWorkspace({ id }: { id: string }) {
   const job = useDataQuery("job", { id }, undefined, {
@@ -84,6 +85,10 @@ function JobDetails({
           </p>
         )}
       </article>
+      {client && job.status === "awaiting_payment" && (
+        <Button href={`/checkout/${job.id}`}>Pay for this job</Button>
+      )}
+      <PaymentPanel jobId={job.id} />
       <MilestoneWorkspace job={job} provider={provider} />
       {provider && job.status === "scheduled" && (
         <Button

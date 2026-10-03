@@ -4,6 +4,11 @@ export function hiringFixture(providerId, ownerId, isPublished) {
   const quotes = [];
   const jobs = [];
   const milestones = new Map();
+  const payments = [];
+  const payouts = [];
+  const accounts = [];
+  let gatewayAvailable = true;
+  let verificationSuccess = false;
   let serial = 40;
   const id = () =>
     `00000000-0000-4000-8000-${String(++serial).padStart(12, "0")}`;
@@ -12,14 +17,24 @@ export function hiringFixture(providerId, ownerId, isPublished) {
     (row.clientId === user.id ||
       (row.providerId === providerId && user.id === ownerId));
   return {
-    fund: (jobId) => {
-      jobs.find((j) => j.id === jobId).status = "scheduled";
+    gatewayAvailable: (value) => {
+      gatewayAvailable = value;
+    },
+    verificationSuccess: (value) => {
+      verificationSuccess = value;
     },
     handle(url, method, body, user, send) {
       if (
-        !["/api/v1/requests", "/api/v1/quotes", "/api/v1/jobs"].some((p) =>
-          url.pathname.startsWith(p),
-        )
+        ![
+          "/api/v1/requests",
+          "/api/v1/quotes",
+          "/api/v1/jobs",
+          "/api/v1/me/payments",
+          "/api/v1/me/earnings",
+          "/api/v1/me/payouts",
+          "/api/v1/me/payout-accounts",
+          "/api/v1/payout-banks",
+        ].some((p) => url.pathname.startsWith(p))
       )
         return false;
       const reply = (status, data) => {
@@ -31,6 +46,99 @@ export function hiringFixture(providerId, ownerId, isPublished) {
           code: "SESSION_REQUIRED",
           message: "Sign in first.",
         });
+      const page = (rows) =>
+        rows.slice(
+          Number(url.searchParams.get("offset") ?? 0),
+          Number(url.searchParams.get("offset") ?? 0) +
+            Number(url.searchParams.get("limit") ?? 20),
+        );
+      if (url.pathname === "/api/v1/payout-banks")
+        return gatewayAvailable
+          ? reply(200, [{ code: "058", name: "Test Bank" }])
+          : reply(503, {
+              code: "PAYMENT_GATEWAY_NOT_CONFIGURED",
+              message: "Gateway is not configured.",
+            });
+      if (url.pathname === "/api/v1/me/payments")
+        return reply(
+          200,
+          page(
+            payments.filter((p) => owns({ ...p, clientId: p.payerId }, user)),
+          ),
+        );
+      if (url.pathname.startsWith("/api/v1/me/")) {
+        if (user.id !== ownerId)
+          return reply(403, {
+            code: "PROVIDER_REQUIRED",
+            message: "Provider profile required.",
+          });
+        if (url.pathname === "/api/v1/me/payouts")
+          return reply(200, page(payouts));
+        if (url.pathname === "/api/v1/me/earnings") {
+          const completed = payments.filter(
+            (p) => jobs.find((j) => j.id === p.jobId)?.status === "completed",
+          );
+          return reply(200, {
+            currency: "NGN",
+            earnedMinor: completed.reduce(
+              (n, p) => n + p.providerAmountMinor,
+              0,
+            ),
+            pendingMinor: completed
+              .filter((p) => p.status === "release_pending")
+              .reduce((n, p) => n + p.providerAmountMinor, 0),
+            paidOutMinor: completed
+              .filter((p) => p.status === "released")
+              .reduce((n, p) => n + p.providerAmountMinor, 0),
+          });
+        }
+        if (url.pathname === "/api/v1/me/payout-accounts") {
+          if (method === "GET") return reply(200, accounts);
+          if (!gatewayAvailable)
+            return reply(503, {
+              code: "PAYMENT_GATEWAY_NOT_CONFIGURED",
+              message: "Gateway is not configured.",
+            });
+          assert.equal(body.accountNumber, "0123456789");
+          assert.equal(body.bankCode, "058");
+          if (accounts.length)
+            return reply(409, {
+              code: "PAYOUT_ACCOUNT_EXISTS",
+              message: "Remove the existing account first.",
+            });
+          const account = {
+            id: id(),
+            providerId,
+            bankCode: body.bankCode,
+            accountName: "Test Provider",
+            accountNumberLast4: "6789",
+            status: "verified",
+            createdAt: new Date().toISOString(),
+          };
+          accounts.push(account);
+          return reply(201, account);
+        }
+        if (
+          url.pathname.startsWith("/api/v1/me/payout-accounts/") &&
+          method === "DELETE"
+        ) {
+          const index = accounts.findIndex(
+            (a) => a.id === url.pathname.split("/").at(-1),
+          );
+          if (index < 0)
+            return reply(404, {
+              code: "PAYOUT_ACCOUNT_NOT_FOUND",
+              message: "Account not found.",
+            });
+          if (payouts.some((p) => ["pending", "processing"].includes(p.status)))
+            return reply(409, {
+              code: "PAYOUT_ACCOUNT_RESERVED",
+              message: "Account is reserved for a payout.",
+            });
+          accounts.splice(index, 1);
+          return reply(204);
+        }
+      }
       const path = url.pathname.split("/");
       const collection = path[3];
       const resourceId = path[4];
@@ -172,6 +280,21 @@ export function hiringFixture(providerId, ownerId, isPublished) {
             clientConfirmedAt: null,
             completedAt: null,
           };
+          payments.push({
+            id: id(),
+            jobId: job.id,
+            payerId: job.clientId,
+            providerId,
+            amountMinor: job.agreedAmountMinor,
+            platformFeeMinor: 0,
+            providerAmountMinor: job.agreedAmountMinor,
+            currency: "NGN",
+            gateway: "unconfigured",
+            gatewayReference: null,
+            status: "pending",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
           jobs.push(job);
           return reply(201, job);
         }
@@ -197,6 +320,61 @@ export function hiringFixture(providerId, ownerId, isPublished) {
       const job = jobs.find((j) => j.id === resourceId);
       if (!owns(job, user))
         return reply(404, { code: "JOB_NOT_FOUND", message: "Job not found." });
+      const payment = payments.find((p) => p.jobId === job.id);
+      if (action === "payment" || action === "payments") {
+        if (method === "GET") return reply(200, payment);
+        assert.deepEqual(body, {}); // No browser amount, currency or reference is forwarded.
+        if (action === "payments") {
+          if (user.id !== job.clientId)
+            return reply(403, {
+              code: "PAYMENT_FORBIDDEN",
+              message: "Only the client initializes payment.",
+            });
+          if (!gatewayAvailable)
+            return reply(503, {
+              code: "PAYMENT_GATEWAY_NOT_CONFIGURED",
+              message: "Gateway is not configured.",
+            });
+          if (job.status !== "awaiting_payment")
+            return reply(409, {
+              code: "INVALID_JOB_STATE",
+              message: "Job is not awaiting payment.",
+            });
+          payment.gatewayReference ??= `konet-${payment.id}`;
+          payment.gateway = "paystack";
+          payment.status = "processing";
+          return reply(201, {
+            paymentId: payment.id,
+            reference: payment.gatewayReference,
+            checkoutUrl: "https://checkout.paystack.com/test-checkout",
+          });
+        }
+        if (!payment.gatewayReference)
+          return reply(409, {
+            code: "CHECKOUT_REQUIRED",
+            message: "Start checkout first.",
+          });
+        if (!gatewayAvailable)
+          return reply(503, {
+            code: "PAYMENT_GATEWAY_UNAVAILABLE",
+            message: "Gateway unavailable.",
+          });
+        if (verificationSuccess && payment.status === "processing") {
+          payment.status = "funded";
+          job.status = "scheduled";
+        }
+        return reply(200, payment);
+      }
+      if (action === "payout") {
+        const payout = payouts.find((p) => p.jobId === job.id);
+        return payout
+          ? reply(200, payout)
+          : reply(404, {
+              code: "PAYOUT_NOT_FOUND",
+              message: "Payout is not queued yet.",
+            });
+      }
+      if (action === "refunds") return reply(200, []);
       if (action === "milestones") {
         const rows = milestones.get(job.id) ?? [];
         if (method === "GET") return reply(200, rows);
@@ -259,6 +437,19 @@ export function hiringFixture(providerId, ownerId, isPublished) {
             code: "MILESTONES_INCOMPLETE",
             message: "Complete the milestones first.",
           });
+        if (action === "confirm-completion") {
+          payment.status = "release_pending";
+          payouts.push({
+            id: id(),
+            jobId: job.id,
+            paymentId: payment.id,
+            amountMinor: payment.providerAmountMinor,
+            currency: "NGN",
+            status: "pending",
+            reference: `payout-${job.id}`,
+            createdAt: new Date().toISOString(),
+          });
+        }
         job.status =
           action === "start"
             ? "in_progress"

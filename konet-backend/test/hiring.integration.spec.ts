@@ -992,6 +992,9 @@ describeDatabase("hiring PostgreSQL API integration", () => {
   it("initializes server-owned checkout once and verifies funding atomically on concurrent retries", async () => {
     const { j, checkout, payment, result } = await initializedPayment();
     expect(checkout.paymentId).toBe(payment.id);
+    const callback = new URL(gateway.initialize.mock.calls[0][0].callbackUrl);
+    expect(callback.pathname).toBe("/payment-result");
+    expect(callback.searchParams.get("jobId")).toBe(j.id);
     const retry = (await api("post", `jobs/${j.id}/payments`).expect(201)).body;
     expect(retry).toEqual(checkout);
     expect(gateway.initialize).toHaveBeenCalledTimes(1);

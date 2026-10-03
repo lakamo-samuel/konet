@@ -1,4 +1,13 @@
 import type {
+  Payment,
+  Checkout,
+  Earnings,
+  Payout,
+  Refund,
+  PayoutAccount,
+  PayoutBank,
+} from "@/types/payments";
+import type {
   HiringRequest,
   HiringQuote,
   HiringJob,
@@ -341,7 +350,52 @@ export const queryEndpoints: {
   conversations: null,
   conversation: null,
   messages: null,
-  transaction: null,
+  payment: {
+    method: "GET",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/payment`,
+    decode: (d) => d as Payment,
+  },
+  payments: {
+    method: "GET",
+    path: () => "/me/payments",
+    params: (i) => ({
+      offset: i.offset ?? 0,
+      limit: i.limit ?? 20,
+      status: i.status,
+    }),
+    decode: (d) => d as Payment[],
+  },
+  earnings: {
+    method: "GET",
+    path: () => "/me/earnings",
+    decode: (d) => d as Earnings,
+  },
+  payouts: {
+    method: "GET",
+    path: () => "/me/payouts",
+    params: (i) => ({ offset: i.offset ?? 0, limit: 20 }),
+    decode: (d) => d as Payout[],
+  },
+  payout: {
+    method: "GET",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/payout`,
+    decode: (d) => d as Payout,
+  },
+  refunds: {
+    method: "GET",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/refunds`,
+    decode: (d) => d as Refund[],
+  },
+  payoutAccounts: {
+    method: "GET",
+    path: () => "/me/payout-accounts",
+    decode: (d) => d as PayoutAccount[],
+  },
+  payoutBanks: {
+    method: "GET",
+    path: () => "/payout-banks",
+    decode: (d) => d as PayoutBank[],
+  },
   onboarding: {
     method: "GET",
     path: () => "/me/provider-onboarding",
@@ -533,7 +587,27 @@ export const commandEndpoints: {
     path: () => "/me/provider-profile/publish",
     decode: (d) => d as OwnProviderProfile,
   },
-  checkout: null,
+  checkout: {
+    method: "POST",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/payments`,
+    decode: (d) => d as Checkout,
+  },
+  verifyPayment: {
+    method: "POST",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/payment/verify`,
+    decode: (d) => d as Payment,
+  },
+  addPayoutAccount: {
+    method: "POST",
+    path: () => "/me/payout-accounts",
+    body: (i) => i,
+    decode: (d) => d as PayoutAccount,
+  },
+  removePayoutAccount: {
+    method: "DELETE",
+    path: (i) => `/me/payout-accounts/${encodeURIComponent(i.id)}`,
+    decode: () => ({ success: true }),
+  },
   confirmCompletion: {
     method: "POST",
     path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/confirm-completion`,

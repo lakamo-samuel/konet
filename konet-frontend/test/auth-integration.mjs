@@ -19,7 +19,11 @@ const university = {
 };
 const verification = verificationFixture(universityId, campusId);
 const provider = providerFixture(verification);
-const hiring = hiringFixture("00000000-0000-4000-8000-000000000021", uid, provider.isPublished);
+const hiring = hiringFixture(
+  "00000000-0000-4000-8000-000000000021",
+  uid,
+  provider.isPublished,
+);
 const users = new Map();
 let serial = 0;
 const access = new Map();
@@ -712,6 +716,54 @@ try {
     403,
   );
   checks++;
+  assert.equal(
+    (await query("payment", { jobId: acceptedJob.id })).json().data.status,
+    "pending",
+  );
+  assert.equal(
+    (await command("verifyPayment", { jobId: acceptedJob.id })).status,
+    409,
+  );
+  hiring.gatewayAvailable(false);
+  assert.equal(
+    (await command("checkout", { jobId: acceptedJob.id })).status,
+    503,
+  );
+  hiring.gatewayAvailable(true);
+  const checkout = (
+    await command("checkout", {
+      jobId: acceptedJob.id,
+      amountMinor: 1,
+      currency: "USD",
+    })
+  ).json().data;
+  assert.equal(
+    checkout.checkoutUrl,
+    "https://checkout.paystack.com/test-checkout",
+  );
+  assert.deepEqual(
+    (await command("checkout", { jobId: acceptedJob.id })).json().data,
+    checkout,
+  );
+  assert.equal(
+    (await query("payment", { jobId: acceptedJob.id })).json().data.amountMinor,
+    150050,
+  );
+  assert.equal(
+    (await query("payments", {})).json().data[0].id,
+    checkout.paymentId,
+  );
+  assert.deepEqual((await query("payments", { offset: 20 })).json().data, []);
+  assert.equal(
+    (await command("verifyPayment", { jobId: acceptedJob.id })).json().data
+      .status,
+    "processing",
+  );
+  assert.equal(
+    (await query("job", { id: acceptedJob.id })).json().data.status,
+    "awaiting_payment",
+  );
+  checks++;
   await command("signIn", {
     email: "student@example.com",
     password: "original-test-password",
@@ -727,7 +779,51 @@ try {
       description: "Prepare final images",
     })
   ).json().data;
-  hiring.fund(acceptedJob.id); // Simulated verified payment; no gateway calls.
+  assert.equal(
+    (await command("checkout", { jobId: acceptedJob.id })).status,
+    403,
+  );
+  const banks = (await query("payoutBanks", {})).json().data;
+  assert.equal(banks[0].code, "058");
+  assert.equal(
+    (
+      await command("addPayoutAccount", {
+        bankCode: "058",
+        accountNumber: "123",
+      })
+    ).status,
+    400,
+  );
+  const account = (
+    await command("addPayoutAccount", {
+      bankCode: "058",
+      accountNumber: "0123456789",
+    })
+  ).json().data;
+  assert.equal(account.accountNumberLast4, "6789");
+  assert.equal(account.accountNumber, undefined);
+  assert.equal(account.recipientCode, undefined);
+  assert.equal((await query("payoutAccounts", {})).json().data.length, 1);
+  assert.equal(
+    (await command("removePayoutAccount", { id: account.id })).status,
+    200,
+  );
+  await command("addPayoutAccount", {
+    bankCode: "058",
+    accountNumber: "0123456789",
+  });
+  checks++;
+  hiring.verificationSuccess(true); // Simulated gateway success; no Paystack calls.
+  assert.equal(
+    (await command("verifyPayment", { jobId: acceptedJob.id })).json().data
+      .status,
+    "funded",
+  );
+  assert.equal(
+    (await query("job", { id: acceptedJob.id })).json().data.status,
+    "scheduled",
+  );
+  checks++;
   assert.equal(
     (await command("startJob", { jobId: acceptedJob.id })).json().data.status,
     "in_progress",
@@ -768,6 +864,41 @@ try {
     ).status,
     409,
   );
+  assert.equal(
+    (await query("payment", { jobId: acceptedJob.id })).json().data.status,
+    "release_pending",
+  );
+  assert.equal(
+    (await query("payout", { jobId: acceptedJob.id })).json().data.status,
+    "pending",
+  );
+  assert.deepEqual(
+    (await query("refunds", { jobId: acceptedJob.id })).json().data,
+    [],
+  );
+  assert.equal((await query("earnings", {})).status, 403);
+  await command("signIn", {
+    email: "student@example.com",
+    password: "original-test-password",
+  });
+  const earnings = (await query("earnings", {})).json().data;
+  assert.deepEqual(earnings, {
+    currency: "NGN",
+    earnedMinor: 150050,
+    pendingMinor: 150050,
+    paidOutMinor: 0,
+  });
+  assert.equal((await query("payouts", {})).json().data[0].status, "pending");
+  const reserved = (await query("payoutAccounts", {})).json().data[0];
+  assert.equal(
+    (await command("removePayoutAccount", { id: reserved.id })).status,
+    409,
+  );
+  checks++;
+  await command("signIn", {
+    email: "client@example.com",
+    password: "client-test-password",
+  });
   const withdrawn = (await command("createRequest", hiringInput)).json().data;
   assert.equal(
     (
@@ -804,6 +935,13 @@ try {
   });
   assert.equal((await query("request", { id: hiredRequest.id })).status, 404);
   assert.equal((await query("job", { id: acceptedJob.id })).status, 404);
+  assert.equal((await query("payment", { jobId: acceptedJob.id })).status, 404);
+  assert.equal(
+    (await command("verifyPayment", { jobId: acceptedJob.id })).status,
+    404,
+  );
+  assert.deepEqual((await query("payments", {})).json().data, []);
+  checks++;
   await command("signIn", {
     email: "student@example.com",
     password: "original-test-password",

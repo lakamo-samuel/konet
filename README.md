@@ -73,7 +73,7 @@ flowchart LR
     Gateway --> Unconfigured[Unconfigured gateway: 503]
 ```
 
-The frontend and backend are separate npm projects in this repository. The frontend uses a same-origin Next route for browser queries and commands. The live API adapter is the only data source. Authentication, public catalog reads, notifications, contact submission, student verification, provider onboarding and hiring/job workflows use the backend adapter. Mock adapters and fixtures have been removed. Missing mappings fail explicitly; remaining student/provider workflows are being connected feature by feature. The API uses PostgreSQL as its source of truth.
+The frontend and backend are separate npm projects in this repository. The frontend uses a same-origin Next route for browser queries and commands. The live API adapter is the only data source. Authentication, public catalog reads, notifications, contact submission, student verification, provider onboarding, hiring/job workflows, Paystack payments and provider earnings use the backend adapter. Mock adapters and fixtures have been removed. Missing mappings fail explicitly; remaining student/provider workflows are being connected feature by feature. The API uses PostgreSQL as its source of truth.
 
 ### Stack
 
@@ -87,7 +87,7 @@ The frontend and backend are separate npm projects in this repository. The front
 | Database | PostgreSQL 17, Drizzle ORM and migrations | Persistent records and constraints |
 | Authentication | JWT, Argon2, rotating refresh cookie | API identity and sessions |
 | Infrastructure | Docker Compose, Helmet, CORS, Pino | Local database, HTTP hardening, logging |
-| Payment | Gateway interface with unconfigured implementation | Integration seam; real processing is pending |
+| Payment | Paystack hosted checkout and verified settlements | Backend collection, payouts/refunds; frontend checkout, earnings and payout accounts |
 
 ## Frontend
 
@@ -126,7 +126,7 @@ The NestJS app is assembled in `konet-backend/src/app.module.ts`. Controllers ha
 
 Protected endpoints require `Authorization: Bearer <access token>`. Login and registration return an access token and set an HttpOnly refresh cookie scoped to `/api/v1/auth`; refresh rotates the stored hashed token. The API validates DTOs, applies ownership checks, and rejects invalid job transitions. CORS origins come from `FRONTEND_URL`.
 
-The API implements automatic university email verification, private scanned Cloudinary evidence, and admin/reviewer document decisions. Configure Cloudinary and Resend for live delivery; student verification is connected in the frontend; see [verification setup](docs/backend-verification.md). Password recovery uses the encrypted Resend outbox; see [account setup](docs/backend-accounts.md). Provider onboarding, evidence review and publication are implemented; see [provider setup](docs/backend-provider-onboarding.md). Payment-provider integration remains pending.
+The API implements automatic university email verification, private scanned Cloudinary evidence, and admin/reviewer document decisions. Configure Cloudinary and Resend for live delivery; student verification is connected in the frontend; see [verification setup](docs/backend-verification.md). Password recovery uses the encrypted Resend outbox; see [account setup](docs/backend-accounts.md). Provider onboarding, evidence review and publication are implemented; see [provider setup](docs/backend-provider-onboarding.md). Paystack collection and settlements are implemented; configure sandbox credentials and merchant transfers before live use.
 
 ## Planned stack and requirements
 
@@ -142,9 +142,9 @@ The [backend requirements](docs/backend-requirements.md) and [frontend requireme
 | Backend email | Email provider such as Resend | University address proof, recovery links, notifications |
 | Backend evidence | Cloudinary authenticated uploads and malware moderation | Student evidence implemented; account configuration required; public portfolio uploads pending; private provider evidence implemented |
 | Backend async jobs | BullMQ + Redis when needed | Email delivery, payment event processing, reconciliation |
-| Payment provider | Paystack candidate for NGN-first pilot | Confirm merchant eligibility and a real client-approved delayed payout model before promising escrow |
+| Payment provider | Paystack for NGN collection and transfers | Hosted checkout, backend verification and queued payouts; merchant configuration required |
 
-University verification should use a delivered one-time code/link for approved university email domains, plus manual document review for campuses without dependable student email. A submitted form is only `pending`; backend approval sets `verified`. The payment target is collection before work and provider payout only after client confirmation or an authorized dispute decision. Hosted checkout, signed webhooks, server-side verification, an idempotent ledger, and payout records are required. Payment splits alone do not establish escrow. These are design choices, not existing integrations; see the [backend](docs/backend-requirements.md) and [frontend](docs/frontend-requirements.md) requirements for detail.
+University verification should use a delivered one-time code/link for approved university email domains, plus manual document review for campuses without dependable student email. A submitted form is only `pending`; backend approval sets `verified`. The payment target is collection before work and provider payout only after client confirmation or an authorized dispute decision. Hosted checkout, signed webhooks, server-side verification, an idempotent ledger, and payout records are required. Payment splits alone do not establish escrow. Collection, verification and queued payouts are implemented; live merchant configuration and reconciliation remain deployment/operational work; see the [backend](docs/backend-requirements.md) and [frontend](docs/frontend-requirements.md) requirements for detail.
 
 ## Database schema
 
@@ -193,7 +193,7 @@ Most records have creation/update timestamps. Foreign keys and indexes are defin
 ```mermaid
 stateDiagram-v2
     [*] --> awaiting_payment: quote accepted
-    awaiting_payment --> scheduled: payment confirmed by future integration
+    awaiting_payment --> scheduled: payment confirmed by backend verification
     awaiting_payment --> cancelled
     scheduled --> in_progress: provider starts
     scheduled --> cancelled
@@ -248,7 +248,7 @@ Open the frontend at `http://localhost:3000`, API health at `http://localhost:40
 | `KONET_API_URL` | Frontend | Backend API base URL when the source is `http` |
 | `DATABASE_URL` | Backend | PostgreSQL connection string |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Backend | Different secrets, at least 32 characters each |
-| `FRONTEND_URL` | Backend | Allowed browser origin(s), comma separated |
+| `FRONTEND_URL` | Backend | Single canonical frontend URL for email links and payment redirects |
 | `PORT`, `NODE_ENV` | Backend | Server port and runtime mode |
 | `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_TTL_DAYS` | Backend | Token lifetimes |
 | `LOG_LEVEL`, `STORAGE_LOCAL_PATH` | Backend | Logging level and reserved local storage path |
@@ -262,12 +262,12 @@ Useful checks: `npm run typecheck`, `npm run lint`, and `npm run build` in eithe
 | Public discovery | Discover and public provider/service/portfolio/review reads use HTTP | Confirm backend response shapes and complete remaining catalog mappings |
 | Auth and verification | Live authentication, email codes, private evidence, scan gating and review feedback; development bearer and production cookie transport | Deployment checks with configured Resend and Cloudinary accounts |
 | Provider onboarding | Canonical profiles/services/portfolio, private evidence, review status, publication and service activation use the API | Provider settings and remaining workspace actions |
-| Requests, quotes, jobs | Participant reads/actions, acceptance, canonical job states and milestones use the API | Connect payment status and Socket.IO messaging |
+| Requests, quotes, jobs | Participant reads/actions, acceptance, job/payment states and milestones use the API | Connect Socket.IO messaging |
 | Messaging, notifications, reviews | Notifications are connected; messaging and review submission still need integration | Map backend endpoints; add delivery/update behavior as needed |
-| Payments and earnings | Checkout retains its card-details layout but has no live gateway; earnings mapping is pending | Integrate provider tokenization or hosted fields, signed webhooks, settlement/release/refund handling; raw card data must never reach Konet servers |
+| Payments and earnings | Paystack hosted checkout, verification, job financial status, earnings and provider accounts are connected | Configure sandbox credentials, deployed callback/webhook URLs and merchant transfer settings; test actual gateway delivery |
 | Password recovery | Frontend recovery/reset forms call the implemented API; reset token remains in the URL fragment | Configure Resend and verify delivery in the deployment |
 
-The frontend's domain types and demo job statuses are currently different from the backend schema. When connecting the two, map API fields and states explicitly or converge on a shared contract.
+Hiring and payment screens use canonical backend fields and states. Remaining conversation, review and account contracts still need to be connected to their backend endpoints.
 
 ## Where to change things
 
@@ -282,3 +282,5 @@ The frontend's domain types and demo job statuses are currently different from t
 - Payment integration seam: `konet-backend/src/infrastructure/payments/`
 
 See the backend's own [README](konet-backend/README.md) for its shorter operational summary. The frontend's [README](konet-frontend/README.md) is currently the generated Next.js starter document; this root README is the project-wide guide. The planned frontend experience is detailed in the [frontend requirements](docs/frontend-requirements.md).
+
+Paystack checkout, backend-confirmed payment status, provider bank accounts and earnings are connected on the frontend. See [frontend payments](docs/frontend-payments.md). Socket.IO messaging is the next integration stage; admin frontend work remains deferred.

@@ -1,4 +1,14 @@
 import type {
+  Payment,
+  PaymentStatus,
+  Checkout,
+  Earnings,
+  Payout,
+  Refund,
+  PayoutAccount,
+  PayoutBank,
+} from "@/types/payments";
+import type {
   HiringRequest,
   HiringQuote,
   HiringJob,
@@ -27,7 +37,6 @@ import type {
 } from "@/types/verification";
 import type {
   Conversation,
-  EscrowTransaction,
   Message,
   Notification,
   PortfolioItem,
@@ -73,7 +82,17 @@ export type QueryContract = {
   conversation: [{ id: string }, Conversation | null];
   messages: [{ conversationId: string }, Message[]];
   notifications: [{ userId: string }, Notification[]];
-  transaction: [{ jobId: string }, EscrowTransaction | null];
+  payment: [{ jobId: string }, Payment];
+  payments: [
+    { offset?: number; limit?: number; status?: PaymentStatus },
+    Payment[],
+  ];
+  earnings: [Record<string, never>, Earnings];
+  payouts: [{ offset?: number }, Payout[]];
+  payout: [{ jobId: string }, Payout | null];
+  refunds: [{ jobId: string }, Refund[]];
+  payoutAccounts: [Record<string, never>, PayoutAccount[]];
+  payoutBanks: [Record<string, never>, PayoutBank[]];
   onboarding: [Record<string, never>, ProviderOnboarding];
 };
 export type CommandContract = {
@@ -173,10 +192,13 @@ export type CommandContract = {
     ProviderOnboarding,
   ];
   publishProvider: [Record<string, never>, OwnProviderProfile];
-  checkout: [
-    { jobId: string },
-    { status: "protected" | "pending"; checkoutUrl?: string },
+  checkout: [{ jobId: string }, Checkout];
+  verifyPayment: [{ jobId: string }, Payment];
+  addPayoutAccount: [
+    { bankCode: string; accountNumber: string },
+    PayoutAccount,
   ];
+  removePayoutAccount: [{ id: string }, { success: boolean }];
   confirmCompletion: [{ jobId: string }, HiringJob];
   contact: [
     { email: string; topic: string; message: string },

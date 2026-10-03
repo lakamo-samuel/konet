@@ -6,7 +6,7 @@ This payment stage implements hosted checkout, server-side verification, signed 
 
 1. Accept a quote; the job starts `awaiting_payment` with a `pending` payment.
 2. The client calls `POST /api/v1/jobs/{jobId}/payments` with a bearer token and no body. The server reads the agreed amount and currency, assigns one persistent Paystack reference and returns `{paymentId,reference,checkoutUrl}`. Redirect to `checkoutUrl`; do not collect card details in Konet.
-3. On the payment result page, call `POST /api/v1/jobs/{jobId}/payment/verify`. Either participant can request verification. The server checks Paystack's response; frontend URL parameters or supplied payment statuses cannot fund the job.
+3. New checkout initializations append `jobId` to the configured callback URL so the frontend can open the correct private job. Existing cached URLs keep their original callback. On the payment result page, call `POST /api/v1/jobs/{jobId}/payment/verify`. Either participant can request verification. The server checks Paystack's response; frontend URL parameters or supplied payment statuses cannot fund the job.
 4. Read `GET /api/v1/jobs/{jobId}/payment` and `GET /api/v1/jobs/{id}`. Successful verification atomically changes payment to `funded` and job to `scheduled`. Work may then start.
 
 `GET /api/v1/me/payments` lists your client/provider payments with limit (default 20, maximum 100), offset and optional payment status. Other users receive no payment records. Direct access to another job's payment receives 404; providers cannot initialize client checkout (403).

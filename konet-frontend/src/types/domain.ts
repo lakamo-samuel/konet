@@ -94,13 +94,6 @@ export interface Message {
   createdAt: string;
   system?: boolean;
 }
-export interface EscrowTransaction {
-  id: string;
-  jobId: string;
-  amount: number;
-  platformFee: number;
-  status: "unfunded" | "protected" | "released" | "disputed";
-}
 export interface Review {
   id: string;
   jobId: string;

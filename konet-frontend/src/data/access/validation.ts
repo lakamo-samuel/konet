@@ -27,7 +27,14 @@ const queryShapes: Record<QueryName, Shape> = {
   conversation: { id: "string" },
   messages: { conversationId: "string" },
   notifications: { userId: "string" },
-  transaction: { jobId: "string" },
+  payment: { jobId: "string" },
+  payments: {},
+  earnings: {},
+  payouts: {},
+  payout: { jobId: "string" },
+  refunds: { jobId: "string" },
+  payoutAccounts: {},
+  payoutBanks: {},
   onboarding: {},
 };
 const commandShapes: Record<CommandName, Shape> = {
@@ -107,6 +114,9 @@ const commandShapes: Record<CommandName, Shape> = {
   saveOnboarding: { step: "string", values: "object" },
   publishProvider: {},
   checkout: { jobId: "string" },
+  verifyPayment: { jobId: "string" },
+  addPayoutAccount: { bankCode: "string", accountNumber: "string" },
+  removePayoutAccount: { id: "string" },
   confirmCompletion: { jobId: "string" },
   contact: { email: "string", topic: "string", message: "string" },
 };
@@ -144,6 +154,12 @@ export function validateOperation(
     )
       throw new DataError(`Please check ${key}.`);
   }
+  if (
+    name === "addPayoutAccount" &&
+    (!/^\d{3,9}$/.test(String(values.bankCode)) ||
+      !/^\d{10}$/.test(String(values.accountNumber)))
+  )
+    throw new DataError("Choose a bank and enter a ten-digit account number.");
   if (
     name === "confirmVerificationCode" &&
     !/^\d{6}$/.test(String(values.code))

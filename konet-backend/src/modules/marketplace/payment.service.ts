@@ -165,12 +165,14 @@ export class PaymentService {
       .select()
       .from(s.users)
       .where(eq(s.users.id, userId));
-    const callbackUrl =
+    const callbackUrl = new URL(
       this.config.get<string>("PAYMENT_CALLBACK_URL") ||
-      new URL(
-        "/payment-result",
-        this.config.getOrThrow<string>("FRONTEND_URL"),
-      ).toString();
+        new URL(
+          "/payment-result",
+          this.config.getOrThrow<string>("FRONTEND_URL"),
+        ).toString(),
+    );
+    callbackUrl.searchParams.set("jobId", jobId);
     try {
       const checkout = await this.gateway.initialize({
         paymentId: prepared.payment.id,
@@ -178,7 +180,7 @@ export class PaymentService {
         email: user.email,
         amountMinor: prepared.payment.amountMinor,
         currency: prepared.payment.currency,
-        callbackUrl,
+        callbackUrl: callbackUrl.toString(),
       });
       await this.db
         .update(s.paymentCheckouts)
