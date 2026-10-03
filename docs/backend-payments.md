@@ -23,7 +23,7 @@ A signed `charge.success` event triggers an additional server-side transaction v
 
 Invalid signatures receive 401; mismatched verification receives 422. Temporary provider errors return 503 so a webhook can be retried. No raw card data or complete gateway response is stored; payment events contain a payload hash and provider transaction identifier.
 
-API endpoints and response fields follow Paystack's [transaction API](https://paystack.com/docs/api/transaction/). Checkout uses merchant collection with no split or immediate provider allocation. A `funded` database flag records confirmed collection; it does not prove a protected reserve or escrow arrangement. Client confirmation now queues a durable payout and sets payment to release_pending; only verified transfer success marks it released. Current platform fees remain zero.
+API endpoints and response fields follow Paystack's [transaction API](https://paystack.com/docs/api/transaction/). Checkout uses merchant collection with no split or immediate provider allocation. A `funded` database flag records confirmed collection; it does not prove a protected reserve or escrow arrangement. Client confirmation now queues a durable payout and sets payment to release_pending; only verified transfer success marks it released. New quotes now snapshot a 10% platform commission; see [commission policy](backend-commission.md). Existing quotes and payments retain their stored amounts.
 
 ## Configuration and deployment
 

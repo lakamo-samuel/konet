@@ -25,6 +25,7 @@ import { CatalogController } from "./catalog.controller";
 import { MarketplaceController } from "./marketplace.controller";
 import { MarketplaceService } from "./marketplace.service";
 import {
+  PaymentPolicyController,
   PaymentsController,
   PaymentWebhookController,
 } from "./payments.controller";
@@ -42,6 +43,7 @@ import { PaymentService } from "./payment.service";
     HiringController,
     CollaborationController,
     MarketplaceController,
+    PaymentPolicyController,
     PaymentsController,
     PaymentWebhookController,
     SettlementController,

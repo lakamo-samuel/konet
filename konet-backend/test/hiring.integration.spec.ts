@@ -220,6 +220,21 @@ describeDatabase("hiring PostgreSQL API integration", () => {
   async function hiringRequest() {
     return (await api("post", "requests").send(input()).expect(201)).body;
   }
+  it("discloses public pricing and preserves zero-commission legacy quotes", async () => {
+    const policy = await request(app.getHttpServer()).get("/api/v1/payments/policy").expect(200);
+    expect(policy.body).toEqual({ commissionBasisPoints: 1000, transactionFeePayer: "platform", rounding: "floor" });
+    const r = await hiringRequest();
+    const q = await quote(r.id, 101);
+    expect(q.platformFeeMinor).toBe(10);
+    expect(q.providerAmountMinor).toBe(91);
+    await db.update(schema.quotes).set({ platformFeeMinor: 0, commissionBasisPoints: 0 }).where(eq(schema.quotes.id, q.id));
+    const legacy = (await api("get", `quotes/${q.id}`)).body;
+    expect(legacy.providerAmountMinor).toBe(101);
+    await api("post", `quotes/${q.id}/accept`).expect(201);
+    const [payment] = await db.select().from(schema.payments);
+    expect(payment.platformFeeMinor).toBe(0);
+    expect(payment.providerAmountMinor).toBe(101);
+  });
   async function quote(requestId: string, amountMinor = 500000) {
     return (
       await api("post", "quotes", provider.token)
@@ -739,6 +754,8 @@ describeDatabase("hiring PostgreSQL API integration", () => {
       worker.processPayout(payout.id),
     ]);
     expect(gateway.transfer).toHaveBeenCalledTimes(1);
+    expect(gateway.transfer.mock.calls[0][0].amountMinor).toBe(payout.amountMinor);
+    expect(payout.amountMinor).toBe((await db.select().from(schema.payments))[0].providerAmountMinor);
     expect((await db.select().from(schema.payments))[0].status).toBe(
       "released",
     );
@@ -1543,6 +1560,11 @@ describeDatabase("hiring PostgreSQL API integration", () => {
     const [payment] = await db.select().from(schema.payments);
     expect(payment.status).toBe("pending");
     expect(payment.amountMinor).toBe(q.amountMinor);
+    expect(q.commissionBasisPoints).toBe(1000);
+    expect(q.platformFeeMinor).toBe(50000);
+    expect(q.providerAmountMinor).toBe(450000);
+    expect(payment.platformFeeMinor).toBe(q.platformFeeMinor);
+    expect(payment.providerAmountMinor).toBe(q.providerAmountMinor);
     expect((await api("get", `requests/${r.id}`).expect(200)).body.status).toBe(
       "converted_to_job",
     );

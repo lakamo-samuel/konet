@@ -14373,6 +14373,91 @@
         "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nParticipants may dispute funded scheduled/in-progress/awaiting-confirmation work. Reason is 3–100 characters; description is 20–5000. One open case per job; identical retries return the existing case. Opening freezes job and payment, records an audit and notifies participants.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
+    "/api/v1/payments/policy": {
+      "get": {
+        "operationId": "get_payments_policy",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommissionPolicy"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "payments"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "Read commission policy for new quotes",
+        "description": "Public endpoint; no authentication required.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nPublic pricing disclosure. Quotes snapshot commission at creation; existing agreements retain their terms. Commission is retained only on verified provider payout; full refunds return the gross job amount. This endpoint does not establish escrow custody.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes.",
+        "security": []
+      }
+    },
     "/api/v1/jobs/{jobId}/payment": {
       "get": {
         "operationId": "get_jobs_jobId_payment",
@@ -19936,6 +20021,35 @@
           "message"
         ]
       },
+      "CommissionPolicy": {
+        "type": "object",
+        "required": [
+          "commissionBasisPoints",
+          "transactionFeePayer",
+          "rounding"
+        ],
+        "properties": {
+          "commissionBasisPoints": {
+            "type": "integer",
+            "example": 1000,
+            "description": "1000 basis points = 10%. New quotes snapshot this rate."
+          },
+          "transactionFeePayer": {
+            "type": "string",
+            "enum": [
+              "platform"
+            ],
+            "description": "Konet absorbs payment and custody fees; no extra client charge or provider deduction."
+          },
+          "rounding": {
+            "type": "string",
+            "enum": [
+              "floor"
+            ],
+            "description": "Commission rounds down to whole minor units."
+          }
+        }
+      },
       "SocketTicket": {
         "type": "object",
         "required": [
@@ -20984,6 +21098,21 @@
             "example": 500000,
             "description": "Integer minor units (NGN kobo); 500000 = ₦5,000."
           },
+          "commissionBasisPoints": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 1000
+          },
+          "platformFeeMinor": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Commission reserved on this quote, in kobo."
+          },
+          "providerAmountMinor": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Total minus commission; transaction fees are covered by Konet."
+          },
           "currency": {
             "type": "string",
             "example": "NGN"
@@ -21046,6 +21175,9 @@
           "providerId",
           "clientId",
           "amountMinor",
+          "commissionBasisPoints",
+          "platformFeeMinor",
+          "providerAmountMinor",
           "currency",
           "scope",
           "deliveryAt",

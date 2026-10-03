@@ -1,3 +1,4 @@
+import { commissionBreakdown } from "./commission";
 import { Inject, Injectable } from "@nestjs/common";
 import {
   and,
@@ -173,9 +174,10 @@ export class HiringService {
     });
   }
   private quoteView(row: typeof quotes.$inferSelect) {
+    const view = { ...row, providerAmountMinor: row.amountMinor - row.platformFeeMinor };
     return row.status === "sent" && row.expiresAt <= new Date()
-      ? { ...row, status: "expired" as const }
-      : row;
+      ? { ...view, status: "expired" as const }
+      : view;
   }
   private async authorizedRequest(userId: string, id: string) {
     const [r] = await this.db
@@ -413,10 +415,13 @@ export class HiringService {
           "Hiring currently supports NGN requests only.",
           422,
         );
+      const pricing = commissionBreakdown(input.amountMinor);
       const [q] = await tx
         .insert(quotes)
         .values({
           ...input,
+          commissionBasisPoints: pricing.commissionBasisPoints,
+          platformFeeMinor: pricing.platformFeeMinor,
           scope,
           providerId: request.providerId,
           clientId: request.clientId,
@@ -438,7 +443,7 @@ export class HiringService {
         q.id,
         "Your provider sent a quote.",
       );
-      return q;
+      return this.quoteView(q);
     });
   }
   async requestQuotes(userId: string, id: string, q: ListQuery) {
@@ -552,7 +557,7 @@ export class HiringService {
         id,
         reason.trim(),
       );
-      return updated;
+      return this.quoteView(updated);
     });
   }
   async accept(userId: string, id: string) {
@@ -645,7 +650,8 @@ export class HiringService {
         payerId: q.clientId,
         providerId: q.providerId,
         amountMinor: q.amountMinor,
-        providerAmountMinor: q.amountMinor,
+        platformFeeMinor: q.platformFeeMinor,
+        providerAmountMinor: q.amountMinor - q.platformFeeMinor,
         currency: q.currency,
         idempotencyKey: `quote:${id}`,
       });

@@ -14,6 +14,15 @@ export interface RouteContract {
 }
 
 export const contractSchemas: Record<string, SchemaObject> = {
+  CommissionPolicy: {
+    type: "object",
+    required: ["commissionBasisPoints", "transactionFeePayer", "rounding"],
+    properties: {
+      commissionBasisPoints: { type: "integer", example: 1000, description: "1000 basis points = 10%. New quotes snapshot this rate." },
+      transactionFeePayer: { type: "string", enum: ["platform"], description: "Konet absorbs payment and custody fees; no extra client charge or provider deduction." },
+      rounding: { type: "string", enum: ["floor"], description: "Commission rounds down to whole minor units." },
+    },
+  },
   SocketTicket: {
     type: "object",
     required: ["ticket", "expiresAt"],
@@ -920,6 +929,9 @@ export const contractSchemas: Record<string, SchemaObject> = {
         example: 500000,
         description: "Integer minor units (NGN kobo); 500000 = \u20a65,000.",
       },
+      commissionBasisPoints: { type: "integer", minimum: 0, example: 1000 },
+      platformFeeMinor: { type: "integer", minimum: 0, description: "Commission reserved on this quote, in kobo." },
+      providerAmountMinor: { type: "integer", minimum: 1, description: "Total minus commission; transaction fees are covered by Konet." },
       currency: {
         type: "string",
         example: "NGN",
@@ -972,6 +984,9 @@ export const contractSchemas: Record<string, SchemaObject> = {
       "providerId",
       "clientId",
       "amountMinor",
+      "commissionBasisPoints",
+      "platformFeeMinor",
+      "providerAmountMinor",
       "currency",
       "scope",
       "deliveryAt",
@@ -3923,6 +3938,11 @@ export const contractSchemas: Record<string, SchemaObject> = {
 };
 
 export const routeContracts: RouteContract[] = [
+  {
+    method: "get", path: "payments/policy", summary: "Read commission policy for new quotes",
+    response: "CommissionPolicy", body: null, auth: "public", existing: true, query: null, code: 200,
+    note: "Public pricing disclosure. Quotes snapshot commission at creation; existing agreements retain their terms. Commission is retained only on verified provider payout; full refunds return the gross job amount. This endpoint does not establish escrow custody.",
+  },
   {
     method: "post",
     path: "auth/socket-ticket",

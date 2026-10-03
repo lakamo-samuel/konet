@@ -1,3 +1,4 @@
+import { commissionPolicy } from "./commission";
 import {
   Controller,
   Get,
@@ -58,5 +59,13 @@ export class PaymentWebhookController {
     @Req() req: RawBodyRequest<Request>,
   ) {
     return this.s.webhook(gateway, signature ?? "", req.rawBody);
+  }
+}
+
+@ApiTags("payments")
+@Controller({ version: "1" })
+export class PaymentPolicyController {
+  @Get("payments/policy") policy() {
+    return commissionPolicy;
   }
 }
