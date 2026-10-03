@@ -1,8 +1,12 @@
 require("dotenv/config");
 const { Pool } = require("pg");
 const { drizzle } = require("drizzle-orm/node-postgres");
-const { and, eq, sql } = require("drizzle-orm");
-const { users, userRoles, auditEvents } = require("../dist/database/schema");
+const { eq } = require("drizzle-orm");
+const { users } = require("../dist/database/schema");
+const {
+  changeStaffRole,
+} = require("../dist/modules/administration/staff-role-policy");
+const { userInfo } = require("node:os");
 
 async function main() {
   const [action, rawEmail, role] = process.argv.slice(2);
@@ -24,48 +28,21 @@ async function main() {
   });
   try {
     const db = drizzle(pool);
-    await db.transaction(async (tx) => {
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtext('konet.staff_roles'))`,
-      );
-      const [user] = await tx
-        .select({ id: users.id, status: users.accountStatus })
-        .from(users)
-        .where(eq(users.email, rawEmail.trim().toLowerCase()))
-        .limit(1)
-        .for("update");
-      if (!user) throw new Error("Account not found; register it first.");
-      if (action === "grant" && user.status !== "active")
-        throw new Error("Roles can only be granted to active accounts.");
-      const changed =
-        action === "grant"
-          ? await tx
-              .insert(userRoles)
-              .values({ userId: user.id, role })
-              .onConflictDoNothing()
-              .returning()
-          : await tx
-              .delete(userRoles)
-              .where(
-                and(eq(userRoles.userId, user.id), eq(userRoles.role, role)),
-              )
-              .returning();
-      if (changed.length)
-        await tx.insert(auditEvents).values({
-          actorId: null,
-          action:
-            action === "grant" ? "staff_role.granted" : "staff_role.revoked",
-          resourceType: "user",
-          resourceId: user.id,
-          reason: "Trusted server operator command",
-          details: { role, source: "staff-role-cli" },
-        });
-      console.log(
-        changed.length
-          ? "Staff role updated and audited."
-          : "No role change needed.",
-      );
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, rawEmail.trim().toLowerCase()))
+      .limit(1);
+    if (!user) throw new Error("Account not found; register it first.");
+    await changeStaffRole(db, {
+      actorId: null,
+      userId: user.id,
+      role,
+      grant: action === "grant",
+      reason: "Trusted server operator command",
+      operator: process.env.STAFF_OPERATOR_LABEL || userInfo().username,
     });
+    console.log("Staff role checked and any change audited.");
   } finally {
     await pool.end();
   }

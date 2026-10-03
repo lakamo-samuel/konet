@@ -1,3 +1,4 @@
+import { changeStaffRole } from "../src/modules/administration/staff-role-policy";
 import "reflect-metadata";
 import { Test } from "@nestjs/testing";
 import { ValidationPipe, VersioningType } from "@nestjs/common";
@@ -352,6 +353,14 @@ describeDatabase("university directory PostgreSQL API integration", () => {
       .expect(200);
     await api("get", "admin/universities").expect(403);
     await api("get", "admin/universities", studentToken).expect(200);
+  });
+  it("uses the same last-admin protection for trusted operator commands", async () => {
+    await expect(changeStaffRole(db,{actorId:null,userId:adminId,role:"admin",reason:"Operator cleanup",grant:false,operator:"test-operator"})).rejects.toMatchObject({code:"LAST_ADMIN_REQUIRED"});
+    expect((await db.select().from(schema.userRoles)).some((r)=>r.userId===adminId && r.role==="admin")).toBe(true);
+  });
+  it("rechecks the actor role inside the serialized role-change transaction", async () => {
+    const targetId=(await api("get","auth/me",studentToken)).body.id;
+    await expect(changeStaffRole(db,{actorId:targetId,userId:targetId,role:"admin",reason:"Unauthorized internal call",grant:true})).rejects.toMatchObject({code:"STAFF_PERMISSION_REQUIRED"});
   });
   it("rejects unsupported roles and missing audit reasons", async () => {
     await api("post", `admin/users/${adminId}/roles`)
