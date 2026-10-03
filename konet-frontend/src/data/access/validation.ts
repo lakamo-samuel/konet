@@ -1,8 +1,10 @@
+import { validateAdminInput } from "@/features/admin/operations";
 import { DataError } from "./errors";
 import type { CommandName, QueryName } from "./contracts";
 type Rule = "string" | "number" | "boolean" | "strings" | "record" | "object";
 type Shape = Record<string, Rule>;
 const queryShapes: Record<QueryName, Shape> = {
+  adminQuery: {operation:"string"},
   ownProviderProfile: {},
   disputes: {},
   dispute: { id: "string" },
@@ -45,6 +47,7 @@ const queryShapes: Record<QueryName, Shape> = {
   onboarding: {},
 };
 const commandShapes: Record<CommandName, Shape> = {
+  adminCommand: {operation:"string",values:"object"},
   openDispute: { jobId: "string", reason: "string", description: "string" },
   createProviderProfile: {
     professionalTitle: "string",
@@ -136,6 +139,10 @@ export function validateOperation(
   name: unknown,
   input: unknown,
 ) {
+  if(name === "adminQuery" || name === "adminCommand") {
+    if((kind === "query") !== (name === "adminQuery")) throw new DataError("Invalid staff operation type.");
+    validateAdminInput(kind,input);return;
+  }
   const shapes = kind === "query" ? queryShapes : commandShapes;
   if (typeof name !== "string" || !Object.hasOwn(shapes, name))
     throw new DataError("Unknown operation.");

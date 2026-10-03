@@ -22,7 +22,7 @@ async function execute<I, O>(
     if (value !== undefined) query.set(key, String(value));
   const path = endpoint.path(input) + (query.size ? `?${query}` : "");
   try {
-    const response = await backendRequest<unknown>(endpoint.method, path, {
+    const response = await backendRequest<unknown>(typeof endpoint.method === "function" ? endpoint.method(input) : endpoint.method, path, {
       body: endpoint.body?.(input),
       accessToken: context.accessToken,
     });

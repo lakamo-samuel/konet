@@ -1,3 +1,4 @@
+import { adminQueries, adminCommands, operationPath, type AdminResponse } from "@/features/admin/operations";
 import type { EmailChangeChallenge } from "@/types/account-settings";
 import type { Dispute, DisputeDecision } from "@/types/disputes";
 import { socketConfiguration } from "@/lib/realtime/config";
@@ -50,7 +51,7 @@ import type {
 } from "@/types/domain";
 
 export type Endpoint<I, O> = {
-  method: "GET" | "POST" | "PATCH" | "DELETE";
+  method: "GET" | "POST" | "PATCH" | "DELETE" | ((input:I)=>"GET" | "POST" | "PATCH" | "DELETE");
   path: (input: I) => string;
   params?: (input: I) => unknown;
   body?: (input: I) => unknown;
@@ -215,6 +216,7 @@ const notification = (n: ApiNotification): Notification => {
 export const queryEndpoints: {
   [K in QueryName]: Endpoint<QueryContract[K][0], QueryContract[K][1]> | null;
 } = {
+  adminQuery: {method:"GET",path:i=>operationPath(adminQueries[i.operation].path,i.params),params:i=>i.filters,decode:d=>d as AdminResponse},
   ownProviderProfile: {
     method: "GET",
     path: () => "/me/provider-profile",
@@ -464,6 +466,7 @@ export const commandEndpoints: {
     CommandContract[K][1]
   > | null;
 } = {
+  adminCommand: {method:i=>adminCommands[i.operation].method,path:i=>operationPath(adminCommands[i.operation].path,i.params),body:i=>i.values,decode:d=>d as AdminResponse},
   openDispute: {
     method: "POST",
     path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/disputes`,

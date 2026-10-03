@@ -1,3 +1,4 @@
+import type { AdminQueryInput, AdminCommandInput, AdminResponse } from "@/features/admin/operations";
 import type {
   AccountProfileInput,
   EmailChangeChallenge,
@@ -62,6 +63,7 @@ export type SearchCriteria = {
   available?: boolean;
 };
 export type QueryContract = {
+  adminQuery: [AdminQueryInput, AdminResponse];
   ownProviderProfile: [Record<string, never>, OwnProviderProfile];
   disputes: [{ offset?: number; status?: DisputeStatus }, Dispute[]];
   dispute: [{ id: string }, Dispute];
@@ -116,6 +118,7 @@ export type QueryContract = {
   onboarding: [Record<string, never>, ProviderOnboarding];
 };
 export type CommandContract = {
+  adminCommand: [AdminCommandInput, AdminResponse];
   openDispute: [
     { jobId: string; reason: string; description: string },
     Dispute,
