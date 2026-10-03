@@ -1071,6 +1071,49 @@ try {
     email: "client@example.com",
     password: "client-test-password",
   });
+  users.set("outsider@example.com", {
+    user: {
+      ...fixtureUser,
+      id: "00000000-0000-4000-8000-000000000032",
+      email: "outsider@example.com",
+    },
+    password: "outsider-test-password",
+  });
+  const disputeRequest = (await command("createRequest", hiringInput)).json().data;
+  await command("signIn", { email: "student@example.com", password: "original-test-password" });
+  const disputeQuote = (await command("createQuote", { requestId: disputeRequest.id, amountMinor: 10000, scope: ["Resolve service task"], expiresAt: new Date(Date.now()+86400000).toISOString() })).json().data;
+  await command("signIn", { email: "client@example.com", password: "client-test-password" });
+  const disputeJob = (await command("acceptQuote", { quoteId: disputeQuote.id })).json().data;
+  const caseInput = { jobId: disputeJob.id, reason: "Incomplete work", description: "The agreed deliverables have not been supplied." };
+  assert.equal((await command("openDispute", caseInput)).status,409);
+  assert.equal((await command("openDispute", { ...caseInput, description: "short" })).status,400);
+  await command("checkout", { jobId: disputeJob.id });
+  await command("verifyPayment", { jobId: disputeJob.id });
+  const disputeCase = (await command("openDispute", { ...caseInput, reason: "  Incomplete work  ", description: `  ${caseInput.description}  `, openedByUserId: "forged" })).json().data;
+  assert.equal(disputeCase.reason,caseInput.reason);
+  assert.equal(disputeCase.openedByUserId,clientId);
+  assert.equal((await command("openDispute", caseInput)).json().data.id,disputeCase.id);
+  assert.equal((await query("job",{ id: disputeJob.id })).json().data.status,"disputed");
+  assert.equal((await query("payment",{ jobId: disputeJob.id })).json().data.status,"disputed");
+  assert.equal((await query("disputes",{ status:"open" })).json().data[0].id,disputeCase.id);
+  assert.deepEqual((await query("disputes",{ offset:20 })).json().data,[]);
+  assert.deepEqual((await query("disputeDecisions",{ id:disputeCase.id })).json().data,[]);
+  checks++;
+  await command("signIn", { email: "student@example.com", password: "original-test-password" });
+  assert.equal((await query("dispute",{ id:disputeCase.id })).json().data.id,disputeCase.id);
+  assert.equal((await command("openDispute",caseInput)).status,409);
+  assert.equal((await command("markJobComplete",{ jobId:disputeJob.id })).status,409);
+  hiring.resolveDispute(disputeCase.id);
+  assert.equal((await query("dispute",{ id:disputeCase.id })).json().data.status,"resolved_for_client");
+  assert.equal((await query("disputeDecisions",{ id:disputeCase.id })).json().data[0].refundAmountMinor,10000);
+  checks++;
+  await command("signIn", { email: "outsider@example.com", password: "outsider-test-password" });
+  assert.equal((await query("dispute",{ id:disputeCase.id })).status,404);
+  assert.equal((await query("disputeDecisions",{ id:disputeCase.id })).status,404);
+  assert.deepEqual((await query("disputes",{})).json().data,[]);
+  assert.equal((await command("openDispute",caseInput)).status,404);
+  checks++;
+  await command("signIn", { email: "client@example.com", password: "client-test-password" });
   const withdrawn = (await command("createRequest", hiringInput)).json().data;
   assert.equal(
     (
@@ -1093,14 +1136,6 @@ try {
     400,
   );
   checks++;
-  users.set("outsider@example.com", {
-    user: {
-      ...fixtureUser,
-      id: "00000000-0000-4000-8000-000000000032",
-      email: "outsider@example.com",
-    },
-    password: "outsider-test-password",
-  });
   await command("signIn", {
     email: "outsider@example.com",
     password: "outsider-test-password",

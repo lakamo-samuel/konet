@@ -3,6 +3,9 @@ import type { CommandName, QueryName } from "./contracts";
 type Rule = "string" | "number" | "boolean" | "strings" | "record" | "object";
 type Shape = Record<string, Rule>;
 const queryShapes: Record<QueryName, Shape> = {
+  disputes: {},
+  dispute: { id: "string" },
+  disputeDecisions: { id: "string" },
   commissionPolicy: {},
   verificationMethods: { universityId: "string" },
   studentVerifications: {},
@@ -41,6 +44,7 @@ const queryShapes: Record<QueryName, Shape> = {
   onboarding: {},
 };
 const commandShapes: Record<CommandName, Shape> = {
+  openDispute: { jobId: "string", reason: "string", description: "string" },
   createProviderProfile: {
     professionalTitle: "string",
     bio: "string",
@@ -159,6 +163,16 @@ export function validateOperation(
     )
       throw new DataError(`Please check ${key}.`);
   }
+  if (
+    name === "openDispute" &&
+    (String(values.reason).trim().length < 3 ||
+      String(values.reason).trim().length > 100 ||
+      String(values.description).trim().length < 20 ||
+      String(values.description).trim().length > 5000)
+  )
+    throw new DataError(
+      "Provide a reason of 3–100 characters and a description of 20–5,000 characters.",
+    );
   if (
     name === "sendMessage" &&
     (!String(values.content).trim() || String(values.content).length > 10000)

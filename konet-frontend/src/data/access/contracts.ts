@@ -1,3 +1,4 @@
+import type { Dispute, DisputeDecision, DisputeStatus } from "@/types/disputes";
 import type { RealtimeTicket, ReadResult } from "@/types/messaging";
 import type {
   CommissionPolicy,
@@ -57,6 +58,9 @@ export type SearchCriteria = {
   available?: boolean;
 };
 export type QueryContract = {
+  disputes: [{ offset?: number; status?: DisputeStatus }, Dispute[]];
+  dispute: [{ id: string }, Dispute];
+  disputeDecisions: [{ id: string }, DisputeDecision[]];
   commissionPolicy: [Record<string, never>, CommissionPolicy];
   categories: [Record<string, never>, Category[]];
   verificationMethods: [{ universityId: string }, VerificationMethods];
@@ -107,6 +111,10 @@ export type QueryContract = {
   onboarding: [Record<string, never>, ProviderOnboarding];
 };
 export type CommandContract = {
+  openDispute: [
+    { jobId: string; reason: string; description: string },
+    Dispute,
+  ];
   createProviderProfile: [ProviderProfileInput, OwnProviderProfile];
   updateProviderProfile: [ProviderProfileInput, OwnProviderProfile];
   createProviderService: [ProviderServiceInput, OwnProviderService];

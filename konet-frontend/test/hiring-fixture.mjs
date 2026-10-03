@@ -10,6 +10,8 @@ export function hiringFixture(providerId, ownerId, isPublished) {
   const conversations = [];
   const messages = [];
   const reviews = [];
+  const disputes = [];
+  const decisions = [];
   let gatewayAvailable = true;
   let verificationSuccess = false;
   let serial = 40;
@@ -20,6 +22,24 @@ export function hiringFixture(providerId, ownerId, isPublished) {
     (row.clientId === user.id ||
       (row.providerId === providerId && user.id === ownerId));
   return {
+    resolveDispute: (caseId) => {
+      const item = disputes.find((d) => d.id === caseId);
+      item.status = "resolved_for_client";
+      item.resolvedAt = new Date().toISOString();
+      const job = jobs.find((j) => j.id === item.jobId);
+      job.status = "cancelled";
+      const payment = payments.find((p) => p.jobId === job.id);
+      payment.status = "funded";
+      decisions.push({
+        id: id(),
+        disputeId: caseId,
+        actorId: "finance-user",
+        decision: "resolved_for_client",
+        reason: "Full refund authorized after review",
+        refundAmountMinor: payment.amountMinor,
+        createdAt: item.resolvedAt,
+      });
+    },
     gatewayAvailable: (value) => {
       gatewayAvailable = value;
     },
@@ -34,6 +54,7 @@ export function hiringFixture(providerId, ownerId, isPublished) {
         !publicReviews &&
         ![
           "/api/v1/payments/policy",
+          "/api/v1/disputes",
           "/api/v1/reviews",
           "/api/v1/conversations",
           "/api/v1/requests",
@@ -67,6 +88,87 @@ export function hiringFixture(providerId, ownerId, isPublished) {
           code: "SESSION_REQUIRED",
           message: "Sign in first.",
         });
+      if (url.pathname.startsWith("/api/v1/disputes")) {
+        const [, , , , caseId, action] = url.pathname.split("/");
+        const visible = disputes.filter((d) =>
+          owns(
+            jobs.find((j) => j.id === d.jobId),
+            user,
+          ),
+        );
+        if (!caseId) {
+          const filtered = visible.filter(
+            (d) =>
+              !url.searchParams.get("status") ||
+              d.status === url.searchParams.get("status"),
+          );
+          const offset = Number(url.searchParams.get("offset") ?? 0);
+          return reply(200, filtered.slice(offset, offset + 20));
+        }
+        const item = visible.find((d) => d.id === caseId);
+        if (!item)
+          return reply(404, {
+            code: "DISPUTE_NOT_FOUND",
+            message: "Dispute not found.",
+          });
+        return reply(
+          200,
+          action === "decisions"
+            ? decisions.filter((d) => d.disputeId === caseId)
+            : item,
+        );
+      }
+      const disputedJob = /^\/api\/v1\/jobs\/([^/]+)\/disputes$/.exec(
+        url.pathname,
+      );
+      if (disputedJob && method === "POST") {
+        assert.deepEqual(Object.keys(body).sort(), ["description", "reason"]);
+        const job = jobs.find((j) => j.id === disputedJob[1]);
+        if (!owns(job, user))
+          return reply(404, {
+            code: "JOB_NOT_FOUND",
+            message: "Job not found.",
+          });
+        const existing = disputes.find(
+          (d) =>
+            d.jobId === job.id && ["open", "under_review"].includes(d.status),
+        );
+        if (existing)
+          return existing.openedByUserId === user.id &&
+            existing.reason === body.reason &&
+            existing.description === body.description
+            ? reply(201, existing)
+            : reply(409, {
+                code: "DISPUTE_EXISTS",
+                message: "This job already has an open dispute.",
+              });
+        const payment = payments.find((p) => p.jobId === job.id);
+        if (
+          ![
+            "scheduled",
+            "in_progress",
+            "awaiting_client_confirmation",
+          ].includes(job.status) ||
+          !["funded", "held"].includes(payment.status)
+        )
+          return reply(409, {
+            code: "DISPUTE_NOT_ALLOWED",
+            message: "Only funded work can be disputed.",
+          });
+        const item = {
+          id: id(),
+          jobId: job.id,
+          openedByUserId: user.id,
+          ...body,
+          status: "open",
+          createdAt: new Date().toISOString(),
+          resolvedAt: null,
+        };
+        disputes.push(item);
+        job.status = "disputed";
+        payment.status = "disputed";
+        return reply(201, item);
+      }
       if (url.pathname === "/api/v1/reviews" && method === "POST") {
         assert.equal(body.body, undefined);
         assert.equal(body.clientId, undefined);

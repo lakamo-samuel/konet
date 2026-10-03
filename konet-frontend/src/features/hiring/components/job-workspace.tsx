@@ -149,6 +149,17 @@ function JobDetails({
           Job review
         </Button>
       )}
+      {(client || provider) &&
+        ["scheduled", "in_progress", "awaiting_client_confirmation"].includes(
+          job.status,
+        ) && (
+          <Button href={`/jobs/${job.id}/dispute`} variant="secondary">
+            Open a dispute
+          </Button>
+        )}
+      <Button href="/disputes" variant="secondary">
+        Your disputes
+      </Button>
       <Button href={`/requests/${job.requestId}`} variant="secondary">
         View original request
       </Button>

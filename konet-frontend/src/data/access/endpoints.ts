@@ -1,3 +1,4 @@
+import type { Dispute, DisputeDecision } from "@/types/disputes";
 import { socketConfiguration } from "@/lib/realtime/config";
 import type { RealtimeTicket, ReadResult } from "@/types/messaging";
 import type { Conversation, Message } from "@/types/domain";
@@ -189,6 +190,7 @@ const notification = (n: ApiNotification): Notification => {
     request: "/requests/",
     quote: "/quotes/",
     conversation: "/messages/",
+    dispute: "/disputes/",
   };
   const href =
     n.resourceType && n.resourceId && routes[n.resourceType]
@@ -212,6 +214,22 @@ const notification = (n: ApiNotification): Notification => {
 export const queryEndpoints: {
   [K in QueryName]: Endpoint<QueryContract[K][0], QueryContract[K][1]> | null;
 } = {
+  disputes: {
+    method: "GET",
+    path: () => "/disputes",
+    params: (i) => ({ limit: 20, offset: i.offset, status: i.status }),
+    decode: (d) => d as Dispute[],
+  },
+  dispute: {
+    method: "GET",
+    path: (i) => `/disputes/${encodeURIComponent(i.id)}`,
+    decode: (d) => d as Dispute,
+  },
+  disputeDecisions: {
+    method: "GET",
+    path: (i) => `/disputes/${encodeURIComponent(i.id)}/decisions`,
+    decode: (d) => d as DisputeDecision[],
+  },
   commissionPolicy: {
     method: "GET",
     path: () => "/payments/policy",
@@ -440,6 +458,15 @@ export const commandEndpoints: {
     CommandContract[K][1]
   > | null;
 } = {
+  openDispute: {
+    method: "POST",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/disputes`,
+    body: (i) => ({
+      reason: i.reason.trim(),
+      description: i.description.trim(),
+    }),
+    decode: (d) => d as Dispute,
+  },
   createProviderProfile: {
     method: "POST",
     path: () => "/me/provider-profile",
