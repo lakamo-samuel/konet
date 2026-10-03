@@ -11,8 +11,6 @@ import {getUniversities} from "@/data/repositories/university.repository";
 export default async function Home(){
   const [featured,allProviders,universities]=await Promise.all([getFeaturedProviders(),getProviders(),getUniversities()]);
   const universityFor=(id:string)=>universities.find(item=>item.id===id)!;
-  const aisha=allProviders.find(item=>item.id==="aisha")??allProviders[0];
-  const david=allProviders.find(item=>item.id==="david")??allProviders[1]??allProviders[0];
   return <>
     <section className="content-width hero">
       <div className="hero-copy">
@@ -25,11 +23,11 @@ export default async function Home(){
       </div>
       <div className="hero-art">
         <div className="art-note">Real students. Remarkable talent. <span>↘</span></div>
-        <Link className="hero-portrait hero-portrait-main" href={`/providers/${aisha.id}`}>
-          <Image unoptimized priority src={aisha.coverImage} alt="Aisha Bello’s portrait photography portfolio" fill sizes="(max-width: 900px) 75vw, 395px"/>
-          <div className="portrait-caption"><span>Behind the work</span><strong>{aisha.fullName??"Student provider"} <Icon name="verified" size={17}/></strong><small>{aisha.professionalTitle}</small></div><span className="portrait-arrow"><Icon name="arrow" size={20}/></span>
+        <Link className="hero-portrait hero-portrait-main" href="/discover?q=Photography">
+          <Image unoptimized priority src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1200&q=85" alt="Outdoor portrait showcasing photography" fill sizes="(max-width: 900px) 75vw, 395px"/>
+          <div className="portrait-caption"><span>Behind the work</span><strong>Capture your moment.</strong><small>Portrait &amp; event photography</small></div><span className="portrait-arrow"><Icon name="arrow" size={20}/></span>
         </Link>
-        <Link className="hero-portrait hero-portrait-small" href={`/providers/${david.id}`}><Image unoptimized src={david.coverImage} alt={`Portfolio work by ${david.fullName??"a student provider"}`} fill sizes="225px"/><div className="small-portrait-caption"><strong>Campus talent.</strong><span>{david.fullName??"Student provider"} · {david.professionalTitle}</span></div></Link>
+        <Link className="hero-portrait hero-portrait-small" href="/discover?q=Barbering"><Image unoptimized src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1200&q=85" alt="Barber at work in a barbershop" fill sizes="225px"/><div className="small-portrait-caption"><strong>Campus talent.</strong><span>Barbering &amp; grooming</span></div></Link>
         <div className="trust-float"><span className="trust-float-icon"><Icon name="verified" size={23}/></span><div><strong>Talent you can trust.</strong><span>Verified students. Proven work.</span></div></div>
         <div className="art-bottom-note"><span className="little-line"/>Made across Nigerian campuses.</div>
       </div>
