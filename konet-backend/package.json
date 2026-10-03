@@ -34,7 +34,7 @@
     "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.1",
-    "drizzle-orm": "^0.44.5",
+    "drizzle-orm": "^0.45.3",
     "helmet": "^8.1.0",
     "nestjs-pino": "^4.4.1",
     "otpauth": "^9.5.2",
@@ -69,5 +69,10 @@
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.42.0"
+  },
+  "overrides": {
+    "@nestjs/swagger": {
+      "js-yaml": "^5.4.2"
+    }
   }
 }

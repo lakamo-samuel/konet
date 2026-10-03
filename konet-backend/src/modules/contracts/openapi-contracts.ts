@@ -3,7 +3,7 @@ import type {
   OperationObject,
   ResponseObject,
   SchemaObject,
-} from "@nestjs/swagger";
+} from "@nestjs/swagger/dist/interfaces/open-api-spec.interface";
 import { contractSchemas, routeContracts } from "./contract-registry";
 
 const jsonContent = (schema: SchemaObject | { $ref: string }) => ({
