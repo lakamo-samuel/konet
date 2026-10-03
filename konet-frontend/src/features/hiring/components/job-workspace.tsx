@@ -35,6 +35,7 @@ function JobDetails({
 }) {
   const request = useDataQuery("request", { id: job.requestId });
   const quote = useDataQuery("quote", { id: job.quoteId });
+  const conversation = useDataQuery("jobConversation", { jobId: job.id });
   const start = useDataCommand("startJob");
   const complete = useDataCommand("markJobComplete");
   const confirm = useDataCommand("confirmCompletion");
@@ -89,6 +90,14 @@ function JobDetails({
         <Button href={`/checkout/${job.id}`}>Pay for this job</Button>
       )}
       <PaymentPanel jobId={job.id} />
+      {conversation.data && (
+        <Button href={`/messages/${conversation.data.id}`} variant="secondary">
+          Open job conversation
+        </Button>
+      )}
+      {conversation.isError && (
+        <p role="alert">{errorMessage(conversation.error)}</p>
+      )}
       <MilestoneWorkspace job={job} provider={provider} />
       {provider && job.status === "scheduled" && (
         <Button

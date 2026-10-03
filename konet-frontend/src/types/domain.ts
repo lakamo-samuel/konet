@@ -82,7 +82,9 @@ export interface PortfolioItem {
 }
 export interface Conversation {
   id: string;
-  jobId?: string;
+  jobId: string | null;
+  requestId: string | null;
+  createdAt: string;
   participantIds: string[];
   updatedAt: string;
 }
@@ -90,9 +92,9 @@ export interface Message {
   id: string;
   conversationId: string;
   senderId: string;
-  body: string;
+  content: string;
+  type: string;
   createdAt: string;
-  system?: boolean;
 }
 export interface Review {
   id: string;

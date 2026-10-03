@@ -128,6 +128,15 @@ const backend = http.createServer(async (req, res) => {
     users.get("student@example.com").password = body.password;
     return send(200, { message: "Password reset." });
   }
+  if (url.pathname === "/api/v1/auth/socket-ticket") {
+    if (!auth)
+      return send(401, { code: "SESSION_REQUIRED", message: "Sign in first." });
+    assert.deepEqual(body, {});
+    return send(200, {
+      ticket: "t".repeat(43),
+      expiresAt: new Date(Date.now() + 30000).toISOString(),
+    });
+  }
   if (verification.handle(url, req.method, body, auth, send)) return;
   if (hiring.handle(url, req.method, body, auth, send)) return;
   if (provider.handle(url, req.method, body, auth, send)) return;
@@ -699,6 +708,71 @@ try {
   ).json().data;
   assert.equal(acceptedJob.status, "awaiting_payment");
   assert.equal(acceptedJob.agreedAmountMinor, 150050);
+  const conversation = (
+    await query("jobConversation", { jobId: acceptedJob.id })
+  ).json().data;
+  assert.ok(conversation.participantIds.includes(clientId));
+  assert.equal(
+    (await query("conversation", { id: conversation.id })).json().data.id,
+    conversation.id,
+  );
+  assert.equal(
+    (await query("conversations", { userId: clientId })).json().data[0].id,
+    conversation.id,
+  );
+  const ticketResult = await command("realtimeTicket", {});
+  assert.equal(ticketResult.status, 200);
+  const credentials = ticketResult.json().data;
+  assert.match(credentials.ticket, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(credentials.accessToken, undefined);
+  assert.equal(credentials.url, `http://127.0.0.1:${apiPort}/chat`);
+  assert.equal(credentials.path, "/socket.io");
+  checks++;
+  const message = (
+    await command("sendMessage", {
+      conversationId: conversation.id,
+      content: "Can we confirm the job details?",
+      senderId: uid,
+    })
+  ).json().data;
+  assert.equal(message.content, "Can we confirm the job details?");
+  assert.equal(message.senderId, clientId);
+  assert.equal(
+    (
+      await command("sendMessage", {
+        conversationId: conversation.id,
+        content: " ",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await command("sendMessage", {
+        conversationId: conversation.id,
+        content: "x".repeat(10001),
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await query("messages", { conversationId: conversation.id })).json()
+      .data[0].id,
+    message.id,
+  );
+  assert.deepEqual(
+    (
+      await query("messages", { conversationId: conversation.id, offset: 100 })
+    ).json().data,
+    [],
+  );
+  assert.ok(
+    (
+      await command("readConversation", { conversationId: conversation.id })
+    ).json().data.readAt,
+  );
+  checks++;
+
   assert.equal(
     (await command("acceptQuote", { quoteId: hiredQuote.id })).json().data.id,
     acceptedJob.id,
@@ -941,6 +1015,29 @@ try {
     404,
   );
   assert.deepEqual((await query("payments", {})).json().data, []);
+  assert.equal(
+    (await query("conversation", { id: conversation.id })).status,
+    404,
+  );
+  assert.equal(
+    (await query("messages", { conversationId: conversation.id })).status,
+    404,
+  );
+  assert.equal(
+    (
+      await command("sendMessage", {
+        conversationId: conversation.id,
+        content: "Not a participant",
+      })
+    ).status,
+    404,
+  );
+  assert.deepEqual(
+    (await query("conversations", { userId: clientId })).json().data,
+    [],
+  );
+  checks++;
+
   checks++;
   await command("signIn", {
     email: "student@example.com",

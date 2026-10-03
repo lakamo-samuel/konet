@@ -6,4 +6,4 @@ Copy `.env.example` to `.env.local`, set `KONET_API_URL` to the local or deploye
 
 Checks: `npm run typecheck`, `npm run lint`, `npm run build`, and `npm run test:integration` (after build). `npm run test:uploads` checks the private upload helper, and `npm run test:integration:dev` checks development mode. The integration test uses a local mocked backend and does not send real messages or payments.
 
-Paystack checkout, backend-confirmed payment status, provider bank accounts and earnings are connected on the frontend. See [frontend payments](../docs/frontend-payments.md). Socket.IO messaging is the next integration stage; admin frontend work remains deferred.
+Paystack checkout, backend-confirmed payment status, provider bank accounts and earnings are connected on the frontend. See [frontend payments](../docs/frontend-payments.md). Socket.IO messaging is connected; see [frontend messaging](../docs/frontend-messaging.md). Reviews, disputes and account/provider settings are next; admin frontend work remains deferred.

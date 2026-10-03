@@ -25,6 +25,7 @@ const queryShapes: Record<QueryName, Shape> = {
   milestones: { jobId: "string" },
   conversations: { userId: "string" },
   conversation: { id: "string" },
+  jobConversation: { jobId: "string" },
   messages: { conversationId: "string" },
   notifications: { userId: "string" },
   payment: { jobId: "string" },
@@ -97,7 +98,9 @@ const commandShapes: Record<CommandName, Shape> = {
   cancelJob: { jobId: "string", reason: "string" },
   createMilestone: { jobId: "string", title: "string" },
   updateMilestone: { jobId: "string", id: "string", status: "string" },
-  sendMessage: { conversationId: "string", body: "string" },
+  sendMessage: { conversationId: "string", content: "string" },
+  readConversation: { conversationId: "string" },
+  realtimeTicket: {},
   readNotification: { id: "string" },
   submitReview: { jobId: "string", rating: "number", body: "string" },
   requestVerificationCode: { email: "string" },
@@ -154,6 +157,11 @@ export function validateOperation(
     )
       throw new DataError(`Please check ${key}.`);
   }
+  if (
+    name === "sendMessage" &&
+    (!String(values.content).trim() || String(values.content).length > 10000)
+  )
+    throw new DataError("Enter a message of 1–10,000 characters.");
   if (
     name === "addPayoutAccount" &&
     (!/^\d{3,9}$/.test(String(values.bankCode)) ||

@@ -1,3 +1,6 @@
+import { socketConfiguration } from "@/lib/realtime/config";
+import type { RealtimeTicket, ReadResult } from "@/types/messaging";
+import type { Conversation, Message } from "@/types/domain";
 import type {
   Payment,
   Checkout,
@@ -347,9 +350,29 @@ export const queryEndpoints: {
     path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/milestones`,
     decode: (d) => d as Milestone[],
   },
-  conversations: null,
-  conversation: null,
-  messages: null,
+  conversations: {
+    method: "GET",
+    path: () => "/conversations",
+    params: (i) => ({ offset: i.offset ?? 0, limit: 20 }),
+    decode: (d) => d as Conversation[],
+  },
+  conversation: {
+    method: "GET",
+    path: (i) => `/conversations/${encodeURIComponent(i.id)}`,
+    decode: (d) => d as Conversation,
+  },
+  messages: {
+    method: "GET",
+    path: (i) =>
+      `/conversations/${encodeURIComponent(i.conversationId)}/messages`,
+    params: (i) => ({ offset: i.offset ?? 0, limit: i.limit ?? 100 }),
+    decode: (d) => d as Message[],
+  },
+  jobConversation: {
+    method: "GET",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/conversation`,
+    decode: (d) => d as Conversation,
+  },
   payment: {
     method: "GET",
     path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/payment`,
@@ -534,7 +557,26 @@ export const commandEndpoints: {
     body: (i) => ({ status: i.status }),
     decode: (d) => d as Milestone,
   },
-  sendMessage: null,
+  sendMessage: {
+    method: "POST",
+    path: (i) =>
+      `/conversations/${encodeURIComponent(i.conversationId)}/messages`,
+    body: (i) => ({ content: i.content }),
+    decode: (d) => d as Message,
+  },
+  readConversation: {
+    method: "PATCH",
+    path: (i) => `/conversations/${encodeURIComponent(i.conversationId)}/read`,
+    decode: (d) => d as ReadResult,
+  },
+  realtimeTicket: {
+    method: "POST",
+    path: () => "/auth/socket-ticket",
+    decode: (d) => ({
+      ...(d as Pick<RealtimeTicket, "ticket" | "expiresAt">),
+      ...socketConfiguration(),
+    }),
+  },
   readNotification: {
     method: "PATCH",
     path: (i) => `/notifications/${encodeURIComponent(i.id)}/read`,

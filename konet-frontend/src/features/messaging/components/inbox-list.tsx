@@ -1,22 +1,86 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
-import { Search } from "lucide-react";
-import { Avatar } from "@/components/ui/avatar";
-
-type InboxItem = { id: string; name: string; avatar: string; preview: string; service: string; updatedAt: string };
-export function InboxList({ items }: { items: InboxItem[] }) {
+import { useDataQuery } from "@/lib/query/hooks";
+import { errorMessage } from "@/data/access/client";
+import { Button } from "@/components/ui/button";
+import { useRealtime } from "@/lib/realtime/provider";
+export function InboxList() {
+  const [offset, setOffset] = useState(0);
   const [search, setSearch] = useState("");
-  const visible = items.filter(item => `${item.name} ${item.preview} ${item.service}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
-  return <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-    <div className="flex flex-col gap-4 border-b border-[var(--border)] p-5 sm:flex-row sm:items-center sm:justify-between">
-      <div><h2 className="text-lg font-bold">Inbox</h2><p className="text-sm text-[var(--muted)]">{items.length} conversation{items.length === 1 ? "" : "s"}</p></div>
-      <label className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--canvas)] px-3 focus-within:outline-2 focus-within:outline-[var(--clay)] sm:w-72"><Search size={17} aria-hidden className="text-[var(--muted)]" /><span className="sr-only">Search conversations</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search conversations" className="w-full min-w-0 border-0 bg-transparent text-sm outline-none" /></label>
-    </div>
-    {visible.length ? visible.map(item => <Link href={`/messages/${item.id}`} key={item.id} className="grid grid-cols-[48px_minmax(0,1fr)] gap-4 border-b border-[var(--border)] p-5 text-[var(--ink)] transition-colors last:border-b-0 hover:bg-[var(--canvas)] focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--clay)] sm:grid-cols-[52px_minmax(0,1fr)_auto] sm:items-center">
-      <Avatar src={item.avatar} name={item.name} size={48} />
-      <span className="min-w-0"><strong className="block truncate text-base">{item.name}</strong><span className="mt-1 block truncate text-sm text-[var(--muted)]">{item.preview}</span><span className="mt-2 block text-xs font-semibold text-[var(--clay)]">{item.service}</span></span>
-      <time className="col-start-2 text-xs text-[var(--muted)] sm:col-start-3 sm:row-start-1" dateTime={item.updatedAt}>{new Date(item.updatedAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</time>
-    </Link>) : <p className="p-8 text-center text-sm text-[var(--muted)]">No conversations match your search.</p>}
-  </div>;
+  const user = useDataQuery("currentUser", {});
+  const inbox = useDataQuery(
+    "conversations",
+    { userId: user.data?.id ?? "", offset },
+    undefined,
+    { enabled: !!user.data },
+  );
+  const realtime = useRealtime();
+  const rows =
+    inbox.data?.filter((c) =>
+      `${c.id} ${c.jobId ?? ""} ${c.requestId ?? ""}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase()),
+    ) ?? [];
+  return (
+    <section className="surface-panel form-stack">
+      <h2>Inbox</h2>
+      <p role="status">{realtime.message}</p>
+      {realtime.status === "error" && (
+        <Button variant="secondary" onClick={realtime.connection?.reconnect}>
+          Reconnect
+        </Button>
+      )}
+      <label className="field">
+        Search conversations on this page
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Job, request or conversation ID"
+        />
+      </label>
+      {(user.isError || inbox.isError) && (
+        <p role="alert">{errorMessage(user.error ?? inbox.error)}</p>
+      )}
+      {!user.isError && inbox.isPending && (
+        <p role="status">Loading conversations…</p>
+      )}
+      {rows.map((c) => (
+        <article key={c.id} className="notification-row">
+          <div>
+            <Button variant="quiet" href={`/messages/${c.id}`}>
+              {c.jobId
+                ? `Job ${c.jobId.slice(0, 8)}`
+                : c.requestId
+                  ? `Request ${c.requestId.slice(0, 8)}`
+                  : `Conversation ${c.id.slice(0, 8)}`}
+            </Button>
+            <p>Updated {new Date(c.updatedAt).toLocaleString()}</p>
+          </div>
+        </article>
+      ))}
+      {inbox.isSuccess && !rows.length && (
+        <p>
+          {inbox.data.length
+            ? "No conversations match this search."
+            : "No conversations on this page. A conversation is created when a quote is accepted."}
+        </p>
+      )}
+      <div className="modal-actions">
+        <Button
+          variant="secondary"
+          disabled={!offset || inbox.isFetching}
+          onClick={() => setOffset(Math.max(0, offset - 20))}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={inbox.data?.length !== 20 || inbox.isFetching}
+          onClick={() => setOffset(offset + 20)}
+        >
+          Next
+        </Button>
+      </div>
+    </section>
+  );
 }

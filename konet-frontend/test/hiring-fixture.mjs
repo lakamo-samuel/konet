@@ -7,6 +7,8 @@ export function hiringFixture(providerId, ownerId, isPublished) {
   const payments = [];
   const payouts = [];
   const accounts = [];
+  const conversations = [];
+  const messages = [];
   let gatewayAvailable = true;
   let verificationSuccess = false;
   let serial = 40;
@@ -26,6 +28,7 @@ export function hiringFixture(providerId, ownerId, isPublished) {
     handle(url, method, body, user, send) {
       if (
         ![
+          "/api/v1/conversations",
           "/api/v1/requests",
           "/api/v1/quotes",
           "/api/v1/jobs",
@@ -52,6 +55,54 @@ export function hiringFixture(providerId, ownerId, isPublished) {
           Number(url.searchParams.get("offset") ?? 0) +
             Number(url.searchParams.get("limit") ?? 20),
         );
+      if (url.pathname.startsWith("/api/v1/conversations")) {
+        const parts = url.pathname.split("/");
+        const conversation = conversations.find((c) => c.id === parts[4]);
+        if (!parts[4])
+          return reply(
+            200,
+            page(
+              conversations.filter((c) => c.participantIds.includes(user.id)),
+            ),
+          );
+        if (!conversation?.participantIds.includes(user.id))
+          return reply(404, {
+            code: "CONVERSATION_NOT_FOUND",
+            message: "Conversation not found.",
+          });
+        if (parts[5] === "read")
+          return reply(200, {
+            message: "Conversation marked read.",
+            readAt: new Date().toISOString(),
+          });
+        if (parts[5] === "messages") {
+          if (method === "GET")
+            return reply(
+              200,
+              page(
+                messages.filter((m) => m.conversationId === conversation.id),
+              ),
+            );
+          assert.equal(body.body, undefined);
+          assert.equal(body.senderId, undefined);
+          if (!body.content.trim() || body.content.length > 10000)
+            return reply(422, {
+              code: "INVALID_MESSAGE",
+              message: "Invalid message.",
+            });
+          const message = {
+            id: id(),
+            conversationId: conversation.id,
+            senderId: user.id,
+            content: body.content,
+            type: "text",
+            createdAt: new Date().toISOString(),
+          };
+          messages.push(message);
+          return reply(201, message);
+        }
+        return reply(200, conversation);
+      }
       if (url.pathname === "/api/v1/payout-banks")
         return gatewayAvailable
           ? reply(200, [{ code: "058", name: "Test Bank" }])
@@ -295,6 +346,14 @@ export function hiringFixture(providerId, ownerId, isPublished) {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           });
+          conversations.push({
+            id: id(),
+            jobId: job.id,
+            requestId: request.id,
+            participantIds: [job.clientId, ownerId],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
           jobs.push(job);
           return reply(201, job);
         }
@@ -320,6 +379,11 @@ export function hiringFixture(providerId, ownerId, isPublished) {
       const job = jobs.find((j) => j.id === resourceId);
       if (!owns(job, user))
         return reply(404, { code: "JOB_NOT_FOUND", message: "Job not found." });
+      if (action === "conversation")
+        return reply(
+          200,
+          conversations.find((c) => c.jobId === job.id),
+        );
       const payment = payments.find((p) => p.jobId === job.id);
       if (action === "payment" || action === "payments") {
         if (method === "GET") return reply(200, payment);

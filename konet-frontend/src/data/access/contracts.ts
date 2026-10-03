@@ -1,3 +1,4 @@
+import type { RealtimeTicket, ReadResult } from "@/types/messaging";
 import type {
   Payment,
   PaymentStatus,
@@ -78,9 +79,13 @@ export type QueryContract = {
   quote: [{ id: string }, HiringQuote | null];
   requestQuotes: [{ requestId: string; offset?: number }, HiringQuote[]];
   milestones: [{ jobId: string }, Milestone[]];
-  conversations: [{ userId: string }, Conversation[]];
+  conversations: [{ userId: string; offset?: number }, Conversation[]];
   conversation: [{ id: string }, Conversation | null];
-  messages: [{ conversationId: string }, Message[]];
+  messages: [
+    { conversationId: string; offset?: number; limit?: number },
+    Message[],
+  ];
+  jobConversation: [{ jobId: string }, Conversation];
   notifications: [{ userId: string }, Notification[]];
   payment: [{ jobId: string }, Payment];
   payments: [
@@ -160,7 +165,9 @@ export type CommandContract = {
     { jobId: string; id: string; status: Milestone["status"] },
     Milestone,
   ];
-  sendMessage: [{ conversationId: string; body: string }, Message];
+  sendMessage: [{ conversationId: string; content: string }, Message];
+  readConversation: [{ conversationId: string }, ReadResult];
+  realtimeTicket: [Record<string, never>, RealtimeTicket];
   readNotification: [{ id: string }, Notification];
   submitReview: [{ jobId: string; rating: number; body: string }, Review];
   requestVerificationCode: [{ email: string }, EmailChallenge];

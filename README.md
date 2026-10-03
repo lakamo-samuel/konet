@@ -2,7 +2,7 @@
 
 Konet is a student service marketplace. A student can discover another student's services, send a brief, receive a quote, hire the provider, discuss the job, confirm delivery, and review the work. Providers can build a profile, publish services, respond to requests, and manage jobs. The product is designed around university identity, provider trust, and protected payments.
 
-> **Current state:** The backend has 144 implemented endpoints, with seven admin endpoints pending. Frontend HTTP integration has started: authentication/recovery/reset/logout, server-validated sessions, public catalog reads, notifications and contact submission are connected. Verification, provider management, hiring, payments and messaging screens still need their API adapters. See [frontend integration](docs/frontend-api-integration.md) for the current stage and setup.
+> **Current state:** The backend has 145 implemented endpoints, with seven admin endpoints pending. Frontend authentication, verification, provider onboarding, hiring/jobs, payments/earnings and Socket.IO messaging are connected. Reviews, disputes and account/provider settings remain to be integrated; admin frontend work remains paused. See [frontend integration](docs/frontend-api-integration.md) for setup.
 
 ## Contents
 
@@ -262,12 +262,12 @@ Useful checks: `npm run typecheck`, `npm run lint`, and `npm run build` in eithe
 | Public discovery | Discover and public provider/service/portfolio/review reads use HTTP | Confirm backend response shapes and complete remaining catalog mappings |
 | Auth and verification | Live authentication, email codes, private evidence, scan gating and review feedback; development bearer and production cookie transport | Deployment checks with configured Resend and Cloudinary accounts |
 | Provider onboarding | Canonical profiles/services/portfolio, private evidence, review status, publication and service activation use the API | Provider settings and remaining workspace actions |
-| Requests, quotes, jobs | Participant reads/actions, acceptance, job/payment states and milestones use the API | Connect Socket.IO messaging |
-| Messaging, notifications, reviews | Notifications are connected; messaging and review submission still need integration | Map backend endpoints; add delivery/update behavior as needed |
+| Requests, quotes, jobs | Participant reads/actions, acceptance, job/payment states, milestones and Socket.IO conversations use the API | Connect reviews and disputes |
+| Messaging, notifications, reviews | Socket.IO messaging, conversation reads and notification queries are connected; review submission remains pending | Connect review/dispute/account screens and validate deployed socket/CORS delivery |
 | Payments and earnings | Paystack hosted checkout, verification, job financial status, earnings and provider accounts are connected | Configure sandbox credentials, deployed callback/webhook URLs and merchant transfer settings; test actual gateway delivery |
 | Password recovery | Frontend recovery/reset forms call the implemented API; reset token remains in the URL fragment | Configure Resend and verify delivery in the deployment |
 
-Hiring and payment screens use canonical backend fields and states. Remaining conversation, review and account contracts still need to be connected to their backend endpoints.
+Hiring and payment screens use canonical backend fields and states. Remaining review and account contracts still need to be connected to their backend endpoints.
 
 ## Where to change things
 
@@ -283,4 +283,4 @@ Hiring and payment screens use canonical backend fields and states. Remaining co
 
 See the backend's own [README](konet-backend/README.md) for its shorter operational summary. The frontend's [README](konet-frontend/README.md) is currently the generated Next.js starter document; this root README is the project-wide guide. The planned frontend experience is detailed in the [frontend requirements](docs/frontend-requirements.md).
 
-Paystack checkout, backend-confirmed payment status, provider bank accounts and earnings are connected on the frontend. See [frontend payments](docs/frontend-payments.md). Socket.IO messaging is the next integration stage; admin frontend work remains deferred.
+Paystack checkout, backend-confirmed payment status, provider bank accounts and earnings are connected on the frontend. See [frontend payments](docs/frontend-payments.md). Socket.IO messaging is connected; see [frontend messaging](docs/frontend-messaging.md). Reviews, disputes and account/provider settings are next; admin frontend work remains deferred.
