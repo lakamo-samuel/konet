@@ -33,3 +33,7 @@ Frontend typecheck, lint, production build, HTTP journeys in production-cookie a
 Backend PostgreSQL integration tests assert the new callback job ID and exercise existing collection, transfer, refund, webhook and hiring transitions with mocked gateway calls against a disposable database. Browser interactions, actual Paystack test checkout/redirects, merchant transfer authorization and deployed webhooks still need deployment checks with configured sandbox credentials. No migration is required for this stage.
 
 Socket.IO conversations are connected; see [frontend messaging](frontend-messaging.md). Completed-job reviews are connected; see [frontend reviews](frontend-reviews.md). Next frontend stages: disputes and account/provider settings. Admin frontend remains deferred. Reconciliation and operational recovery remain backend limitations described in `backend-payments.md` and `backend-settlements.md`.
+
+## Commission disclosure
+
+Quote creation fetches the backend public commission policy and shows estimated commission and provider earnings before sending. Submission waits for policy loading to succeed. The backend quote snapshot is authoritative. Quote details and payment details show actual saved commission and provider earnings, including legacy zero-commission agreements. Konet covers transaction fees; clients pay the quoted total. Provider earnings totals and payouts already use the net saved provider amount. See [backend commission policy](backend-commission.md).

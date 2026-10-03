@@ -3,6 +3,7 @@ import type { CommandName, QueryName } from "./contracts";
 type Rule = "string" | "number" | "boolean" | "strings" | "record" | "object";
 type Shape = Record<string, Rule>;
 const queryShapes: Record<QueryName, Shape> = {
+  commissionPolicy: {},
   verificationMethods: { universityId: "string" },
   studentVerifications: {},
   upload: { id: "string" },

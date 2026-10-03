@@ -1,5 +1,6 @@
 import type { RealtimeTicket, ReadResult } from "@/types/messaging";
 import type {
+  CommissionPolicy,
   Payment,
   PaymentStatus,
   Checkout,
@@ -56,6 +57,7 @@ export type SearchCriteria = {
   available?: boolean;
 };
 export type QueryContract = {
+  commissionPolicy: [Record<string, never>, CommissionPolicy];
   categories: [Record<string, never>, Category[]];
   verificationMethods: [{ universityId: string }, VerificationMethods];
   studentVerifications: [Record<string, never>, StudentVerification[]];

@@ -262,9 +262,9 @@ Useful checks: `npm run typecheck`, `npm run lint`, and `npm run build` in eithe
 | Public discovery | Discover and public provider/service/portfolio/review reads use HTTP | Confirm backend response shapes and complete remaining catalog mappings |
 | Auth and verification | Live authentication, email codes, private evidence, scan gating and review feedback; development bearer and production cookie transport | Deployment checks with configured Resend and Cloudinary accounts |
 | Provider onboarding | Canonical profiles/services/portfolio, private evidence, review status, publication and service activation use the API | Provider settings and remaining workspace actions |
-| Requests, quotes, jobs | Participant reads/actions, acceptance, job/payment states, milestones and Socket.IO conversations use the API | Connect reviews and disputes |
+| Requests, quotes, jobs | Participant reads/actions, acceptance, saved quote commission, job/payment states, milestones and Socket.IO conversations use the API | Connect disputes |
 | Messaging, notifications, reviews | Socket.IO messaging, conversation reads, notification queries and completed-job reviews are connected | Connect dispute/account screens and validate deployed delivery |
-| Payments and earnings | Paystack hosted checkout, verification, job financial status, earnings and provider accounts are connected | Configure sandbox credentials, deployed callback/webhook URLs and merchant transfer settings; test actual gateway delivery |
+| Payments and earnings | Paystack hosted checkout, verification, saved 10% commission on new quotes, net earnings and provider accounts are connected | Configure sandbox credentials, deployed callback/webhook URLs and merchant transfer settings; test actual gateway delivery |
 | Password recovery | Frontend recovery/reset forms call the implemented API; reset token remains in the URL fragment | Configure Resend and verify delivery in the deployment |
 
 Hiring and payment screens use canonical backend fields and states. Remaining dispute and account contracts still need to be connected to their backend endpoints.
@@ -284,3 +284,5 @@ Hiring and payment screens use canonical backend fields and states. Remaining di
 See the backend's own [README](konet-backend/README.md) for its shorter operational summary. The frontend's [README](konet-frontend/README.md) is currently the generated Next.js starter document; this root README is the project-wide guide. The planned frontend experience is detailed in the [frontend requirements](docs/frontend-requirements.md).
 
 Paystack checkout, backend-confirmed payment status, provider bank accounts and earnings are connected on the frontend. See [frontend payments](docs/frontend-payments.md). Socket.IO messaging is connected; see [frontend messaging](docs/frontend-messaging.md). Completed-job reviews are connected; see [frontend reviews](docs/frontend-reviews.md). Disputes and account/provider settings are next; admin frontend work remains deferred.
+
+Commission policy and preservation of existing zero-commission agreements are documented in [backend commission](docs/backend-commission.md). The frontend previews the backend policy before a provider submits a quote.

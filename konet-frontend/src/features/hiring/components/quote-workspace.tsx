@@ -30,6 +30,12 @@ export function QuoteWorkspace({ id }: { id: string }) {
   return (
     <div className="surface-panel form-stack">
       <h2>{formatNaira(q.amountMinor / 100)}</h2>
+      <p>
+        Konet commission ({q.commissionBasisPoints / 100}%):{" "}
+        {formatNaira(q.platformFeeMinor / 100)}
+      </p>
+      <p>Provider earnings: {formatNaira(q.providerAmountMinor / 100)}</p>
+      <p>The client pays the quoted total. Konet covers transaction fees.</p>
       <p>Status: {q.status === "sent" && !available ? "expired" : q.status}</p>
       <p>Expires {new Date(q.expiresAt).toLocaleString()}</p>
       {q.deliveryAt && (

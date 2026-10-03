@@ -25,3 +25,28 @@ assert.equal(futureDate(date), date);
 console.log(
   "NGN precision, integer limits, optional amounts and future-date checks passed.",
 );
+
+const pricingContext = { exports: {} };
+vm.runInNewContext(
+  ts.transpileModule(readFileSync("src/lib/formatters/commission.ts", "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS },
+  }).outputText,
+  pricingContext,
+);
+const { previewCommission } = pricingContext.exports;
+for (const amount of [1, 9, 10, 101, 1000000, 2147483647]) {
+  const result = previewCommission(amount, {
+    commissionBasisPoints: 1000,
+    rounding: "floor",
+    transactionFeePayer: "platform",
+  });
+  assert.equal(result.platformFeeMinor, Math.floor(amount / 10));
+  assert.equal(result.providerAmountMinor + result.platformFeeMinor, amount);
+}
+assert.equal(
+  previewCommission(1000, { commissionBasisPoints: 500 }).platformFeeMinor,
+  50,
+);
+console.log(
+  "Commission preview uses the server rate, preserves minor units and rounds down.",
+);

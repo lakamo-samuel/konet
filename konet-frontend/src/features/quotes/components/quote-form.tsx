@@ -2,9 +2,20 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/data/access/client";
-import { useDataCommand } from "@/lib/query/hooks";
+import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
 import { ngnToMinor, futureDate } from "@/lib/formatters/money-input";
+import { previewCommission } from "@/lib/formatters/commission";
+import { formatNaira } from "@/lib/formatters/currency";
 export function QuoteForm({ requestId }: { requestId: string }) {
+  const [amount, setAmount] = useState("");
+  const policy = useDataQuery("commissionPolicy", {});
+  let preview: ReturnType<typeof previewCommission> | undefined;
+  try {
+    const minor = ngnToMinor(amount);
+    if (minor && policy.data) preview = previewCommission(minor, policy.data);
+  } catch {
+    /* Invalid or incomplete input is handled on submit. */
+  }
   const [sent, setSent] = useState<string | null>(null);
   const [error, setError] = useState("");
   const create = useDataCommand("createQuote");
@@ -23,7 +34,7 @@ export function QuoteForm({ requestId }: { requestId: string }) {
       className="surface-panel form-stack"
       onSubmit={async (event) => {
         event.preventDefault();
-        if (create.isPending) return;
+        if (create.isPending || !policy.isSuccess) return;
         setError("");
         const data = new FormData(event.currentTarget);
         try {
@@ -59,8 +70,42 @@ export function QuoteForm({ requestId }: { requestId: string }) {
       <h2>Send a quote</h2>
       <label className="field">
         Total price (₦)
-        <input name="amount" type="number" min="0.01" step="0.01" required />
+        <input
+          name="amount"
+          type="number"
+          min="0.01"
+          step="0.01"
+          required
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+        />
       </label>
+      {policy.isPending && <p role="status">Loading commission policy…</p>}
+      {policy.isError && (
+        <p role="alert">
+          {errorMessage(policy.error)}{" "}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => policy.refetch()}
+          >
+            Retry
+          </Button>
+        </p>
+      )}
+      {policy.data && (
+        <p>
+          Konet deducts {policy.data.commissionBasisPoints / 100}% commission
+          when payment is released. Konet covers transaction fees; the client
+          pays your quoted total.
+        </p>
+      )}
+      {preview && (
+        <p aria-live="polite">
+          Commission: {formatNaira(preview.platformFeeMinor / 100)} · Your
+          expected earnings: {formatNaira(preview.providerAmountMinor / 100)}
+        </p>
+      )}
       <label className="field">
         Scope and deliverables
         <textarea
@@ -83,7 +128,7 @@ export function QuoteForm({ requestId }: { requestId: string }) {
         <textarea name="notes" maxLength={10000} />
       </label>
       {error && <p role="alert">{error}</p>}
-      <Button type="submit" disabled={create.isPending}>
+      <Button type="submit" disabled={create.isPending || !policy.isSuccess}>
         {create.isPending ? "Sending…" : "Send quote"}
       </Button>
     </form>

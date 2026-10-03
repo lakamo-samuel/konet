@@ -2,6 +2,7 @@ import { socketConfiguration } from "@/lib/realtime/config";
 import type { RealtimeTicket, ReadResult } from "@/types/messaging";
 import type { Conversation, Message } from "@/types/domain";
 import type {
+  CommissionPolicy,
   Payment,
   Checkout,
   Earnings,
@@ -211,6 +212,11 @@ const notification = (n: ApiNotification): Notification => {
 export const queryEndpoints: {
   [K in QueryName]: Endpoint<QueryContract[K][0], QueryContract[K][1]> | null;
 } = {
+  commissionPolicy: {
+    method: "GET",
+    path: () => "/payments/policy",
+    decode: (d) => d as CommissionPolicy,
+  },
   verificationMethods: {
     method: "GET",
     path: (i) =>

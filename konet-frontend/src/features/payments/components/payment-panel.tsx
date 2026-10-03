@@ -47,6 +47,14 @@ export function PaymentPanel({
       <p>
         {formatNaira(p.amountMinor / 100)} · {p.currency}
       </p>
+      <p>
+        Konet commission: {formatNaira(p.platformFeeMinor / 100)} · Provider
+        earnings: {formatNaira(p.providerAmountMinor / 100)}
+      </p>
+      <p>
+        Konet covers transaction fees. Commission is earned only after
+        successful payout; a full refund returns the total payment.
+      </p>
       {p.gatewayReference && <p>Reference: {p.gatewayReference}</p>}
       {["pending", "processing", "failed"].includes(p.status) && (
         <p>

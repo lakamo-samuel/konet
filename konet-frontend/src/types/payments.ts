@@ -63,3 +63,9 @@ export type PayoutAccount = {
   createdAt: string;
 };
 export type PayoutBank = { code: string; name: string };
+
+export interface CommissionPolicy {
+  commissionBasisPoints: number;
+  transactionFeePayer: "platform";
+  rounding: "floor";
+}

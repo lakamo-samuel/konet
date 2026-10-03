@@ -695,6 +695,11 @@ try {
     })
   ).json().data;
   assert.equal(hiredQuote.status, "sent");
+  assert.equal(hiredQuote.commissionBasisPoints, 1000);
+  assert.equal(hiredQuote.platformFeeMinor, 15005);
+  assert.equal(hiredQuote.providerAmountMinor, 135045);
+  assert.deepEqual((await query("commissionPolicy", {})).json().data, { commissionBasisPoints: 1000, transactionFeePayer: "platform", rounding: "floor" });
+  checks++;
   assert.equal(
     (await command("acceptQuote", { quoteId: hiredQuote.id })).status,
     403,
@@ -708,6 +713,11 @@ try {
   ).json().data;
   assert.equal(acceptedJob.status, "awaiting_payment");
   assert.equal(acceptedJob.agreedAmountMinor, 150050);
+  const feePayment = (await query("payment", { jobId: acceptedJob.id })).json().data;
+  assert.equal(feePayment.platformFeeMinor, hiredQuote.platformFeeMinor);
+  assert.equal(feePayment.providerAmountMinor, hiredQuote.providerAmountMinor);
+  assert.equal(feePayment.amountMinor, 150050);
+  checks++;
   assert.equal(
     (await query("jobReview", { jobId: acceptedJob.id })).json().data,
     null,
@@ -1044,11 +1054,13 @@ try {
   const earnings = (await query("earnings", {})).json().data;
   assert.deepEqual(earnings, {
     currency: "NGN",
-    earnedMinor: 150050,
-    pendingMinor: 150050,
+    earnedMinor: hiredQuote.providerAmountMinor,
+    pendingMinor: hiredQuote.providerAmountMinor,
     paidOutMinor: 0,
   });
-  assert.equal((await query("payouts", {})).json().data[0].status, "pending");
+  const netPayout = (await query("payouts", {})).json().data[0];
+  assert.equal(netPayout.status, "pending");
+  assert.equal(netPayout.amountMinor, hiredQuote.providerAmountMinor);
   const reserved = (await query("payoutAccounts", {})).json().data[0];
   assert.equal(
     (await command("removePayoutAccount", { id: reserved.id })).status,

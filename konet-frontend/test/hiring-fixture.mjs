@@ -33,6 +33,7 @@ export function hiringFixture(providerId, ownerId, isPublished) {
       if (
         !publicReviews &&
         ![
+          "/api/v1/payments/policy",
           "/api/v1/reviews",
           "/api/v1/conversations",
           "/api/v1/requests",
@@ -50,6 +51,12 @@ export function hiringFixture(providerId, ownerId, isPublished) {
         send(status, data);
         return true;
       };
+      if (url.pathname === "/api/v1/payments/policy")
+        return reply(200, {
+          commissionBasisPoints: 1000,
+          transactionFeePayer: "platform",
+          rounding: "floor",
+        });
       if (publicReviews)
         return reply(
           200,
@@ -319,6 +326,10 @@ export function hiringFixture(providerId, ownerId, isPublished) {
           const quote = {
             id: id(),
             ...body,
+            commissionBasisPoints: 1000,
+            platformFeeMinor: Math.floor(body.amountMinor / 10),
+            providerAmountMinor:
+              body.amountMinor - Math.floor(body.amountMinor / 10),
             providerId,
             clientId: request.clientId,
             currency: "NGN",
@@ -374,8 +385,8 @@ export function hiringFixture(providerId, ownerId, isPublished) {
             payerId: job.clientId,
             providerId,
             amountMinor: job.agreedAmountMinor,
-            platformFeeMinor: 0,
-            providerAmountMinor: job.agreedAmountMinor,
+            platformFeeMinor: row.platformFeeMinor,
+            providerAmountMinor: row.providerAmountMinor,
             currency: "NGN",
             gateway: "unconfigured",
             gatewayReference: null,

@@ -36,6 +36,9 @@ export interface HiringQuote {
   clientId: string;
   providerId: string;
   amountMinor: number;
+  commissionBasisPoints: number;
+  platformFeeMinor: number;
+  providerAmountMinor: number;
   currency: string;
   scope: string[];
   notes: string | null;
