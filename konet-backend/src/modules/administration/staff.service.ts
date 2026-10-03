@@ -1,4 +1,15 @@
-import { changeStaffRole } from "./staff-role-policy";
+import {
+  assertNoAccountObligations,
+  revokeAccountAccess,
+} from "../auth/account-access-policy";
+import { providerProfiles, auditEvents } from "../../database/schema";
+import { AccountStatusInput } from "../contracts/contract.dto";
+import {
+  assertActiveAdministrator,
+  lockStaffRoles,
+  preserveActiveAdministrator,
+  changeStaffRole,
+} from "./staff-role-policy";
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import { DATABASE, Database } from "../../database/database.module";
@@ -72,6 +83,72 @@ export class StaffService {
       .where(eq(userRoles.userId, id))
       .orderBy(userRoles.role);
     return { userId: id, roles: rows.map((row) => row.role) };
+  }
+  async status(actorId: string, userId: string, input: AccountStatusInput) {
+    if (
+      !["active", "suspended", "deactivated"].includes(input.status) ||
+      input.reason.trim().length < 3 ||
+      input.reason.length > 2000
+    )
+      throw new DomainError(
+        "INVALID_STATUS_CHANGE",
+        "Choose a valid status and provide a reason of 3–2,000 characters.",
+        422,
+      );
+    if (actorId === userId)
+      throw new DomainError(
+        "SELF_STATUS_CHANGE",
+        "An administrator cannot change their own account status here.",
+        409,
+      );
+    return this.db.transaction(async (tx) => {
+      await lockStaffRoles(tx);
+      await assertActiveAdministrator(tx, actorId);
+      const [target] = await tx
+        .select(userFields)
+        .from(users)
+        .where(eq(users.id, userId))
+        .for("update");
+      if (!target)
+        throw new DomainError("USER_NOT_FOUND", "Account not found.", 404);
+      if (target.accountStatus === input.status) return target;
+      if (input.status !== "active")
+        await preserveActiveAdministrator(tx, userId);
+      if (input.status === "deactivated")
+        await assertNoAccountObligations(tx, userId);
+      const now = new Date();
+      const [updated] = await tx
+        .update(users)
+        .set({
+          accountStatus: input.status as "active" | "suspended" | "deactivated",
+          updatedAt: now,
+        })
+        .where(eq(users.id, userId))
+        .returning(userFields);
+      if (input.status !== "active") {
+        await revokeAccountAccess(tx, userId);
+        await tx
+          .update(providerProfiles)
+          .set({ status: "paused", updatedAt: now })
+          .where(
+            and(
+              eq(providerProfiles.userId, userId),
+              eq(providerProfiles.status, "active"),
+            ),
+          );
+      }
+      await tx
+        .insert(auditEvents)
+        .values({
+          actorId,
+          action: "account.status_changed",
+          resourceType: "user",
+          resourceId: userId,
+          reason: input.reason.trim(),
+          details: { before: target.accountStatus, after: input.status },
+        });
+      return updated;
+    });
   }
   async change(
     actorId: string,

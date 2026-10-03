@@ -642,9 +642,10 @@ export class AccountStatusInput {
   @IsString()
   @IsIn(["active", "suspended", "deactivated"])
   status!: string;
-  @ApiProperty({ type: "string", minLength: 3 })
+  @ApiProperty({ type: "string", minLength: 3, maxLength: 2000 })
   @IsString()
   @MinLength(3)
+  @MaxLength(2000)
   reason!: string;
 }
 

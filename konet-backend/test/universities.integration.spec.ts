@@ -15,6 +15,7 @@ import { AuthService } from "../src/modules/auth/auth.service";
 import { DomainExceptionFilter } from "../src/common/filters/domain-exception.filter";
 
 process.env.NODE_ENV = "test";
+process.env.STAFF_MFA_REQUIRED = "false";
 process.env.LOG_LEVEL = "silent";
 process.env.JWT_ACCESS_SECRET =
   "directory-access-test-secret-is-long-and-unique";
@@ -140,6 +141,50 @@ describeDatabase("university directory PostgreSQL API integration", () => {
     );
   }
 
+  it("suspends an account, revokes its sessions and audits the reason", async () => {
+    const [student] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.email, "student@example.com"));
+    const response = await api("patch", `admin/users/${student.id}/status`)
+      .send({ status: "suspended", reason: "Investigating reported abuse" })
+      .expect(200);
+    expect(response.body.accountStatus).toBe("suspended");
+    await api("get", "auth/me", studentToken).expect(401);
+    const active = await db
+      .select()
+      .from(schema.sessions)
+      .where(eq(schema.sessions.userId, student.id));
+    expect(active.every((session) => session.revokedAt !== null)).toBe(true);
+    const events = await db
+      .select()
+      .from(schema.auditEvents)
+      .where(eq(schema.auditEvents.resourceId, student.id));
+    expect(
+      events.some(
+        (event) =>
+          event.action === "account.status_changed" &&
+          event.actorId === adminId,
+      ),
+    ).toBe(true);
+    await api("patch", `admin/users/${student.id}/status`)
+      .send({ status: "active", reason: "Investigation completed" })
+      .expect(200);
+    await api("get", "auth/me", studentToken).expect(401);
+  });
+  it("rejects self suspension and non-admin status changes", async () => {
+    await api("patch", `admin/users/${adminId}/status`)
+      .send({ status: "suspended", reason: "Self suspension" })
+      .expect(409);
+    await api("patch", `admin/users/${adminId}/status`, reviewerToken)
+      .send({ status: "suspended", reason: "Unauthorized suspension" })
+      .expect(403);
+    const [admin] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, adminId));
+    expect(admin.accountStatus).toBe("active");
+  });
   it("denies anonymous, student, and reviewer directory writes", async () => {
     await request(app.getHttpServer())
       .post("/api/v1/admin/universities")
@@ -355,12 +400,33 @@ describeDatabase("university directory PostgreSQL API integration", () => {
     await api("get", "admin/universities", studentToken).expect(200);
   });
   it("uses the same last-admin protection for trusted operator commands", async () => {
-    await expect(changeStaffRole(db,{actorId:null,userId:adminId,role:"admin",reason:"Operator cleanup",grant:false,operator:"test-operator"})).rejects.toMatchObject({code:"LAST_ADMIN_REQUIRED"});
-    expect((await db.select().from(schema.userRoles)).some((r)=>r.userId===adminId && r.role==="admin")).toBe(true);
+    await expect(
+      changeStaffRole(db, {
+        actorId: null,
+        userId: adminId,
+        role: "admin",
+        reason: "Operator cleanup",
+        grant: false,
+        operator: "test-operator",
+      }),
+    ).rejects.toMatchObject({ code: "LAST_ADMIN_REQUIRED" });
+    expect(
+      (await db.select().from(schema.userRoles)).some(
+        (r) => r.userId === adminId && r.role === "admin",
+      ),
+    ).toBe(true);
   });
   it("rechecks the actor role inside the serialized role-change transaction", async () => {
-    const targetId=(await api("get","auth/me",studentToken)).body.id;
-    await expect(changeStaffRole(db,{actorId:targetId,userId:targetId,role:"admin",reason:"Unauthorized internal call",grant:true})).rejects.toMatchObject({code:"STAFF_PERMISSION_REQUIRED"});
+    const targetId = (await api("get", "auth/me", studentToken)).body.id;
+    await expect(
+      changeStaffRole(db, {
+        actorId: targetId,
+        userId: targetId,
+        role: "admin",
+        reason: "Unauthorized internal call",
+        grant: true,
+      }),
+    ).rejects.toMatchObject({ code: "STAFF_PERMISSION_REQUIRED" });
   });
   it("rejects unsupported roles and missing audit reasons", async () => {
     await api("post", `admin/users/${adminId}/roles`)

@@ -5,7 +5,6 @@ import {
   HttpCode,
   Param,
   ParseUUIDPipe,
-  Patch,
   Post,
   Query,
   UseGuards,
@@ -40,16 +39,6 @@ export class AdminContractsController {
   @ApiOperation({ summary: "Read payments for authorized staff" })
   getAdminPaymentsId(@Param("id", new ParseUUIDPipe()) _id: string): never {
     return unavailable("Read payments for authorized staff");
-  }
-
-  @Patch("admin/users/:id/status")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Set account status with audit reason" })
-  patchAdminUsersIdStatus(
-    @Param("id", new ParseUUIDPipe()) _id: string,
-    @Body() _body: Dto.AccountStatusInput,
-  ): never {
-    return unavailable("Set account status with audit reason");
   }
 
   @Post("admin/reconciliations")

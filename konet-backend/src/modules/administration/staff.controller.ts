@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   ParseEnumPipe,
   ParseUUIDPipe,
   Post,
@@ -16,7 +17,7 @@ import {
   AuthUser,
   CurrentUser,
 } from "../../common/decorators/current-user.decorator";
-import { ReasonInput } from "../contracts/contract.dto";
+import { AccountStatusInput, ReasonInput } from "../contracts/contract.dto";
 import { RequireRoles, StaffGuard, StaffRole } from "./staff.guard";
 import { StaffRoleInput, StaffUsersQuery } from "./staff.dto";
 import { StaffService } from "./staff.service";
@@ -35,6 +36,13 @@ export class StaffController {
   }
   @Get(":id/roles") roles(@Param("id", new ParseUUIDPipe()) id: string) {
     return this.service.roles(id);
+  }
+  @Patch(":id/status") status(
+    @CurrentUser() user: AuthUser,
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Body() body: AccountStatusInput,
+  ) {
+    return this.service.status(user.userId, id, body);
   }
   @Post(":id/roles") grant(
     @CurrentUser() user: AuthUser,

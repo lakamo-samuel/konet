@@ -5462,7 +5462,7 @@ export const routeContracts: RouteContract[] = [
     response: "user",
     body: "AccountStatusInput",
     auth: "admin",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,

@@ -1,16 +1,14 @@
+import {
+  assertNoAccountObligations,
+  revokeAccountAccess,
+} from "./account-access-policy";
+import {
+  lockStaffRoles,
+  preserveActiveAdministrator,
+} from "../administration/staff-role-policy";
 import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import {
-  and,
-  desc,
-  eq,
-  gte,
-  inArray,
-  isNull,
-  like,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, like, sql } from "drizzle-orm";
 import {
   createHash,
   createHmac,
@@ -55,80 +53,6 @@ export class AccountService {
       this.fail("ACCOUNT_UNAVAILABLE", "Account unavailable.", 401);
     return u;
   }
-  private async obligations(tx: Tx, userId: string) {
-    const [row] = await tx
-      .select({ id: s.jobs.id })
-      .from(s.jobs)
-      .innerJoin(
-        s.providerProfiles,
-        eq(s.providerProfiles.id, s.jobs.providerId),
-      )
-      .innerJoin(s.payments, eq(s.payments.jobId, s.jobs.id))
-      .where(
-        and(
-          or(
-            eq(s.jobs.clientId, userId),
-            eq(s.providerProfiles.userId, userId),
-          ),
-          or(
-            inArray(s.jobs.status, [
-              "awaiting_payment",
-              "scheduled",
-              "in_progress",
-              "awaiting_client_confirmation",
-              "disputed",
-            ]),
-            inArray(s.payments.status, [
-              "processing",
-              "funded",
-              "held",
-              "release_pending",
-              "disputed",
-            ]),
-          ),
-        ),
-      )
-      .limit(1);
-    if (row)
-      this.fail(
-        "ACCOUNT_OBLIGATIONS_PENDING",
-        "Complete or resolve active jobs and outstanding payments before making this change.",
-      );
-  }
-  private async revoke(tx: Tx, userId: string) {
-    const now = new Date();
-    await tx
-      .update(s.sessions)
-      .set({ revokedAt: now })
-      .where(eq(s.sessions.userId, userId));
-    await tx
-      .update(s.passwordResetTokens)
-      .set({ consumedAt: now })
-      .where(
-        and(
-          eq(s.passwordResetTokens.userId, userId),
-          isNull(s.passwordResetTokens.consumedAt),
-        ),
-      );
-    await tx
-      .update(s.emailChangeChallenges)
-      .set({ consumedAt: now })
-      .where(
-        and(
-          eq(s.emailChangeChallenges.userId, userId),
-          isNull(s.emailChangeChallenges.consumedAt),
-        ),
-      );
-    await tx
-      .update(s.emailOutbox)
-      .set({ status: "cancelled", payloadCiphertext: null, leaseUntil: null })
-      .where(
-        and(
-          eq(s.emailOutbox.userId, userId),
-          inArray(s.emailOutbox.status, ["pending", "sending"]),
-        ),
-      );
-  }
   async profile(userId: string, input: ProfileInput) {
     if (!Object.values(input).some((v) => v !== undefined))
       this.fail("EMPTY_PROFILE", "Provide at least one profile field.", 422);
@@ -169,7 +93,7 @@ export class AccountService {
           422,
         );
       if (moved) {
-        await this.obligations(tx, userId);
+        await assertNoAccountObligations(tx, userId);
         await tx
           .update(s.verificationChallenges)
           .set({ consumedAt: new Date() })
@@ -257,7 +181,7 @@ export class AccountService {
       const u = await this.user(tx, userId);
       if (!(await argon2.verify(u.passwordHash, input.password)))
         this.fail("INVALID_PASSWORD", "Current password is incorrect.", 401);
-      await this.obligations(tx, userId);
+      await assertNoAccountObligations(tx, userId);
       if (address === u.email)
         this.fail("EMAIL_UNCHANGED", "Choose a different email.", 422);
       const [used] = await tx
@@ -389,7 +313,7 @@ export class AccountService {
           return {
             error: "Email change code is invalid, expired or already used.",
           };
-        await this.obligations(tx, userId);
+        await assertNoAccountObligations(tx, userId);
         const [used] = await tx
           .select({ id: s.users.id })
           .from(s.users)
@@ -404,7 +328,7 @@ export class AccountService {
           })
           .where(eq(s.users.id, userId))
           .returning();
-        await this.revoke(tx, userId);
+        await revokeAccountAccess(tx, userId);
         await tx.insert(s.emailOutbox).values({
           userId,
           idempotencyKey: `email-changed-alert:${c.id}`,
@@ -444,8 +368,10 @@ export class AccountService {
         422,
       );
     await this.db.transaction(async (tx) => {
+      await lockStaffRoles(tx);
       await this.user(tx, userId);
-      await this.obligations(tx, userId);
+      await preserveActiveAdministrator(tx, userId);
+      await assertNoAccountObligations(tx, userId);
       await tx
         .update(s.users)
         .set({ accountStatus: "deactivated", updatedAt: new Date() })
@@ -457,7 +383,7 @@ export class AccountService {
           updatedAt: new Date(),
         })
         .where(eq(s.providerProfiles.userId, userId));
-      await this.revoke(tx, userId);
+      await revokeAccountAccess(tx, userId);
       await tx
         .update(s.verificationChallenges)
         .set({ consumedAt: new Date() })
