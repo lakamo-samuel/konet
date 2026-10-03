@@ -708,6 +708,22 @@ try {
   ).json().data;
   assert.equal(acceptedJob.status, "awaiting_payment");
   assert.equal(acceptedJob.agreedAmountMinor, 150050);
+  assert.equal(
+    (await query("jobReview", { jobId: acceptedJob.id })).json().data,
+    null,
+  );
+  assert.equal(
+    (
+      await command("submitReview", {
+        jobId: acceptedJob.id,
+        rating: 5,
+        body: "Great work on this job",
+      })
+    ).status,
+    403,
+  );
+  checks++;
+
   const conversation = (
     await query("jobConversation", { jobId: acceptedJob.id })
   ).json().data;
@@ -950,11 +966,81 @@ try {
     (await query("refunds", { jobId: acceptedJob.id })).json().data,
     [],
   );
+  assert.equal(
+    (await query("jobReview", { jobId: acceptedJob.id })).json().data,
+    null,
+  );
+  assert.equal(
+    (
+      await command("submitReview", {
+        jobId: acceptedJob.id,
+        rating: 0,
+        body: "Great work",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await command("submitReview", {
+        jobId: acceptedJob.id,
+        rating: 4,
+        body: "     ",
+      })
+    ).status,
+    400,
+  );
+  const jobFeedback = (
+    await command("submitReview", {
+      jobId: acceptedJob.id,
+      rating: 4,
+      body: "  Excellent photographs and delivery.  ",
+      clientId: uid,
+    })
+  ).json().data;
+  assert.equal(jobFeedback.authorId, clientId);
+  assert.equal(jobFeedback.body, "Excellent photographs and delivery.");
+  assert.equal(jobFeedback.rating, 4);
+  assert.equal(
+    (await query("jobReview", { jobId: acceptedJob.id })).json().data.id,
+    jobFeedback.id,
+  );
+  assert.equal(
+    (
+      await command("submitReview", {
+        jobId: acceptedJob.id,
+        rating: 5,
+        body: "Second review",
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (await query("reviews", { providerId: acceptedJob.providerId })).json()
+      .data[0].id,
+    jobFeedback.id,
+  );
+  checks++;
   assert.equal((await query("earnings", {})).status, 403);
   await command("signIn", {
     email: "student@example.com",
     password: "original-test-password",
   });
+  assert.equal(
+    (await query("jobReview", { jobId: acceptedJob.id })).json().data.id,
+    jobFeedback.id,
+  );
+  assert.equal(
+    (
+      await command("submitReview", {
+        jobId: acceptedJob.id,
+        rating: 5,
+        body: "Provider review",
+      })
+    ).status,
+    403,
+  );
+  checks++;
   const earnings = (await query("earnings", {})).json().data;
   assert.deepEqual(earnings, {
     currency: "NGN",
@@ -1010,6 +1096,11 @@ try {
   assert.equal((await query("request", { id: hiredRequest.id })).status, 404);
   assert.equal((await query("job", { id: acceptedJob.id })).status, 404);
   assert.equal((await query("payment", { jobId: acceptedJob.id })).status, 404);
+  const privateReview = await query("jobReview", { jobId: acceptedJob.id });
+  assert.equal(privateReview.status, 404);
+  assert.equal(privateReview.json().error.code, "JOB_NOT_FOUND");
+  checks++;
+
   assert.equal(
     (await command("verifyPayment", { jobId: acceptedJob.id })).status,
     404,

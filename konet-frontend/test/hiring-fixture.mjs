@@ -9,6 +9,7 @@ export function hiringFixture(providerId, ownerId, isPublished) {
   const accounts = [];
   const conversations = [];
   const messages = [];
+  const reviews = [];
   let gatewayAvailable = true;
   let verificationSuccess = false;
   let serial = 40;
@@ -26,8 +27,13 @@ export function hiringFixture(providerId, ownerId, isPublished) {
       verificationSuccess = value;
     },
     handle(url, method, body, user, send) {
+      const publicReviews = /^\/api\/v1\/providers\/[^/]+\/reviews$/.test(
+        url.pathname,
+      );
       if (
+        !publicReviews &&
         ![
+          "/api/v1/reviews",
           "/api/v1/conversations",
           "/api/v1/requests",
           "/api/v1/quotes",
@@ -44,11 +50,42 @@ export function hiringFixture(providerId, ownerId, isPublished) {
         send(status, data);
         return true;
       };
+      if (publicReviews)
+        return reply(
+          200,
+          reviews.filter((r) => r.providerId === url.pathname.split("/")[4]),
+        );
       if (!user)
         return reply(401, {
           code: "SESSION_REQUIRED",
           message: "Sign in first.",
         });
+      if (url.pathname === "/api/v1/reviews" && method === "POST") {
+        assert.equal(body.body, undefined);
+        assert.equal(body.clientId, undefined);
+        const job = jobs.find((j) => j.id === body.jobId);
+        if (!job || job.clientId !== user.id || job.status !== "completed")
+          return reply(403, {
+            code: "REVIEW_NOT_ALLOWED",
+            message: "Only the client can review a completed job.",
+          });
+        if (reviews.some((r) => r.jobId === job.id))
+          return reply(409, {
+            code: "REVIEW_EXISTS",
+            message: "This job has already been reviewed.",
+          });
+        const review = {
+          id: id(),
+          jobId: job.id,
+          providerId: job.providerId,
+          clientId: user.id,
+          rating: body.rating,
+          comment: body.comment,
+          createdAt: new Date().toISOString(),
+        };
+        reviews.push(review);
+        return reply(201, review);
+      }
       const page = (rows) =>
         rows.slice(
           Number(url.searchParams.get("offset") ?? 0),
@@ -379,6 +416,15 @@ export function hiringFixture(providerId, ownerId, isPublished) {
       const job = jobs.find((j) => j.id === resourceId);
       if (!owns(job, user))
         return reply(404, { code: "JOB_NOT_FOUND", message: "Job not found." });
+      if (action === "review") {
+        const review = reviews.find((r) => r.jobId === job.id);
+        return review
+          ? reply(200, review)
+          : reply(404, {
+              code: "REVIEW_NOT_FOUND",
+              message: "This job has no review yet.",
+            });
+      }
       if (action === "conversation")
         return reply(
           200,

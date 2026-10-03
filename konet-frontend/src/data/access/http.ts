@@ -21,11 +21,21 @@ async function execute<I, O>(
   for (const [key, value] of Object.entries(params ?? {}))
     if (value !== undefined) query.set(key, String(value));
   const path = endpoint.path(input) + (query.size ? `?${query}` : "");
-  const response = await backendRequest<unknown>(endpoint.method, path, {
-    body: endpoint.body?.(input),
-    accessToken: context.accessToken,
-  });
-  return endpoint.decode(response.data);
+  try {
+    const response = await backendRequest<unknown>(endpoint.method, path, {
+      body: endpoint.body?.(input),
+      accessToken: context.accessToken,
+    });
+    return endpoint.decode(response.data);
+  } catch (error) {
+    if (
+      error instanceof DataError &&
+      error.status === 404 &&
+      endpoint.notFoundCode === error.code
+    )
+      return endpoint.decode(null);
+    throw error;
+  }
 }
 export const httpSource: DataSource = {
   async query(name, input, context) {

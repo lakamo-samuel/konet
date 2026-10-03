@@ -67,6 +67,7 @@ export type QueryContract = {
   services: [{ providerId: string }, Service[]];
   portfolio: [{ providerId: string }, PortfolioItem[]];
   reviews: [{ providerId: string }, Review[]];
+  jobReview: [{ jobId: string }, Review | null];
   currentUser: [Record<string, never>, User];
   user: [{ id: string }, User | null];
   jobs: [{ userId: string; offset?: number; limit?: number }, HiringJob[]];

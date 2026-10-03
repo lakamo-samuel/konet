@@ -52,6 +52,7 @@ export type Endpoint<I, O> = {
   params?: (input: I) => unknown;
   body?: (input: I) => unknown;
   decode: (data: unknown) => O;
+  notFoundCode?: string;
 };
 type ApiService = {
   id: string;
@@ -141,6 +142,26 @@ const university = (
   })),
 });
 
+type ApiReview = {
+  id: string;
+  jobId: string;
+  providerId: string;
+  clientId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+};
+const review = (r: ApiReview): Review => ({
+  id: r.id,
+  jobId: r.jobId,
+  providerId: r.providerId,
+  authorId: r.clientId,
+  rating: r.rating,
+  body: r.comment,
+  service: "Completed service",
+  verifiedJob: true,
+  createdAt: r.createdAt,
+});
 type ApiNotification = {
   id: string;
   userId: string;
@@ -278,31 +299,13 @@ export const queryEndpoints: {
   reviews: {
     method: "GET",
     path: (i) => `/providers/${encodeURIComponent(i.providerId)}/reviews`,
-    decode: (data) =>
-      (
-        data as {
-          id: string;
-          jobId: string;
-          providerId: string;
-          clientId: string;
-          rating: number;
-          comment: string;
-          createdAt: string;
-        }[]
-      ).map(
-        (r) =>
-          ({
-            id: r.id,
-            jobId: r.jobId,
-            providerId: r.providerId,
-            authorId: r.clientId,
-            rating: r.rating,
-            body: r.comment,
-            service: "Completed service",
-            verifiedJob: true,
-            createdAt: r.createdAt,
-          }) satisfies Review,
-      ),
+    decode: (d) => (d as ApiReview[]).map(review),
+  },
+  jobReview: {
+    method: "GET",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/review`,
+    notFoundCode: "REVIEW_NOT_FOUND",
+    decode: (d) => (d === null ? null : review(d as ApiReview)),
   },
   notifications: {
     method: "GET",
@@ -582,7 +585,12 @@ export const commandEndpoints: {
     path: (i) => `/notifications/${encodeURIComponent(i.id)}/read`,
     decode: (data) => notification(data as ApiNotification),
   },
-  submitReview: null,
+  submitReview: {
+    method: "POST",
+    path: () => "/reviews",
+    body: (i) => ({ jobId: i.jobId, rating: i.rating, comment: i.body.trim() }),
+    decode: (d) => review(d as ApiReview),
+  },
   requestVerificationCode: {
     method: "POST",
     path: () => "/me/student-verification/email-challenges",

@@ -14,6 +14,7 @@ const queryShapes: Record<QueryName, Shape> = {
   services: { providerId: "string" },
   portfolio: { providerId: "string" },
   reviews: { providerId: "string" },
+  jobReview: { jobId: "string" },
   currentUser: {},
   user: { id: "string" },
   jobs: { userId: "string" },
@@ -226,6 +227,10 @@ export function validateOperation(
       Number(values.amountMinor) > 2147483647)
   )
     throw new DataError("Enter a valid positive quote amount.");
+  if (name === "submitReview" && String(values.body).trim().length < 5)
+    throw new DataError(
+      "Describe your experience in at least five characters.",
+    );
   if (
     name === "submitReview" &&
     (!Number.isInteger(values.rating) ||
