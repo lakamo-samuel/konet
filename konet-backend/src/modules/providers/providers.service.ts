@@ -18,6 +18,7 @@ import {
   reviews,
   services,
   users,
+  universities,
   portfolioItems,
 } from "../../database/schema";
 import { DomainError } from "../../common/errors/domain.error";
@@ -64,6 +65,21 @@ export class ProvidersService {
         or(
           ilike(providerProfiles.professionalTitle, literalSearch(query.query)),
           ilike(providerProfiles.bio, literalSearch(query.query)),
+          exists(
+            this.db
+              .select({ id: universities.id })
+              .from(universities)
+              .where(
+                and(
+                  eq(universities.id, users.universityId),
+                  eq(universities.isActive, true),
+                  or(
+                    ilike(universities.name, literalSearch(query.query)),
+                    ilike(universities.shortName, literalSearch(query.query)),
+                  ),
+                ),
+              ),
+          ),
         )!,
       );
     return this.db

@@ -691,21 +691,42 @@ describeDatabase("provider onboarding PostgreSQL API integration", () => {
     await api("patch", `me/services/${state.service.id}`)
       .send({ status: "active" })
       .expect(200);
+    const [owner] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, student.id));
+    await db
+      .update(schema.universities)
+      .set({
+        name: "Federal University of Technology Minna",
+        shortName: "FUTMINNA",
+      })
+      .where(eq(schema.universities.id, owner.universityId));
+    for (const query of ["technology minna", "futminna"]) {
+      const result = await api(
+        "get",
+        `providers?query=${encodeURIComponent(query)}&universityId=${owner.universityId}`,
+      ).expect(200);
+      expect(
+        result.body.map((provider: { id: string }) => provider.id),
+      ).toEqual([state.profile.id]);
+    }
+    expect(
+      (await api("get", "providers?query=unknown-university").expect(200)).body,
+    ).toEqual([]);
     const [secondCategory] = await db
       .insert(schema.serviceCategories)
       .values({ name: "Video", slug: "video" })
       .returning();
-    await db
-      .insert(schema.services)
-      .values({
-        providerId: state.profile.id,
-        categoryId: secondCategory.id,
-        title: "Budget video",
-        description: "Another active service used to test a combined filter.",
-        pricingType: "fixed",
-        priceMinor: 1000,
-        status: "active",
-      });
+    await db.insert(schema.services).values({
+      providerId: state.profile.id,
+      categoryId: secondCategory.id,
+      title: "Budget video",
+      description: "Another active service used to test a combined filter.",
+      pricingType: "fixed",
+      priceMinor: 1000,
+      status: "active",
+    });
     expect(
       (
         await api(
