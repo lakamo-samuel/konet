@@ -22,6 +22,7 @@ import { DATABASE } from "../src/database/database.module";
 import { AuthService } from "../src/modules/auth/auth.service";
 import { DomainExceptionFilter } from "../src/common/filters/domain-exception.filter";
 process.env.NODE_ENV = "test";
+process.env.STAFF_MFA_REQUIRED = "false";
 process.env.LOG_LEVEL = "silent";
 process.env.DATABASE_URL =
   "postgresql://offline:offline@localhost:5432/offline";

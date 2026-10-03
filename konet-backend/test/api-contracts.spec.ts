@@ -17,6 +17,7 @@ import {
 
 // Import AppModule only after isolated test configuration is set. No database or network is used.
 process.env.NODE_ENV = "test";
+process.env.STAFF_MFA_REQUIRED = "false";
 process.env.LOG_LEVEL = "silent";
 process.env.DATABASE_URL =
   "postgresql://test:test@localhost:5432/konet_contract_test";

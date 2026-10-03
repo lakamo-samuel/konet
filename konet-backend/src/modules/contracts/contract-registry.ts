@@ -14,6 +14,11 @@ export interface RouteContract {
 }
 
 export const contractSchemas: Record<string, SchemaObject> = {
+  StaffSecurityStatus: {type:'object',required:['enabled','verified','recoveryCodesRemaining'],properties:{enabled:{type:'boolean'},verified:{type:'boolean'},expiresAt:{type:'string',format:'date-time',nullable:true},recoveryCodesRemaining:{type:'integer'}}},
+  StaffEnrollment: {type:'object',required:['secret','uri','expiresAt'],properties:{secret:{type:'string',description:'Display once; never store in browser storage'},uri:{type:'string'},expiresAt:{type:'string',format:'date-time'}}},
+  StaffVerification: {type:'object',required:['verified','expiresAt'],properties:{verified:{type:'boolean'},expiresAt:{type:'string',format:'date-time'},recoveryCodes:{type:'array',items:{type:'string'},description:'Only enrollment confirmation returns ten one-use recovery codes'}}},
+  StaffEnrollmentInput:{type:'object',required:['password'],properties:{password:{type:'string',minLength:1,maxLength:128}}},
+  StaffVerificationInput:{type:'object',required:['code'],properties:{code:{type:'string',minLength:6,maxLength:64}}},
   CommissionPolicy: {
     type: "object",
     required: ["commissionBasisPoints", "transactionFeePayer", "rounding"],
@@ -5806,5 +5811,9 @@ export const routeContracts: RouteContract[] = [
     query: null,
     note: "Requires an active administrator; last active administrator cannot be removed. Access changes take effect on the next request.",
     code: 200,
-  },
+  },{"method": "get", "path": "me/staff-security", "summary": "Staff authenticator staff-security", "response": "StaffSecurityStatus", "body": null, "auth": "staff", "existing": true, "query": null, "note": "Live staff role required. Enrollment requires current password. Verification expires after fifteen minutes; production staff operations require MFA. Codes are rate limited and cannot be replayed.", "code": 200},
+{"method": "post", "path": "me/staff-security/enrollment", "summary": "Staff authenticator enrollment", "response": "StaffEnrollment", "body": "StaffEnrollmentInput", "auth": "staff", "existing": true, "query": null, "note": "Live staff role required. Enrollment requires current password. Verification expires after fifteen minutes; production staff operations require MFA. Codes are rate limited and cannot be replayed.", "code": 201},
+{"method": "post", "path": "me/staff-security/confirm", "summary": "Staff authenticator confirm", "response": "StaffVerification", "body": "StaffVerificationInput", "auth": "staff", "existing": true, "query": null, "note": "Live staff role required. Enrollment requires current password. Verification expires after fifteen minutes; production staff operations require MFA. Codes are rate limited and cannot be replayed.", "code": 201},
+{"method": "post", "path": "me/staff-security/verify", "summary": "Staff authenticator verify", "response": "StaffVerification", "body": "StaffVerificationInput", "auth": "staff", "existing": true, "query": null, "note": "Live staff role required. Enrollment requires current password. Verification expires after fifteen minutes; production staff operations require MFA. Codes are rate limited and cannot be replayed.", "code": 201},
+
 ];

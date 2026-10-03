@@ -17,6 +17,7 @@ import { AuthService } from "../src/modules/auth/auth.service";
 import { CloudinaryGateway } from "../src/modules/uploads/cloudinary.gateway";
 import { DomainExceptionFilter } from "../src/common/filters/domain-exception.filter";
 process.env.NODE_ENV = "test";
+process.env.STAFF_MFA_REQUIRED = "false";
 process.env.LOG_LEVEL = "silent";
 process.env.JWT_ACCESS_SECRET = "providers-access-secret-is-long-and-unique";
 process.env.JWT_REFRESH_SECRET = "providers-refresh-secret-is-long-and-unique";

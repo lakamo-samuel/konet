@@ -19,6 +19,7 @@ import { UploadsService } from "../src/modules/uploads/uploads.service";
 import { EmailService } from "../src/infrastructure/email/email.service";
 import { DomainExceptionFilter } from "../src/common/filters/domain-exception.filter";
 process.env.NODE_ENV = "test";
+process.env.STAFF_MFA_REQUIRED = "false";
 process.env.LOG_LEVEL = "silent";
 process.env.JWT_ACCESS_SECRET = "verification-access-secret-long-and-unique";
 process.env.JWT_REFRESH_SECRET = "verification-refresh-secret-long-and-unique";

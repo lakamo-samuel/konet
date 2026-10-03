@@ -3909,6 +3909,136 @@
         "description": "Requires an active administrator role from the database, in addition to a live Bearer session. Reviewer, support, finance, and ordinary student accounts cannot manage the directory or read the audit log.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nRequires an active administrator; idempotent role assignment with an audit reason. Only active accounts can receive roles.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
+    "/api/v1/admin/users/{id}/status": {
+      "patch": {
+        "operationId": "patch_admin_users_id_status",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource UUID.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountStatusInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/user"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "administration"
+        ],
+        "x-implementation-status": "implemented",
+        "summary": "Set account status with audit reason",
+        "description": "Requires an active administrator role from the database, in addition to a live Bearer session. Reviewer, support, finance, and ordinary student accounts cannot manage the directory or read the audit log.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
     "/api/v1/admin/users/{id}/roles/{role}": {
       "delete": {
         "operationId": "delete_admin_users_id_roles_role",
@@ -4052,6 +4182,472 @@
         "x-implementation-status": "implemented",
         "summary": "Revoke staff role",
         "description": "Requires an active administrator role from the database, in addition to a live Bearer session. Reviewer, support, finance, and ordinary student accounts cannot manage the directory or read the audit log.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nRequires an active administrator; last active administrator cannot be removed. Access changes take effect on the next request.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/me/staff-security": {
+      "get": {
+        "operationId": "get_me_staff_security",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffSecurityStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Staff authenticator staff-security",
+        "tags": [
+          "staff-security"
+        ],
+        "x-implementation-status": "implemented",
+        "description": "Public endpoint; no authentication required.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nLive staff role required. Enrollment requires current password. Verification expires after fifteen minutes; production staff operations require MFA. Codes are rate limited and cannot be replayed.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/me/staff-security/enrollment": {
+      "post": {
+        "operationId": "post_me_staff_security_enrollment",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffEnrollmentInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffEnrollment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Staff authenticator enrollment",
+        "tags": [
+          "staff-security"
+        ],
+        "x-implementation-status": "implemented",
+        "description": "Public endpoint; no authentication required.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nLive staff role required. Enrollment requires current password. Verification expires after fifteen minutes; production staff operations require MFA. Codes are rate limited and cannot be replayed.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/me/staff-security/confirm": {
+      "post": {
+        "operationId": "post_me_staff_security_confirm",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffVerificationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffVerification"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Staff authenticator confirm",
+        "tags": [
+          "staff-security"
+        ],
+        "x-implementation-status": "implemented",
+        "description": "Public endpoint; no authentication required.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nLive staff role required. Enrollment requires current password. Verification expires after fifteen minutes; production staff operations require MFA. Codes are rate limited and cannot be replayed.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+      }
+    },
+    "/api/v1/me/staff-security/verify": {
+      "post": {
+        "operationId": "post_me_staff_security_verify",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffVerificationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Current successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffVerification"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request fields, types, or format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found or unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate action, expired resource, or conflicting state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Business-rule validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Staff authenticator verify",
+        "tags": [
+          "staff-security"
+        ],
+        "x-implementation-status": "implemented",
+        "description": "Public endpoint; no authentication required.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nLive staff role required. Enrollment requires current password. Verification expires after fifteen minutes; production staff operations require MFA. Codes are rate limited and cannot be replayed.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
     "/api/v1/providers": {
@@ -18139,152 +18735,6 @@
         "description": "Requires a staff role with permission for this resource. This stub always fails closed; its resource-specific permission enforcement remains pending.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
-    "/api/v1/admin/users/{id}/status": {
-      "patch": {
-        "operationId": "patch_admin_users_id_status",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource UUID.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AccountStatusInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Planned successful response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/user"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request fields, types, or format.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid, or expired authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong participant, unverified student, unapproved provider, or insufficient staff permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource not found or unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Duplicate action, expired resource, or conflicting state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Business-rule validation failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Current response: ENDPOINT_NOT_IMPLEMENTED. No data or money is changed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "statusCode": 501,
-                  "code": "ENDPOINT_NOT_IMPLEMENTED",
-                  "message": "Set account status with audit reason is contract-only; backend implementation is pending.",
-                  "path": "/api/v1/admin/users/{id}/status"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Set account status with audit reason [contract only]",
-        "tags": [
-          "administration"
-        ],
-        "x-implementation-status": "contract-only",
-        "description": "Requires a staff role with permission for this resource. This stub always fails closed; its resource-specific permission enforcement remains pending.\n\nNOT IMPLEMENTED: valid requests currently return 501 ENDPOINT_NOT_IMPLEMENTED. The success response below is the agreed target contract for frontend integration and mocks.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
-      }
-    },
     "/api/v1/admin/reconciliations": {
       "post": {
         "operationId": "post_admin_reconciliations",
@@ -19265,6 +19715,29 @@
           "domain"
         ]
       },
+      "AccountStatusInput": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended",
+              "deactivated"
+            ],
+            "example": "active"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "example": "The submitted document needs a clearer photograph."
+          }
+        },
+        "required": [
+          "status",
+          "reason"
+        ]
+      },
       "StaffRoleInput": {
         "type": "object",
         "properties": {
@@ -19286,6 +19759,32 @@
           "role",
           "reason"
         ]
+      },
+      "StaffEnrollmentInput": {
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "StaffVerificationInput": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 64
+          }
+        }
       },
       "ProviderInput": {
         "type": "object",
@@ -19951,29 +20450,6 @@
           "reason"
         ]
       },
-      "AccountStatusInput": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "active",
-              "suspended",
-              "deactivated"
-            ],
-            "example": "active"
-          },
-          "reason": {
-            "type": "string",
-            "minLength": 3,
-            "example": "The submitted document needs a clearer photograph."
-          }
-        },
-        "required": [
-          "status",
-          "reason"
-        ]
-      },
       "ReconciliationInput": {
         "type": "object",
         "properties": {
@@ -20020,6 +20496,74 @@
           "topic",
           "message"
         ]
+      },
+      "StaffSecurityStatus": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "verified",
+          "recoveryCodesRemaining"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "recoveryCodesRemaining": {
+            "type": "integer"
+          }
+        }
+      },
+      "StaffEnrollment": {
+        "type": "object",
+        "required": [
+          "secret",
+          "uri",
+          "expiresAt"
+        ],
+        "properties": {
+          "secret": {
+            "type": "string",
+            "description": "Display once; never store in browser storage"
+          },
+          "uri": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StaffVerification": {
+        "type": "object",
+        "required": [
+          "verified",
+          "expiresAt"
+        ],
+        "properties": {
+          "verified": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recoveryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Only enrollment confirmation returns ten one-use recovery codes"
+          }
+        }
       },
       "CommissionPolicy": {
         "type": "object",

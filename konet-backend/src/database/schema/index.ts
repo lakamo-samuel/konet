@@ -11,3 +11,5 @@ export * from "./settlements";
 export * from './dispute-decisions';
 export * from './account-changes';
 export * from './contacts';
+
+export * from "./staff-security";
