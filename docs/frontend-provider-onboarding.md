@@ -21,4 +21,4 @@ Frontend typecheck, lint, production build, private-upload tests, and production
 
 Tests use a disposable local HTTP backend and mocked uploads. They do not perform real admin decisions, send email, upload to Cloudinary or exercise browser interactions. Real delivery requires the Cloudinary scanning configuration described in [the backend onboarding guide](backend-provider-onboarding.md).
 
-Request/quote/job pages, payment and earnings screens, Socket.IO messaging, provider settings, and admin UI remain separate frontend integration stages. The published profile no longer depends on an unfinished conversation query.
+Request/quote/job pages, payments and earnings, Socket.IO messaging, and provider settings are connected. See [frontend settings](frontend-settings.md) for owner-only profile reads, availability and pause/publication controls. Admin UI remains deferred. The published profile no longer depends on an unfinished conversation query.

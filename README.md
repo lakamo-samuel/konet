@@ -2,7 +2,7 @@
 
 Konet is a student service marketplace. A student can discover another student's services, send a brief, receive a quote, hire the provider, discuss the job, confirm delivery, and review the work. Providers can build a profile, publish services, respond to requests, and manage jobs. The product is designed around university identity, provider trust, and protected payments.
 
-> **Current state:** The backend has 145 implemented endpoints, with seven admin endpoints pending. Frontend authentication, verification, provider onboarding, hiring/jobs, payments/earnings and Socket.IO messaging are connected. Completed-job reviews are connected. Disputes and account/provider settings remain to be integrated; admin frontend work remains paused. See [frontend integration](docs/frontend-api-integration.md) for setup.
+> **Current state:** The backend has 146 implemented endpoints, with seven admin endpoints pending. Frontend authentication, verification, provider onboarding, hiring/jobs, payments/earnings, Socket.IO messaging, reviews, participant disputes and account/provider settings are connected. New quotes carry a saved 10% commission. Admin frontend work remains paused. Deployment verification, escrow custody and financial reconciliation remain outstanding. See [frontend integration](docs/frontend-api-integration.md) for setup.
 
 ## Contents
 
@@ -261,13 +261,14 @@ Useful checks: `npm run typecheck`, `npm run lint`, and `npm run build` in eithe
 | --- | --- | --- |
 | Public discovery | Discover and public provider/service/portfolio/review reads use HTTP | Confirm backend response shapes and complete remaining catalog mappings |
 | Auth and verification | Live authentication, email codes, private evidence, scan gating and review feedback; development bearer and production cookie transport | Deployment checks with configured Resend and Cloudinary accounts |
-| Provider onboarding | Canonical profiles/services/portfolio, private evidence, review status, publication and service activation use the API | Provider settings and remaining workspace actions |
-| Requests, quotes, jobs | Participant reads/actions, acceptance, saved quote commission, job/payment states, milestones and Socket.IO conversations use the API | Connect disputes |
-| Messaging, notifications, reviews | Socket.IO messaging, conversation reads, notification queries and completed-job reviews are connected | Connect dispute/account screens and validate deployed delivery |
+| Provider onboarding | Canonical profiles/services/portfolio, private evidence, review status, publication, service activation and owner settings use the API | Public portfolio uploads and deployed evidence checks |
+| Requests, quotes, jobs | Participant reads/actions, acceptance, saved quote commission, job/payment states, milestones, Socket.IO conversations and disputes use the API | Validate deployed participant workflows |
+| Messaging, notifications, reviews | Socket.IO messaging, conversation reads, notifications, reviews and dispute case history are connected | Validate deployed delivery; attachments remain unsupported |
 | Payments and earnings | Paystack hosted checkout, verification, saved 10% commission on new quotes, net earnings and provider accounts are connected | Configure sandbox credentials, deployed callback/webhook URLs and merchant transfer settings; test actual gateway delivery |
+| Account settings | Profile/affiliation, email-code changes, password changes, deactivation and session clearing are connected | Validate Resend delivery and browser behavior |
 | Password recovery | Frontend recovery/reset forms call the implemented API; reset token remains in the URL fragment | Configure Resend and verify delivery in the deployment |
 
-Hiring and payment screens use canonical backend fields and states. Remaining dispute and account contracts still need to be connected to their backend endpoints.
+Hiring, payment, dispute and account/provider settings screens use canonical backend fields and states. See [disputes](docs/frontend-disputes.md) and [settings](docs/frontend-settings.md). Admin UI remains paused; seven admin backend endpoints, financial reconciliation, escrow custody and deployment verification remain outstanding.
 
 ## Where to change things
 

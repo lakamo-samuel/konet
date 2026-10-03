@@ -1,6 +1,6 @@
 # Feature 1: accounts, sessions, and password recovery
 
-Implemented: registration, login, current account, refresh rotation, logout, forgot-password, reset-password, and authenticated password change. Profile editing, account email changes, and account deactivation remain contract-only and will be addressed separately.
+Implemented: registration, login, current account, refresh rotation, logout, forgot-password, reset-password, and authenticated password change. Profile editing, account email changes, and account deactivation are implemented; see [account management](backend-account-management.md) and [frontend settings](frontend-settings.md).
 
 ## Team setup
 

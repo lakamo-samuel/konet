@@ -1,6 +1,6 @@
 # Backend API contract handoff
 
-The backend registers **151 operations** under `/api/v1`: 144 existing handlers and 7 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
+The backend registers **153 operations** under `/api/v1`: 146 implemented handlers and 7 contract-only handlers. This inventory covers the backend requirements and current frontend workflows. It is an integration contract, not a claim that all features are functional.
 
 - Swagger UI: `http://localhost:4000/api/docs`
 - OpenAPI JSON: `http://localhost:4000/api/docs/json`
@@ -59,7 +59,7 @@ Live messaging uses Socket.IO namespace `/chat` on the backend origin, with tran
 - Quote acceptance is transactional and retry-safe: repeating acceptance of the same quote returns the original job. See the [hiring guide](backend-hiring.md).
 - Client confirmation atomically queues payout and sets payment to release_pending. Only server-verified transfers mark funds released. Finance-authorized full refunds are durably queued. See the [collaboration guide](backend-collaboration.md).
 - The existing frontend mock statuses differ from backend statuses. Use the OpenAPI job, payment, verification, and availability enums.
-- Permissions for remaining contract-only resources, fee policy and financial reconciliation remain unfinished.
+- Permissions for remaining contract-only resources, financial reconciliation and reporting remain unfinished. New quotes snapshot the implemented 10% commission; see [commission policy](backend-commission.md).
 
 - Student verification and provider onboarding/review are implemented; live email and evidence uploads need Resend and Cloudinary malware moderation configured. See the [verification setup guide](backend-verification.md) and [provider onboarding guide](backend-provider-onboarding.md).
 

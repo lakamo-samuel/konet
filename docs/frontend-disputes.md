@@ -7,3 +7,5 @@ Eligible funded jobs link to `/jobs/[jobId]/dispute`. The form sends only a trim
 Opening freezes job completion and provider payout pending an authorized decision. Resolution is displayed as a decision, not as a completed refund or transfer; the payment panel reads actual financial status. Neither participant has staff decision controls. Lists and cases can be refreshed manually; existing Socket.IO notification invalidation refreshes relevant cached queries. No new message polling is introduced.
 
 Attachment submissions, staff assignment and partial settlements remain unsupported by the backend and are not simulated. Admin dashboard integration stays deferred. No migration, credentials or new backend routes are needed.
+
+Validation: participant HTTP fixture checks cover trimmed/filtered payloads, unpaid-job rejection, identical retries, conflicting cases, both participant reads, outsider privacy, paginated/status-filtered case lists, blocked completion, and read-only decision history. These checks also pass as part of the 109-check final frontend HTTP journey in production-cookie and development-token modes.
