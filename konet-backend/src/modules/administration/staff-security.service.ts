@@ -1,3 +1,4 @@
+import { STAFF_MFA_LIFETIME_MS } from "./staff-mfa-policy";
 import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { and, eq, gt, isNull } from "drizzle-orm";
@@ -18,7 +19,7 @@ import {
 } from "../../database/schema";
 import { DomainError } from "../../common/errors/domain.error";
 import { AuthUser } from "../../common/decorators/current-user.decorator";
-export const STAFF_MFA_LIFETIME_MS = 15 * 60_000;
+
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 @Injectable()

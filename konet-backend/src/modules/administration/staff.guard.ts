@@ -1,6 +1,5 @@
 import { ConfigService } from "@nestjs/config";
-import { DomainError } from "../../common/errors/domain.error";
-import { STAFF_MFA_LIFETIME_MS } from "./staff-security.service";
+import { requireStaffMfa } from "./staff-mfa-policy";
 import {
   CanActivate,
   ExecutionContext,
@@ -15,8 +14,6 @@ import { DATABASE, Database } from "../../database/database.module";
 import {
   userRoles,
   users,
-  sessions,
-  staffAuthenticators,
 } from "../../database/schema";
 export type StaffRole = "admin" | "reviewer" | "support" | "finance";
 const SETUP_KEY = "konet.staffSecuritySetup";
@@ -57,36 +54,7 @@ export class StaffGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    const required =
-      this.config.get<string>("NODE_ENV") === "production" ||
-      this.config.get<string>("STAFF_MFA_REQUIRED") !== "false";
-    if (required && !setup) {
-      const sid = context.switchToHttp().getRequest().user?.sid;
-      const [proof] = sid
-        ? await this.db
-            .select({
-              verifiedAt: sessions.staffMfaVerifiedAt,
-              confirmedAt: staffAuthenticators.confirmedAt,
-            })
-            .from(sessions)
-            .innerJoin(
-              staffAuthenticators,
-              eq(staffAuthenticators.userId, sessions.userId),
-            )
-            .where(and(eq(sessions.id, sid), eq(sessions.userId, userId)))
-            .limit(1)
-        : [];
-      if (
-        !proof?.confirmedAt ||
-        !proof.verifiedAt ||
-        proof.verifiedAt.getTime() + STAFF_MFA_LIFETIME_MS <= Date.now()
-      )
-        throw new DomainError(
-          "STAFF_MFA_REQUIRED",
-          "Verify your authenticator before accessing staff tools.",
-          403,
-        );
-    }
+    if (!setup) await requireStaffMfa(this.db,this.config,userId,context.switchToHttp().getRequest().user?.sid);
     return true;
   }
 }

@@ -46,7 +46,7 @@ export class UploadsController {
     @CurrentUser() user: AuthUser,
     @Param("id", new ParseUUIDPipe()) id: string,
   ) {
-    return this.service.download(user.userId, id);
+    return this.service.download(user.userId, id, user.sid);
   }
   @Delete(":id") @HttpCode(204) async remove(
     @CurrentUser() user: AuthUser,

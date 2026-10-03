@@ -1,3 +1,4 @@
+import { requireStaffMfa } from "../administration/staff-mfa-policy";
 import {
   Inject,
   Injectable,
@@ -177,7 +178,7 @@ export class UploadsService
       .returning();
     return this.publicUpload(changed ?? (await this.own(userId, id)));
   }
-  async download(userId: string, id: string) {
+  async download(userId: string, id: string, sid?: string) {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .select()
@@ -192,6 +193,7 @@ export class UploadsService
           409,
         );
       if (row.userId !== userId) {
+        await requireStaffMfa(tx,this.config,userId,sid);
         const [role] = await tx
           .select({ role: userRoles.role })
           .from(userRoles)
