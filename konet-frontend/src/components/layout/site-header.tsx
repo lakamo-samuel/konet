@@ -1,3 +1,4 @@
+import { isStaff } from "@/features/admin/operations";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import Link from "next/link";
@@ -48,6 +49,7 @@ export async function SiteHeader() {
                 {session.name?.charAt(0) ?? "Account"}
               </Link>
               <SignOutButton />
+              {isStaff(session.roles) && <Button href="/admin" variant="secondary">Staff dashboard</Button>}
               {session.providerProfileId ? (
                 <Button className="header-cta" href="/provider/dashboard">
                   My workspace
