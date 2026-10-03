@@ -1,3 +1,4 @@
+import { hiringFixture } from "./hiring-fixture.mjs";
 import { providerFixture } from "./provider-fixture.mjs";
 import { verificationFixture } from "./verification-fixture.mjs";
 import assert from "node:assert/strict";
@@ -18,6 +19,7 @@ const university = {
 };
 const verification = verificationFixture(universityId, campusId);
 const provider = providerFixture(verification);
+const hiring = hiringFixture("00000000-0000-4000-8000-000000000021", uid, provider.isPublished);
 const users = new Map();
 let serial = 0;
 const access = new Map();
@@ -123,6 +125,7 @@ const backend = http.createServer(async (req, res) => {
     return send(200, { message: "Password reset." });
   }
   if (verification.handle(url, req.method, body, auth, send)) return;
+  if (hiring.handle(url, req.method, body, auth, send)) return;
   if (provider.handle(url, req.method, body, auth, send)) return;
   if (!auth)
     return send(401, {
@@ -622,6 +625,189 @@ try {
     "not_submitted",
   );
   assert.equal((await query("onboarding")).json().data.canPublish, false);
+  checks++;
+  provider.approve();
+  await command("publishProvider", {});
+  const clientId = "00000000-0000-4000-8000-000000000031";
+  users.set("client@example.com", {
+    user: {
+      ...fixtureUser,
+      id: clientId,
+      fullName: "Hiring Client",
+      email: "client@example.com",
+    },
+    password: "client-test-password",
+  });
+  await command("signIn", {
+    email: "client@example.com",
+    password: "client-test-password",
+  });
+  const hiringInput = {
+    providerId: profileRecord.json().data.id,
+    serviceId: serviceRecord.json().data.id,
+    description: "Please photograph our student society event on campus.",
+    budgetMinMinor: 123456,
+    budgetMaxMinor: 200000,
+    requestedAt: new Date(Date.now() + 86400000).toISOString(),
+    location: "Main campus",
+  };
+  const hiredRequest = (await command("createRequest", hiringInput)).json()
+    .data;
+  assert.equal(hiredRequest.status, "pending");
+  assert.equal(hiredRequest.budgetMinMinor, 123456);
+  assert.equal((await query("requests", { offset: 20 })).json().data.length, 0);
+  assert.equal(
+    (
+      await command("createQuote", {
+        requestId: hiredRequest.id,
+        amountMinor: 150050,
+        scope: ["Edited event photographs"],
+        expiresAt: new Date(Date.now() + 86400000).toISOString(),
+      })
+    ).status,
+    403,
+  );
+  checks++;
+  await command("signIn", {
+    email: "student@example.com",
+    password: "original-test-password",
+  });
+  const hiredQuote = (
+    await command("createQuote", {
+      requestId: hiredRequest.id,
+      amountMinor: 150050,
+      scope: ["Edited event photographs"],
+      notes: "Delivered online",
+      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+    })
+  ).json().data;
+  assert.equal(hiredQuote.status, "sent");
+  assert.equal(
+    (await command("acceptQuote", { quoteId: hiredQuote.id })).status,
+    403,
+  );
+  await command("signIn", {
+    email: "client@example.com",
+    password: "client-test-password",
+  });
+  const acceptedJob = (
+    await command("acceptQuote", { quoteId: hiredQuote.id })
+  ).json().data;
+  assert.equal(acceptedJob.status, "awaiting_payment");
+  assert.equal(acceptedJob.agreedAmountMinor, 150050);
+  assert.equal(
+    (await command("acceptQuote", { quoteId: hiredQuote.id })).json().data.id,
+    acceptedJob.id,
+  );
+  assert.equal(
+    (await query("request", { id: hiredRequest.id })).json().data.status,
+    "converted_to_job",
+  );
+  assert.equal(
+    (await query("jobs", { userId: clientId })).json().data[0].id,
+    acceptedJob.id,
+  );
+  assert.equal(
+    (await command("startJob", { jobId: acceptedJob.id })).status,
+    403,
+  );
+  checks++;
+  await command("signIn", {
+    email: "student@example.com",
+    password: "original-test-password",
+  });
+  assert.equal(
+    (await command("startJob", { jobId: acceptedJob.id })).status,
+    409,
+  );
+  const milestone = (
+    await command("createMilestone", {
+      jobId: acceptedJob.id,
+      title: "Edit event photographs",
+      description: "Prepare final images",
+    })
+  ).json().data;
+  hiring.fund(acceptedJob.id); // Simulated verified payment; no gateway calls.
+  assert.equal(
+    (await command("startJob", { jobId: acceptedJob.id })).json().data.status,
+    "in_progress",
+  );
+  assert.equal(
+    (await command("markJobComplete", { jobId: acceptedJob.id })).status,
+    409,
+  );
+  await command("updateMilestone", {
+    jobId: acceptedJob.id,
+    id: milestone.id,
+    status: "completed",
+  });
+  assert.equal(
+    (await command("markJobComplete", { jobId: acceptedJob.id })).json().data
+      .status,
+    "awaiting_client_confirmation",
+  );
+  assert.equal(
+    (await command("confirmCompletion", { jobId: acceptedJob.id })).status,
+    403,
+  );
+  await command("signIn", {
+    email: "client@example.com",
+    password: "client-test-password",
+  });
+  assert.equal(
+    (await command("confirmCompletion", { jobId: acceptedJob.id })).json().data
+      .status,
+    "completed",
+  );
+  assert.equal(
+    (
+      await command("cancelJob", {
+        jobId: acceptedJob.id,
+        reason: "Cancel this job",
+      })
+    ).status,
+    409,
+  );
+  const withdrawn = (await command("createRequest", hiringInput)).json().data;
+  assert.equal(
+    (
+      await command("closeRequest", {
+        id: withdrawn.id,
+        action: "withdraw",
+        reason: "Plans have changed",
+      })
+    ).json().data.status,
+    "withdrawn",
+  );
+  assert.equal(
+    (
+      await command("closeRequest", {
+        id: withdrawn.id,
+        action: "invalid",
+        reason: "Invalid action",
+      })
+    ).status,
+    400,
+  );
+  checks++;
+  users.set("outsider@example.com", {
+    user: {
+      ...fixtureUser,
+      id: "00000000-0000-4000-8000-000000000032",
+      email: "outsider@example.com",
+    },
+    password: "outsider-test-password",
+  });
+  await command("signIn", {
+    email: "outsider@example.com",
+    password: "outsider-test-password",
+  });
+  assert.equal((await query("request", { id: hiredRequest.id })).status, 404);
+  assert.equal((await query("job", { id: acceptedJob.id })).status, 404);
+  await command("signIn", {
+    email: "student@example.com",
+    password: "original-test-password",
+  });
   checks++;
   const forged = await call("/api/frontend?name=currentUser&input=%7B%7D", {
     rawCookie:

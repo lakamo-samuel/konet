@@ -1,1 +1,15 @@
-import {notFound} from "next/navigation";import {getProviderById,getServicesByProvider} from "@/data/repositories/provider.repository";import {RequestForm} from "@/features/requests/components/request-form";type Props={params:Promise<{requestId:string}>};export const metadata={title:"Request a service"};export default async function Page({params}:Props){const providerId=(await params).requestId;const provider=await getProviderById(providerId);if(!provider)notFound();const services=await getServicesByProvider(provider.id);return <section className="workspace-page narrow"><div className="page-heading"><span className="eyebrow">Service request</span><h1>Tell {provider.fullName?.split(" ")[0]??provider.id} what you need.</h1><p>A clear brief makes it easier to receive an accurate quote.</p></div><div className="surface-panel"><RequestForm providerId={provider.id} services={services}/></div></section>}
+import { RequestWorkspace } from "@/features/hiring/components/request-workspace";
+export const metadata = { title: "Service request" };
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ requestId: string }>;
+}) {
+  const { requestId } = await params;
+  return (
+    <section className="workspace-page narrow">
+      <h1>Service request</h1>
+      <RequestWorkspace id={requestId} />
+    </section>
+  );
+}

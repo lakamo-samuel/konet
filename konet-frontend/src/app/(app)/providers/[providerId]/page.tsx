@@ -80,7 +80,11 @@ export default async function Page({ params }: Props) {
           </span>
         </div>
         <div className="profile-hero-actions">
-          <Button href={`/requests/${provider.id}`}>Request a service</Button>
+          <Button
+            href={`/requests/new?providerId=${encodeURIComponent(provider.id)}`}
+          >
+            Request a service
+          </Button>
         </div>
       </div>
       {provider.reputationKnown && (
@@ -199,7 +203,10 @@ export default async function Page({ params }: Props) {
             <strong>Request a custom quote</strong>
           )}
           <p>{provider.responseTime}</p>
-          <Button href={`/requests/${provider.id}`} className="full-width">
+          <Button
+            href={`/requests/new?providerId=${encodeURIComponent(provider.id)}`}
+            className="full-width"
+          >
             Request a service
           </Button>
           <div className="payment-reassurance">

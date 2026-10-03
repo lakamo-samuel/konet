@@ -1,4 +1,10 @@
 import type {
+  HiringRequest,
+  HiringQuote,
+  HiringJob,
+  Milestone,
+} from "@/types/hiring";
+import type {
   ProviderOnboarding,
   OwnProviderProfile,
   OwnProviderService,
@@ -294,11 +300,44 @@ export const queryEndpoints: {
   },
   currentUser: null,
   user: null,
-  jobs: null,
-  job: null,
-  requests: null,
-  request: null,
-  quote: null,
+  jobs: {
+    method: "GET",
+    path: () => "/jobs",
+    params: (i) => ({ limit: i.limit ?? 20, offset: i.offset ?? 0 }),
+    decode: (d) => d as HiringJob[],
+  },
+  job: {
+    method: "GET",
+    path: (i) => `/jobs/${encodeURIComponent(i.id)}`,
+    decode: (d) => d as HiringJob,
+  },
+  requests: {
+    method: "GET",
+    path: () => "/requests",
+    params: (i) => ({ limit: i.limit ?? 20, offset: i.offset ?? 0 }),
+    decode: (d) => d as HiringRequest[],
+  },
+  request: {
+    method: "GET",
+    path: (i) => `/requests/${encodeURIComponent(i.id)}`,
+    decode: (d) => d as HiringRequest,
+  },
+  quote: {
+    method: "GET",
+    path: (i) => `/quotes/${encodeURIComponent(i.id)}`,
+    decode: (d) => d as HiringQuote,
+  },
+  requestQuotes: {
+    method: "GET",
+    path: (i) => `/requests/${encodeURIComponent(i.requestId)}/quotes`,
+    params: (i) => ({ limit: 20, offset: i.offset ?? 0 }),
+    decode: (d) => d as HiringQuote[],
+  },
+  milestones: {
+    method: "GET",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/milestones`,
+    decode: (d) => d as Milestone[],
+  },
   conversations: null,
   conversation: null,
   messages: null,
@@ -379,9 +418,68 @@ export const commandEndpoints: {
   signOut: null,
   saveProfile: null,
   saveProvider: null,
-  createRequest: null,
-  createQuote: null,
-  acceptQuote: null,
+  createRequest: {
+    method: "POST",
+    path: () => "/requests",
+    body: (i) => i,
+    decode: (d) => d as HiringRequest,
+  },
+  createQuote: {
+    method: "POST",
+    path: () => "/quotes",
+    body: (i) => i,
+    decode: (d) => d as HiringQuote,
+  },
+  acceptQuote: {
+    method: "POST",
+    path: (i) => `/quotes/${encodeURIComponent(i.quoteId)}/accept`,
+    decode: (d) => d as HiringJob,
+  },
+  closeRequest: {
+    method: "POST",
+    path: (i) => `/requests/${encodeURIComponent(i.id)}/${i.action}`,
+    body: (i) => ({ reason: i.reason }),
+    decode: (d) => d as HiringRequest,
+  },
+  closeQuote: {
+    method: "POST",
+    path: (i) => `/quotes/${encodeURIComponent(i.id)}/${i.action}`,
+    body: (i) => ({ reason: i.reason }),
+    decode: (d) => d as HiringQuote,
+  },
+  startJob: {
+    method: "POST",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/start`,
+    decode: (d) => d as HiringJob,
+  },
+  markJobComplete: {
+    method: "POST",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/mark-complete`,
+    decode: (d) => d as HiringJob,
+  },
+  cancelJob: {
+    method: "POST",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/cancel`,
+    body: (i) => ({ reason: i.reason }),
+    decode: (d) => d as HiringJob,
+  },
+  createMilestone: {
+    method: "POST",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/milestones`,
+    body: (i) => ({
+      title: i.title,
+      description: i.description,
+      dueAt: i.dueAt,
+    }),
+    decode: (d) => d as Milestone,
+  },
+  updateMilestone: {
+    method: "PATCH",
+    path: (i) =>
+      `/jobs/${encodeURIComponent(i.jobId)}/milestones/${encodeURIComponent(i.id)}`,
+    body: (i) => ({ status: i.status }),
+    decode: (d) => d as Milestone,
+  },
   sendMessage: null,
   readNotification: {
     method: "PATCH",
@@ -436,7 +534,11 @@ export const commandEndpoints: {
     decode: (d) => d as OwnProviderProfile,
   },
   checkout: null,
-  confirmCompletion: null,
+  confirmCompletion: {
+    method: "POST",
+    path: (i) => `/jobs/${encodeURIComponent(i.jobId)}/confirm-completion`,
+    decode: (d) => d as HiringJob,
+  },
   contact: {
     method: "POST",
     path: () => "/contact",

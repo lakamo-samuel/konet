@@ -34,6 +34,8 @@ export function providerFixture(verification) {
   });
   return {
     categoryId,
+    isPublished: () =>
+      profile?.status === "active" && profile?.reviewStatus === "approved",
     approve: () => {
       evidence
         .filter((e) => e.dimension !== "cac")
@@ -96,9 +98,20 @@ export function providerFixture(verification) {
           message: "Sign in first.",
         });
       if (url.pathname === "/api/v1/me/provider-onboarding")
-        return reply(200, combined());
+        return reply(
+          200,
+          profile?.userId === auth.id
+            ? combined()
+            : {
+                ...combined(),
+                profile: null,
+                services: [],
+                portfolio: [],
+                verification: [],
+              },
+        );
       if (url.pathname === "/api/v1/me/provider-profile" && method === "GET")
-        return profile
+        return profile?.userId === auth.id
           ? reply(200, profile)
           : reply(404, {
               code: "PROVIDER_PROFILE_REQUIRED",
@@ -108,7 +121,7 @@ export function providerFixture(verification) {
         url.pathname === "/api/v1/me/provider-verifications" &&
         method === "GET"
       )
-        return reply(200, evidence);
+        return reply(200, profile?.userId === auth.id ? evidence : []);
       if (method !== "GET" && auth.studentVerificationStatus !== "verified")
         return reply(403, {
           code: "STUDENT_VERIFICATION_REQUIRED",

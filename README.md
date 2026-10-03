@@ -73,7 +73,7 @@ flowchart LR
     Gateway --> Unconfigured[Unconfigured gateway: 503]
 ```
 
-The frontend and backend are separate npm projects in this repository. The frontend uses a same-origin Next route for browser queries and commands. The live API adapter is the only data source. Authentication, public catalog reads, notifications, contact submission, student verification and provider onboarding use the backend adapter. Mock adapters and fixtures have been removed. Missing mappings fail explicitly; remaining student/provider workflows are being connected feature by feature. The API uses PostgreSQL as its source of truth.
+The frontend and backend are separate npm projects in this repository. The frontend uses a same-origin Next route for browser queries and commands. The live API adapter is the only data source. Authentication, public catalog reads, notifications, contact submission, student verification, provider onboarding and hiring/job workflows use the backend adapter. Mock adapters and fixtures have been removed. Missing mappings fail explicitly; remaining student/provider workflows are being connected feature by feature. The API uses PostgreSQL as its source of truth.
 
 ### Stack
 
@@ -262,7 +262,7 @@ Useful checks: `npm run typecheck`, `npm run lint`, and `npm run build` in eithe
 | Public discovery | Discover and public provider/service/portfolio/review reads use HTTP | Confirm backend response shapes and complete remaining catalog mappings |
 | Auth and verification | Live authentication, email codes, private evidence, scan gating and review feedback; development bearer and production cookie transport | Deployment checks with configured Resend and Cloudinary accounts |
 | Provider onboarding | Canonical profiles/services/portfolio, private evidence, review status, publication and service activation use the API | Provider settings and remaining workspace actions |
-| Requests, quotes, jobs | Forms use shared commands; backend mappings are pending | Map backend endpoints and reconcile job and payment statuses |
+| Requests, quotes, jobs | Participant reads/actions, acceptance, canonical job states and milestones use the API | Connect payment status and Socket.IO messaging |
 | Messaging, notifications, reviews | Notifications are connected; messaging and review submission still need integration | Map backend endpoints; add delivery/update behavior as needed |
 | Payments and earnings | Checkout retains its card-details layout but has no live gateway; earnings mapping is pending | Integrate provider tokenization or hosted fields, signed webhooks, settlement/release/refund handling; raw card data must never reach Konet servers |
 | Password recovery | Frontend recovery/reset forms call the implemented API; reset token remains in the URL fragment | Configure Resend and verify delivery in the deployment |

@@ -18,9 +18,11 @@ const queryShapes: Record<QueryName, Shape> = {
   user: { id: "string" },
   jobs: { userId: "string" },
   job: { id: "string" },
-  requests: { providerId: "string" },
+  requests: {},
   request: { id: "string" },
   quote: { id: "string" },
+  requestQuotes: { requestId: "string" },
+  milestones: { jobId: "string" },
   conversations: { userId: "string" },
   conversation: { id: "string" },
   messages: { conversationId: "string" },
@@ -72,20 +74,22 @@ const commandShapes: Record<CommandName, Shape> = {
   createRequest: {
     providerId: "string",
     serviceId: "string",
-    date: "string",
-    time: "string",
-    location: "string",
-    budgetMin: "number",
-    budgetMax: "number",
-    details: "string",
+    description: "string",
   },
   createQuote: {
     requestId: "string",
-    amount: "number",
+    amountMinor: "number",
     scope: "strings",
-    note: "string",
+    expiresAt: "string",
   },
   acceptQuote: { quoteId: "string" },
+  closeRequest: { id: "string", action: "string", reason: "string" },
+  closeQuote: { id: "string", action: "string", reason: "string" },
+  startJob: { jobId: "string" },
+  markJobComplete: { jobId: "string" },
+  cancelJob: { jobId: "string", reason: "string" },
+  createMilestone: { jobId: "string", title: "string" },
+  updateMilestone: { jobId: "string", id: "string", status: "string" },
   sendMessage: { conversationId: "string", body: "string" },
   readNotification: { id: "string" },
   submitReview: { jobId: "string", rating: "number", body: "string" },
@@ -177,6 +181,28 @@ export function validateOperation(
   if (typeof values.password === "string" && values.password.length < 8)
     throw new DataError("Use a password of at least 8 characters.");
   if (
+    name === "closeRequest" &&
+    !["withdraw", "decline"].includes(String(values.action))
+  )
+    throw new DataError("Invalid request action.");
+  if (
+    name === "closeQuote" &&
+    !["decline", "cancel"].includes(String(values.action))
+  )
+    throw new DataError("Invalid quote action.");
+  if (
+    ["closeRequest", "closeQuote", "cancelJob"].includes(String(name)) &&
+    !String(values.reason).trim()
+  )
+    throw new DataError("Provide a reason.");
+  if (
+    name === "createQuote" &&
+    (!Number.isInteger(values.amountMinor) ||
+      Number(values.amountMinor) < 1 ||
+      Number(values.amountMinor) > 2147483647)
+  )
+    throw new DataError("Enter a valid positive quote amount.");
+  if (
     name === "submitReview" &&
     (!Number.isInteger(values.rating) ||
       Number(values.rating) < 1 ||
@@ -185,7 +211,9 @@ export function validateOperation(
     throw new DataError("Choose a rating from 1 to 5.");
   if (
     name === "createRequest" &&
-    Number(values.budgetMax) < Number(values.budgetMin)
+    values.budgetMaxMinor !== undefined &&
+    values.budgetMinMinor !== undefined &&
+    Number(values.budgetMaxMinor) < Number(values.budgetMinMinor)
   )
     throw new DataError("The maximum budget must be at least the minimum.");
 }

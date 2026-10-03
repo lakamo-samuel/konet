@@ -1,4 +1,12 @@
 import type {
+  HiringRequest,
+  HiringQuote,
+  HiringJob,
+  Milestone,
+  RequestInput,
+  QuoteInput,
+} from "@/types/hiring";
+import type {
   ProviderOnboarding,
   OwnProviderProfile,
   ProviderProfileInput,
@@ -20,15 +28,12 @@ import type {
 import type {
   Conversation,
   EscrowTransaction,
-  Job,
   Message,
   Notification,
   PortfolioItem,
   ProviderProfile,
-  Quote,
   Review,
   Service,
-  ServiceRequest,
   University,
   User,
 } from "@/types/domain";
@@ -54,11 +59,16 @@ export type QueryContract = {
   reviews: [{ providerId: string }, Review[]];
   currentUser: [Record<string, never>, User];
   user: [{ id: string }, User | null];
-  jobs: [{ userId: string }, Job[]];
-  job: [{ id: string }, Job | null];
-  requests: [{ providerId: string }, ServiceRequest[]];
-  request: [{ id: string }, ServiceRequest | null];
-  quote: [{ id: string }, Quote | null];
+  jobs: [{ userId: string; offset?: number; limit?: number }, HiringJob[]];
+  job: [{ id: string }, HiringJob | null];
+  requests: [
+    { providerId?: string; offset?: number; limit?: number },
+    HiringRequest[],
+  ];
+  request: [{ id: string }, HiringRequest | null];
+  quote: [{ id: string }, HiringQuote | null];
+  requestQuotes: [{ requestId: string; offset?: number }, HiringQuote[]];
+  milestones: [{ jobId: string }, Milestone[]];
   conversations: [{ userId: string }, Conversation[]];
   conversation: [{ id: string }, Conversation | null];
   messages: [{ conversationId: string }, Message[]];
@@ -109,24 +119,28 @@ export type CommandContract = {
     { professionalTitle: string; responseTime: string; available: boolean },
     ProviderProfile,
   ];
-  createRequest: [
-    {
-      providerId: string;
-      serviceId: string;
-      date: string;
-      time: string;
-      location: string;
-      budgetMin: number;
-      budgetMax: number;
-      details: string;
-    },
-    ServiceRequest,
+  createRequest: [RequestInput, HiringRequest];
+  createQuote: [QuoteInput, HiringQuote];
+  acceptQuote: [{ quoteId: string }, HiringJob];
+  closeRequest: [
+    { id: string; action: "withdraw" | "decline"; reason: string },
+    HiringRequest,
   ];
-  createQuote: [
-    { requestId: string; amount: number; scope: string[]; note: string },
-    Quote,
+  closeQuote: [
+    { id: string; action: "decline" | "cancel"; reason: string },
+    HiringQuote,
   ];
-  acceptQuote: [{ quoteId: string }, Job];
+  startJob: [{ jobId: string }, HiringJob];
+  markJobComplete: [{ jobId: string }, HiringJob];
+  cancelJob: [{ jobId: string; reason: string }, HiringJob];
+  createMilestone: [
+    { jobId: string; title: string; description?: string; dueAt?: string },
+    Milestone,
+  ];
+  updateMilestone: [
+    { jobId: string; id: string; status: Milestone["status"] },
+    Milestone,
+  ];
   sendMessage: [{ conversationId: string; body: string }, Message];
   readNotification: [{ id: string }, Notification];
   submitReview: [{ jobId: string; rating: number; body: string }, Review];
@@ -163,7 +177,7 @@ export type CommandContract = {
     { jobId: string },
     { status: "protected" | "pending"; checkoutUrl?: string },
   ];
-  confirmCompletion: [{ jobId: string }, Job];
+  confirmCompletion: [{ jobId: string }, HiringJob];
   contact: [
     { email: string; topic: string; message: string },
     { accepted: boolean },

@@ -1,4 +1,5 @@
 "use client";
+import { ngnToMinor } from "@/lib/formatters/money-input";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
@@ -58,22 +59,14 @@ export function ServiceEditor({ service }: { service?: OwnProviderService }) {
         const form = event.currentTarget;
         const values = new FormData(form);
         const text = String(values.get("price") ?? "");
-        if (pricing !== "custom_quote" && !/^\d+(\.\d{1,2})?$/.test(text)) {
-          setFieldError(
-            "Enter a positive price with up to two decimal places.",
-          );
-          return;
-        }
-        const [whole, fraction = ""] = text.split(".");
-        const priceMinor =
-          Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
-        if (
-          pricing !== "custom_quote" &&
-          (!Number.isSafeInteger(priceMinor) ||
-            priceMinor < 1 ||
-            priceMinor > 2147483647)
-        ) {
-          setFieldError("Enter a valid positive price.");
+        let priceMinor: number | undefined;
+        try {
+          priceMinor =
+            pricing === "custom_quote" ? undefined : ngnToMinor(text);
+          if (priceMinor !== undefined && priceMinor < 1)
+            throw new Error("Enter a valid positive price.");
+        } catch (cause) {
+          setFieldError(errorMessage(cause));
           return;
         }
         const body = {

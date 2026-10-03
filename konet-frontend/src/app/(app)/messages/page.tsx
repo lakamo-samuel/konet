@@ -15,7 +15,7 @@ export default async function Page() {
       getUserById(otherId), getMessagesByConversation(conversation.id),
       conversation.jobId ? getJobById(conversation.jobId) : Promise.resolve(null),
     ]);
-    return { id: conversation.id, name: other?.name ?? "Konet member", avatar: other?.avatar ?? "", preview: messages.at(-1)?.body ?? "Start the conversation", service: job?.service ?? "Service conversation", updatedAt: conversation.updatedAt };
+    return { id: conversation.id, name: other?.name ?? "Konet member", avatar: other?.avatar ?? "", preview: messages.at(-1)?.body ?? "Start the conversation", service: job ? `Job ${job.id.slice(0, 8)}` : "Service conversation", updatedAt: conversation.updatedAt };
   }));
   return <section className="content-width app-section messages-page !max-w-6xl">
     <div className="mb-8"><span className="eyebrow">Messages</span><h1 className="mt-2 text-4xl font-bold tracking-tight md:text-5xl">Your conversations</h1><p className="mt-2 text-[var(--muted)]">Keep service details, quotes, and job decisions in one place.</p></div>

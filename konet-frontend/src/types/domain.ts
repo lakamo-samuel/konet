@@ -5,15 +5,6 @@ export type VerificationStatus =
   | "pending"
   | "verified"
   | "rejected";
-export type JobStatus =
-  | "requested"
-  | "quoted"
-  | "funded"
-  | "in_progress"
-  | "delivered"
-  | "released"
-  | "reviewed"
-  | "disputed";
 export interface University {
   id: string;
   name: string;
@@ -88,41 +79,6 @@ export interface PortfolioItem {
   category: string;
   image: string;
   alt: string;
-}
-export interface ServiceRequest {
-  id: string;
-  clientId: string;
-  providerId: string;
-  service: string;
-  requestedDate: string;
-  requestedTime: string;
-  location: string;
-  budgetMin: number;
-  budgetMax: number;
-  details: string;
-  status: "pending" | "quoted" | "declined";
-}
-export interface Quote {
-  id: string;
-  requestId: string;
-  amount: number;
-  scope: string[];
-  note: string;
-  expiresAt: string;
-  status: "pending" | "accepted" | "declined" | "expired";
-}
-export interface Job {
-  id: string;
-  requestId: string;
-  quoteId: string;
-  clientId: string;
-  providerId: string;
-  service: string;
-  date: string;
-  time: string;
-  location: string;
-  amount: number;
-  status: JobStatus;
 }
 export interface Conversation {
   id: string;
