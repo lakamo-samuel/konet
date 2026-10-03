@@ -13,6 +13,7 @@ export const paymentCheckouts = pgTable(
       .primaryKey()
       .references(() => payments.id, { onDelete: "cascade" }),
     reference: text("reference").notNull(),
+    payerEmail: text("payer_email"),
     checkoutUrl: text("checkout_url"),
     leaseUntil: timestamp("lease_until", { withTimezone: true }),
     updatedAt: timestamp("updated_at", { withTimezone: true })

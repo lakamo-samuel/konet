@@ -61,6 +61,7 @@ export class UniversitiesService {
   private async withCampuses(row: typeof universities.$inferSelect) {
     return { ...row, campuses: await this.publicCampuses(row.id) };
   }
+  async adminOne(id:string) { return this.university(this.db,id); }
   async one(id: string) {
     return this.withCampuses(await this.university(this.db, id, true));
   }

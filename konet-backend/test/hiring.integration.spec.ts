@@ -1,3 +1,4 @@
+import { ReconciliationService } from "../src/modules/marketplace/reconciliation.service";
 import { EmailService } from "../src/infrastructure/email/email.service";
 import { SettlementService } from "../src/modules/marketplace/settlement.service";
 import { ConfigService } from "@nestjs/config";
@@ -222,13 +223,22 @@ describeDatabase("hiring PostgreSQL API integration", () => {
     return (await api("post", "requests").send(input()).expect(201)).body;
   }
   it("discloses public pricing and preserves zero-commission legacy quotes", async () => {
-    const policy = await request(app.getHttpServer()).get("/api/v1/payments/policy").expect(200);
-    expect(policy.body).toEqual({ commissionBasisPoints: 1000, transactionFeePayer: "platform", rounding: "floor" });
+    const policy = await request(app.getHttpServer())
+      .get("/api/v1/payments/policy")
+      .expect(200);
+    expect(policy.body).toEqual({
+      commissionBasisPoints: 1000,
+      transactionFeePayer: "platform",
+      rounding: "floor",
+    });
     const r = await hiringRequest();
     const q = await quote(r.id, 101);
     expect(q.platformFeeMinor).toBe(10);
     expect(q.providerAmountMinor).toBe(91);
-    await db.update(schema.quotes).set({ platformFeeMinor: 0, commissionBasisPoints: 0 }).where(eq(schema.quotes.id, q.id));
+    await db
+      .update(schema.quotes)
+      .set({ platformFeeMinor: 0, commissionBasisPoints: 0 })
+      .where(eq(schema.quotes.id, q.id));
     const legacy = (await api("get", `quotes/${q.id}`)).body;
     expect(legacy.providerAmountMinor).toBe(101);
     await api("post", `quotes/${q.id}/accept`).expect(201);
@@ -292,6 +302,95 @@ describeDatabase("hiring PostgreSQL API integration", () => {
       .insert(schema.userRoles)
       .values({ userId: outsider.id, role: "finance" });
   }
+  it("lists finance records only for authorized staff and reports verified funds separately from revenue", async () => {
+    const data = await fundedJob();
+    await api("get", "admin/payments").expect(403);
+    await finance();
+    const list = await api("get", "admin/payments", outsider.token).expect(200);
+    expect(list.body[0].id).toBe(data.payment.id);
+    await api(
+      "get",
+      `admin/payments/${data.payment.id}`,
+      outsider.token,
+    ).expect(200);
+    await api("get", "admin/payments?status=wrong", outsider.token).expect(400);
+    const report = await api("get", "admin/reports", outsider.token).expect(
+      200,
+    );
+    expect(report.body.collectedMinor).toBe(data.payment.amountMinor);
+    expect(report.body.reservedClientFundsMinor).toBe(data.payment.amountMinor);
+    expect(report.body.earnedCommissionMinor).toBe(0);
+    expect(report.body.basis).toBe("verified_ledger");
+  });
+  it("queues durable idempotent reconciliations, checks provider evidence and never initiates money movement", async () => {
+    const data = await initializedPayment();
+    await finance();
+    gateway.verify.mockResolvedValue({ ...data.result, feeMinor: 12345 });
+    const range = {
+      from: new Date(Date.now() - 86400_000).toISOString(),
+      to: new Date(Date.now() + 1000).toISOString(),
+    };
+    const responses = await Promise.all([
+      api("post", "admin/reconciliations", outsider.token).send(range),
+      api("post", "admin/reconciliations", outsider.token).send(range),
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([202, 202]);
+    expect(responses[0].body.id).toBe(responses[1].body.id);
+    const runId = responses[0].body.id;
+    await api("post", "admin/reconciliations", outsider.token)
+      .send({ ...range, from: new Date(Date.now() - 1000).toISOString() })
+      .expect(409);
+    await app.get(ReconciliationService).processBatch();
+    const result = await api(
+      "get",
+      `admin/reconciliations/${runId}`,
+      outsider.token,
+    ).expect(200);
+    expect(result.body.status).toBe("completed");
+    expect(result.body.checked).toBe(1);
+    const [payment] = await db
+      .select()
+      .from(schema.payments)
+      .where(eq(schema.payments.id, data.payment.id));
+    expect(payment.status).toBe("funded");
+    expect(payment.gatewayFeeMinor).toBe(12345);
+    expect(gateway.initialize).toHaveBeenCalledTimes(1);
+    expect(gateway.transfer).not.toHaveBeenCalled();
+    expect(gateway.createRefund).not.toHaveBeenCalled();
+    const report = await api("get", "admin/reports", outsider.token).expect(
+      200,
+    );
+    expect(report.body.knownProcessingFeesMinor).toBe(12345);
+  });
+  it("records reconciliation mismatches without funding a job and rejects unbounded windows", async () => {
+    const data = await initializedPayment();
+    await finance();
+    gateway.verify.mockResolvedValue({ ...data.result, amountMinor: 1 });
+    await api("post", "admin/reconciliations", outsider.token)
+      .send({ from: "2020-01-01T00:00:00Z", to: new Date().toISOString() })
+      .expect(422);
+    const run = await api("post", "admin/reconciliations", outsider.token)
+      .send({
+        from: new Date(Date.now() - 86400_000).toISOString(),
+        to: new Date(Date.now() + 1000).toISOString(),
+      })
+      .expect(202);
+    await app.get(ReconciliationService).processBatch();
+    const detail = await api(
+      "get",
+      `admin/reconciliations/${run.body.id}`,
+      outsider.token,
+    ).expect(200);
+    expect(detail.body.status).toBe("completed_with_errors");
+    expect(detail.body.items[0].errorCode).toBe(
+      "PAYMENT_VERIFICATION_MISMATCH",
+    );
+    const [payment] = await db
+      .select()
+      .from(schema.payments)
+      .where(eq(schema.payments.id, data.payment.id));
+    expect(payment.status).toBe("processing");
+  });
   it("exposes safe profile editing and rejects null or privileged fields", async () => {
     const result = await api("patch", "me/profile")
       .send({ fullName: "Updated Student" })
@@ -755,8 +854,12 @@ describeDatabase("hiring PostgreSQL API integration", () => {
       worker.processPayout(payout.id),
     ]);
     expect(gateway.transfer).toHaveBeenCalledTimes(1);
-    expect(gateway.transfer.mock.calls[0][0].amountMinor).toBe(payout.amountMinor);
-    expect(payout.amountMinor).toBe((await db.select().from(schema.payments))[0].providerAmountMinor);
+    expect(gateway.transfer.mock.calls[0][0].amountMinor).toBe(
+      payout.amountMinor,
+    );
+    expect(payout.amountMinor).toBe(
+      (await db.select().from(schema.payments))[0].providerAmountMinor,
+    );
     expect((await db.select().from(schema.payments))[0].status).toBe(
       "released",
     );

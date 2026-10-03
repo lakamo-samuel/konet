@@ -765,6 +765,60 @@ export class SettlementService implements OnModuleInit, OnModuleDestroy {
         .where(eq(s.payouts.id, id));
     }
   }
+  async reconcilePayout(id: string) {
+    const [payout] = await this.db
+      .select()
+      .from(s.payouts)
+      .where(eq(s.payouts.id, id));
+    if (
+      !payout?.attemptedAt ||
+      !payout.recipientCode ||
+      payout.status === "cancelled"
+    )
+      return {
+        outcome: "skipped" as const,
+        beforeStatus: payout?.status ?? null,
+        afterStatus: payout?.status ?? null,
+        gatewayStatus: null,
+      };
+    const result = await this.gateway.verifyTransfer(payout.reference);
+    await this.applyTransfer(id, result);
+    const [updated] = await this.db
+      .select()
+      .from(s.payouts)
+      .where(eq(s.payouts.id, id));
+    return {
+      outcome: "checked" as const,
+      beforeStatus: payout.status,
+      afterStatus: updated.status,
+      gatewayStatus: result.status,
+    };
+  }
+  async reconcileRefund(id: string) {
+    const [refund] = await this.db
+      .select()
+      .from(s.refunds)
+      .where(eq(s.refunds.id, id));
+    if (!refund?.gatewayId)
+      return {
+        outcome: "skipped" as const,
+        beforeStatus: refund?.status ?? null,
+        afterStatus: refund?.status ?? null,
+        gatewayStatus: null,
+      };
+    const result = await this.gateway.verifyRefund(refund.gatewayId);
+    await this.applyRefund(id, result);
+    const [updated] = await this.db
+      .select()
+      .from(s.refunds)
+      .where(eq(s.refunds.id, id));
+    return {
+      outcome: "checked" as const,
+      beforeStatus: refund.status,
+      afterStatus: updated.status,
+      gatewayStatus: result.status,
+    };
+  }
   private async applyTransfer(
     id: string,
     result: Awaited<ReturnType<PaystackGateway["verifyTransfer"]>>,
@@ -801,6 +855,14 @@ export class SettlementService implements OnModuleInit, OnModuleDestroy {
           "TRANSFER_VERIFICATION_MISMATCH",
           "Transfer does not match the queued payout.",
           422,
+        );
+      if (
+        p.status === "succeeded" &&
+        !["success", "reversed"].includes(result.status)
+      )
+        this.fail(
+          "TRANSFER_STATE_CONFLICT",
+          "Successful payout has conflicting gateway status.",
         );
       if (p.status === "succeeded" && result.status !== "reversed") return;
       if (p.status === "cancelled") return;
@@ -1000,6 +1062,11 @@ export class SettlementService implements OnModuleInit, OnModuleDestroy {
           "REFUND_VERIFICATION_MISMATCH",
           "Refund does not match the authorization.",
           422,
+        );
+      if (r.status === "succeeded" && result.status !== "processed")
+        this.fail(
+          "REFUND_STATE_CONFLICT",
+          "Successful refund has conflicting gateway status.",
         );
       if (r.status === "succeeded") return;
       const status =

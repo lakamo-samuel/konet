@@ -38,6 +38,7 @@ export class UniversitiesAdminController {
   @Get() list(@Query() query: ListQuery) {
     return this.service.adminList(query);
   }
+  @Get(":id") one(@Param("id",new ParseUUIDPipe()) id:string) { return this.service.adminOne(id); }
   @Post() create(
     @CurrentUser() user: AuthUser,
     @Body() input: UniversityInput,

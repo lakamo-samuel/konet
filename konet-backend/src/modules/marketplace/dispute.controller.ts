@@ -49,8 +49,8 @@ export class StaffDisputeController {
   @Get("admin/disputes") list(@Query() q: ListQuery) {
     return this.s.list(undefined, q);
   }
-  @Get("admin/disputes/:id") detail(@Param("id", ParseUUIDPipe) id: string) {
-    return this.s.detail(undefined, id);
+  @Get("admin/disputes/:id") detail(@CurrentUser() user:AuthUser,@Param("id", ParseUUIDPipe) id: string) {
+    return this.s.staffDetail(user.userId, id);
   }
   @Post("admin/disputes/:id/decision") decide(
     @CurrentUser() u: AuthUser,

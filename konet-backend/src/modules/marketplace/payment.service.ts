@@ -135,14 +135,19 @@ export class PaymentService {
           "CHECKOUT_IN_PROGRESS",
           "Checkout is being initialized. Retry shortly.",
         );
+      const [payer] = await tx
+        .select({ email: s.users.email })
+        .from(s.users)
+        .where(eq(s.users.id, userId));
+      const payerEmail = cached?.payerEmail ?? payer.email;
       const reference = cached?.reference ?? `konet-${payment.id}`;
       const leaseUntil = new Date(Date.now() + 60000);
       await tx
         .insert(s.paymentCheckouts)
-        .values({ paymentId: payment.id, reference, leaseUntil })
+        .values({ paymentId: payment.id, reference, leaseUntil, payerEmail })
         .onConflictDoUpdate({
           target: s.paymentCheckouts.paymentId,
-          set: { leaseUntil, updatedAt: new Date() },
+          set: { leaseUntil, payerEmail, updatedAt: new Date() },
         });
       await tx
         .update(s.payments)
@@ -153,7 +158,7 @@ export class PaymentService {
           updatedAt: new Date(),
         })
         .where(eq(s.payments.id, payment.id));
-      return { payment, reference };
+      return { payment, reference, payerEmail };
     });
     if (prepared.cached)
       return {
@@ -161,10 +166,6 @@ export class PaymentService {
         reference: prepared.cached.reference,
         checkoutUrl: prepared.cached.checkoutUrl,
       };
-    const [user] = await this.db
-      .select()
-      .from(s.users)
-      .where(eq(s.users.id, userId));
     const callbackUrl = new URL(
       this.config.get<string>("PAYMENT_CALLBACK_URL") ||
         new URL(
@@ -177,7 +178,7 @@ export class PaymentService {
       const checkout = await this.gateway.initialize({
         paymentId: prepared.payment.id,
         reference: prepared.reference!,
-        email: user.email,
+        email: prepared.payerEmail!,
         amountMinor: prepared.payment.amountMinor,
         currency: prepared.payment.currency,
         callbackUrl: callbackUrl.toString(),
@@ -211,6 +212,31 @@ export class PaymentService {
       createHash("sha256").update(JSON.stringify(result)).digest("hex"),
     );
   }
+  async reconcile(paymentId: string) {
+    const [payment] = await this.db
+      .select()
+      .from(s.payments)
+      .where(eq(s.payments.id, paymentId));
+    if (!payment || payment.gateway !== "paystack" || !payment.gatewayReference)
+      return {
+        outcome: "skipped" as const,
+        beforeStatus: payment?.status ?? null,
+        afterStatus: payment?.status ?? null,
+        gatewayStatus: null,
+      };
+    const result = await this.gateway.verify(payment.gatewayReference);
+    const updated = await this.apply(
+      payment.id,
+      result,
+      createHash("sha256").update(JSON.stringify(result)).digest("hex"),
+    );
+    return {
+      outcome: "checked" as const,
+      beforeStatus: payment.status,
+      afterStatus: updated.status,
+      gatewayStatus: result.status,
+    };
+  }
   private async apply(
     paymentId: string,
     result: VerifiedPayment,
@@ -235,19 +261,40 @@ export class PaymentService {
         .select()
         .from(s.users)
         .where(eq(s.users.id, payment.payerId));
+      const [checkout] = await tx
+        .select({ payerEmail: s.paymentCheckouts.payerEmail })
+        .from(s.paymentCheckouts)
+        .where(eq(s.paymentCheckouts.paymentId, paymentId));
       if (
         result.reference !== payment.gatewayReference ||
         result.amountMinor !== payment.amountMinor ||
         result.currency !== payment.currency ||
         result.paymentId !== payment.id ||
-        result.email.toLowerCase() !== payer.email.toLowerCase()
+        result.email.toLowerCase() !==
+          (checkout?.payerEmail ?? payer.email).toLowerCase()
       )
         this.fail(
           "PAYMENT_VERIFICATION_MISMATCH",
           "Verified transaction does not match this payment.",
           422,
         );
-      if (result.status !== "success") return payment;
+      if (result.status !== "success") {
+        if (
+          [
+            "funded",
+            "held",
+            "release_pending",
+            "released",
+            "refunded",
+            "disputed",
+          ].includes(payment.status)
+        )
+          this.fail(
+            "PAYMENT_STATE_CONFLICT",
+            "Collected payment has conflicting gateway status.",
+          );
+        return payment;
+      }
       const eventId = `paystack.charge.success.${result.transactionId}`;
       const [existing] = await tx
         .select()
@@ -259,6 +306,18 @@ export class PaymentService {
             "PAYMENT_EVENT_CONFLICT",
             "Transaction belongs to another payment.",
           );
+        if (
+          result.feeMinor !== undefined &&
+          result.feeMinor !== null &&
+          payment.gatewayFeeMinor === null
+        ) {
+          const [updated] = await tx
+            .update(s.payments)
+            .set({ gatewayFeeMinor: result.feeMinor })
+            .where(eq(s.payments.id, payment.id))
+            .returning();
+          return updated;
+        }
         return payment;
       }
       if (
@@ -277,7 +336,11 @@ export class PaymentService {
       });
       const [out] = await tx
         .update(s.payments)
-        .set({ status: "funded", updatedAt: new Date() })
+        .set({
+          status: "funded",
+          gatewayFeeMinor: result.feeMinor ?? null,
+          updatedAt: new Date(),
+        })
         .where(eq(s.payments.id, payment.id))
         .returning();
       await tx

@@ -14,6 +14,7 @@ export interface RouteContract {
 }
 
 export const contractSchemas: Record<string, SchemaObject> = {
+  StaffDispute:{allOf:[{$ref:'#/components/schemas/disputes'},{type:'object',properties:{job:{$ref:'#/components/schemas/jobs'},payment:{$ref:'#/components/schemas/payments'},decisions:{type:'array',items:{$ref:'#/components/schemas/Decision'}},milestones:{type:'array',items:{$ref:'#/components/schemas/Milestone'}},messages:{type:'array',description:'Up to 100 latest undeleted messages from this job conversation; access is audited',items:{type:'object',properties:{id:{type:'string',format:'uuid'},sender:{type:'string'},type:{type:'string'},content:{type:'string'},createdAt:{type:'string',format:'date-time'}}}},messageLimit:{type:'integer',enum:[100]}}}]},
   StaffSecurityStatus: {type:'object',required:['enabled','verified','recoveryCodesRemaining'],properties:{enabled:{type:'boolean'},verified:{type:'boolean'},expiresAt:{type:'string',format:'date-time',nullable:true},recoveryCodesRemaining:{type:'integer'}}},
   StaffEnrollment: {type:'object',required:['secret','uri','expiresAt'],properties:{secret:{type:'string',description:'Display once; never store in browser storage'},uri:{type:'string'},expiresAt:{type:'string',format:'date-time'}}},
   StaffVerification: {type:'object',required:['verified','expiresAt'],properties:{verified:{type:'boolean'},expiresAt:{type:'string',format:'date-time'},recoveryCodes:{type:'array',items:{type:'string'},description:'Only enrollment confirmation returns ten one-use recovery codes'}}},
@@ -1237,6 +1238,7 @@ export const contractSchemas: Record<string, SchemaObject> = {
   payments: {
     type: "object",
     properties: {
+      gatewayFeeMinor:{type:"integer",nullable:true,description:"Verified collection fee in kobo; null when unavailable"},
       id: {
         type: "string",
         format: "uuid",
@@ -2698,89 +2700,8 @@ export const contractSchemas: Record<string, SchemaObject> = {
       "createdAt",
     ],
   },
-  Reconciliation: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        format: "uuid",
-        example: "00000000-0000-4000-8000-000000000001",
-      },
-      status: {
-        type: "string",
-        enum: ["queued", "running", "completed", "failed"],
-        example: "queued",
-      },
-      from: {
-        type: "string",
-        format: "date-time",
-        example: "2026-10-01T12:00:00.000Z",
-        description: "ISO 8601 timestamp with timezone.",
-      },
-      to: {
-        type: "string",
-        format: "date-time",
-        example: "2026-10-01T12:00:00.000Z",
-        description: "ISO 8601 timestamp with timezone.",
-      },
-      mismatchCount: {
-        type: "integer",
-        minimum: 0,
-      },
-      createdAt: {
-        type: "string",
-        format: "date-time",
-        example: "2026-10-01T12:00:00.000Z",
-        description: "ISO 8601 timestamp with timezone.",
-      },
-    },
-    required: ["id", "status", "from", "to", "mismatchCount", "createdAt"],
-  },
-  Report: {
-    type: "object",
-    properties: {
-      users: {
-        type: "integer",
-        minimum: 0,
-      },
-      providers: {
-        type: "integer",
-        minimum: 0,
-      },
-      jobs: {
-        type: "integer",
-        minimum: 0,
-      },
-      disputes: {
-        type: "integer",
-        minimum: 0,
-      },
-      collectedMinor: {
-        type: "integer",
-        minimum: 0,
-        description: "Integer minor units (NGN kobo); 500000 = \u20a65,000.",
-      },
-      paidOutMinor: {
-        type: "integer",
-        minimum: 0,
-        description: "Integer minor units (NGN kobo); 500000 = \u20a65,000.",
-      },
-      currency: {
-        type: "string",
-        enum: ["NGN"],
-        example: "NGN",
-      },
-    },
-    required: [
-      "users",
-      "providers",
-      "jobs",
-      "disputes",
-      "collectedMinor",
-      "paidOutMinor",
-      "currency",
-    ],
-  },
+  Reconciliation: {type:'object',required:['id','status','from','to','total','checked','skipped','mismatchCount','createdAt'],properties:{id:{type:'string',format:'uuid'},actorId:{type:'string',format:'uuid'},status:{type:'string',enum:['queued','running','completed','completed_with_errors','failed']},from:{type:'string',format:'date-time'},to:{type:'string',format:'date-time'},total:{type:'integer'},checked:{type:'integer'},skipped:{type:'integer'},mismatchCount:{type:'integer',description:'Gateway verification errors and state mismatches; inspect items'},createdAt:{type:'string',format:'date-time'},startedAt:{type:'string',format:'date-time',nullable:true},completedAt:{type:'string',format:'date-time',nullable:true},items:{type:'array',description:'Present on detail only; at most 1,000 records',items:{type:'object',properties:{id:{type:'string',format:'uuid'},resourceId:{type:'string',format:'uuid'},kind:{type:'string',enum:['payment','payout','refund']},outcome:{type:'string',enum:['pending','checked','skipped','error']},beforeStatus:{type:'string',nullable:true},afterStatus:{type:'string',nullable:true},gatewayStatus:{type:'string',nullable:true},errorCode:{type:'string',nullable:true},attemptedAt:{type:'string',format:'date-time',nullable:true}}}}}},
+  Report: {"type": "object", "properties": {"users": {"type": "integer", "minimum": 0}, "providers": {"type": "integer", "minimum": 0}, "jobs": {"type": "integer", "minimum": 0}, "disputes": {"type": "integer", "minimum": 0}, "collectedMinor": {"type": "integer", "minimum": 0}, "paidOutMinor": {"type": "integer", "minimum": 0}, "refundedMinor": {"type": "integer", "minimum": 0}, "earnedCommissionMinor": {"type": "integer", "minimum": 0}, "reservedClientFundsMinor": {"type": "integer", "minimum": 0}, "knownProcessingFeesMinor": {"type": "integer", "minimum": 0}, "missingProcessingFeeCount": {"type": "integer", "minimum": 0}, "currency": {"type": "string", "enum": ["NGN"]}, "asOf": {"type": "string", "format": "date-time"}, "basis": {"type": "string", "enum": ["verified_ledger"]}, "note": {"type": "string"}}, "required": ["users", "providers", "jobs", "disputes", "collectedMinor", "paidOutMinor", "refundedMinor", "earnedCommissionMinor", "reservedClientFundsMinor", "knownProcessingFeesMinor", "missingProcessingFeeCount", "currency", "asOf", "basis", "note"]},
   EmailDomain: {
     type: "object",
     properties: {
@@ -5404,7 +5325,7 @@ export const routeContracts: RouteContract[] = [
     method: "get",
     path: "admin/disputes/{id}",
     summary: "Read disputes for authorized staff",
-    response: "disputes",
+    response: "StaffDispute",
     body: null,
     auth: "finance",
     existing: true,
@@ -5419,7 +5340,7 @@ export const routeContracts: RouteContract[] = [
     response: "payments[]",
     body: null,
     auth: "admin",
-    existing: false,
+    existing: true,
     query: "ListQuery",
     note: "",
     code: 200,
@@ -5431,7 +5352,7 @@ export const routeContracts: RouteContract[] = [
     response: "payments",
     body: null,
     auth: "admin",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -5566,9 +5487,9 @@ export const routeContracts: RouteContract[] = [
     response: "Reconciliation",
     body: "ReconciliationInput",
     auth: "admin",
-    existing: false,
+    existing: true,
     query: null,
-    note: "",
+    note: "Range uses record creation time, inclusive start and exclusive end. Maximum 31 days and 1,000 records. Verification only; never initiates a charge, transfer or refund. One active run; identical pending range is idempotent. Missing credentials and gateway mismatches are reported per item.",
     code: 202,
   },
   {
@@ -5578,7 +5499,7 @@ export const routeContracts: RouteContract[] = [
     response: "Reconciliation[]",
     body: null,
     auth: "admin",
-    existing: false,
+    existing: true,
     query: "ListQuery",
     note: "",
     code: 200,
@@ -5590,7 +5511,7 @@ export const routeContracts: RouteContract[] = [
     response: "Reconciliation",
     body: null,
     auth: "admin",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -5602,7 +5523,7 @@ export const routeContracts: RouteContract[] = [
     response: "Report",
     body: null,
     auth: "admin",
-    existing: false,
+    existing: true,
     query: null,
     note: "",
     code: 200,
@@ -5815,5 +5736,6 @@ export const routeContracts: RouteContract[] = [
 {"method": "post", "path": "me/staff-security/enrollment", "summary": "Staff authenticator enrollment", "response": "StaffEnrollment", "body": "StaffEnrollmentInput", "auth": "staff", "existing": true, "query": null, "note": "Live staff role required. Enrollment requires current password. Verification expires after fifteen minutes; production staff operations require MFA. Codes are rate limited and cannot be replayed.", "code": 201},
 {"method": "post", "path": "me/staff-security/confirm", "summary": "Staff authenticator confirm", "response": "StaffVerification", "body": "StaffVerificationInput", "auth": "staff", "existing": true, "query": null, "note": "Live staff role required. Enrollment requires current password. Verification expires after fifteen minutes; production staff operations require MFA. Codes are rate limited and cannot be replayed.", "code": 201},
 {"method": "post", "path": "me/staff-security/verify", "summary": "Staff authenticator verify", "response": "StaffVerification", "body": "StaffVerificationInput", "auth": "staff", "existing": true, "query": null, "note": "Live staff role required. Enrollment requires current password. Verification expires after fifteen minutes; production staff operations require MFA. Codes are rate limited and cannot be replayed.", "code": 201},
+{method:'get',path:'admin/universities/{id}',summary:'Read an active or inactive university for administration',response:'universities',body:null,auth:'admin',existing:true,query:null,note:'Includes inactive universities; requires administrator role and staff MFA.',code:200},
 
 ];

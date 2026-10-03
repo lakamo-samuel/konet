@@ -1,3 +1,6 @@
+import { AdminFinanceController } from "./admin-finance.controller";
+import { AdminFinanceService } from "./admin-finance.service";
+import { ReconciliationService } from "./reconciliation.service";
 import { SocketTicketController } from "../realtime/socket-ticket.controller";
 import { SocketTicketService } from "../realtime/socket-ticket.service";
 import { DisputeService } from "./dispute.service";
@@ -35,6 +38,7 @@ import { PaymentService } from "./payment.service";
 @Module({
   imports: [ProvidersModule, AdministrationModule],
   controllers: [
+    AdminFinanceController,
     SocketTicketController,
     DisputeController,
     StaffDisputeController,
@@ -50,6 +54,8 @@ import { PaymentService } from "./payment.service";
     FinanceSettlementController,
   ],
   providers: [
+    AdminFinanceService,
+    ReconciliationService,
     DisputeService,
     MarketplaceService,
     HiringService,

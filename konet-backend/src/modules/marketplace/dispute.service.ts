@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { DATABASE, Database } from "../../database/database.module";
 import * as s from "../../database/schema";
 import { DomainError } from "../../common/errors/domain.error";
@@ -180,6 +180,19 @@ export class DisputeService {
     )
       this.fail("DISPUTE_NOT_FOUND", "Dispute not found.", 404);
     return row.dispute;
+  }
+  async staffDetail(actorId:string,id:string) {
+    const dispute=await this.detail(undefined,id);
+    return this.db.transaction(async tx=>{
+      const [job]=await tx.select().from(s.jobs).where(eq(s.jobs.id,dispute.jobId));
+      const [payment]=await tx.select().from(s.payments).where(eq(s.payments.jobId,job.id));
+      const decisions=await tx.select().from(s.disputeDecisions).where(eq(s.disputeDecisions.disputeId,id)).orderBy(s.disputeDecisions.createdAt);
+      const milestones=await tx.select().from(s.jobMilestones).where(eq(s.jobMilestones.jobId,job.id)).orderBy(s.jobMilestones.createdAt);
+      const [conversation]=await tx.select().from(s.conversations).where(or(eq(s.conversations.jobId,job.id),eq(s.conversations.requestId,job.requestId))).limit(1);
+      const messages=conversation?await tx.select({id:s.messages.id,sender:s.users.fullName,type:s.messages.type,content:s.messages.content,createdAt:s.messages.createdAt}).from(s.messages).innerJoin(s.users,eq(s.users.id,s.messages.senderId)).where(and(eq(s.messages.conversationId,conversation.id),isNull(s.messages.deletedAt))).orderBy(desc(s.messages.createdAt),desc(s.messages.id)).limit(100):[];
+      await tx.insert(s.auditEvents).values({actorId,action:'dispute.review_accessed',resourceType:'dispute',resourceId:id,details:{messageCount:messages.length}});
+      return {...dispute,job,payment,decisions,milestones,messages:messages.reverse(),messageLimit:100};
+    },{isolationLevel:'repeatable read'});
   }
   async decisions(userId: string, id: string) {
     await this.detail(userId, id);

@@ -6,6 +6,7 @@ export type VerifiedPayment = {
   transactionId: string;
   email: string;
   paymentId?: string;
+  feeMinor?: number | null;
 };
 export type PaymentInitialization = { checkoutUrl: string; reference: string };
 export interface PaymentGateway {

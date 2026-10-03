@@ -134,6 +134,7 @@ export class PaystackGateway implements PaymentGateway {
       transactionId: String(data.id),
       email: data.customer.email,
       paymentId: metadata?.paymentId,
+      feeMinor: Number.isSafeInteger(data.fees) && data.fees >= 0 ? data.fees : null,
     };
   }
   async verifyWebhook(signature: string, payload: Buffer) {
