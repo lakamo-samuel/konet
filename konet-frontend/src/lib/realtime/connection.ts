@@ -19,7 +19,7 @@ type Dependencies = {
   ticket: () => Promise<RealtimeTicket>;
   refresh: () => Promise<void>;
   onMessage: (message: Message) => void;
-  onNotification: () => void;
+  onNotification: (payload?: unknown) => void;
   onReceipt: (receipt: ReadReceipt) => void;
   onReconnect: () => void;
   createSocket?: typeof io;

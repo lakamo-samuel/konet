@@ -46,13 +46,25 @@ function RealtimeSession({ children }: { children: ReactNode }) {
             queryKey: ["konet", "conversations"],
           });
         },
-        onNotification: () => {
-          void cache.invalidateQueries({
-            queryKey: ["konet", "notifications"],
-          });
-          void cache.invalidateQueries({
-            queryKey: ["konet", "conversations"],
-          });
+        onNotification: (payload) => {
+          const names = ["notifications", "conversations"];
+          if (
+            payload &&
+            typeof payload === "object" &&
+            "resourceType" in payload &&
+            payload.resourceType === "dispute"
+          )
+            names.push(
+              "disputes",
+              "dispute",
+              "disputeDecisions",
+              "job",
+              "payment",
+              "payout",
+              "refunds",
+            );
+          for (const name of names)
+            void cache.invalidateQueries({ queryKey: ["konet", name] });
         },
         onReceipt: (receipt) => {
           cache.setQueryData<ReadReceipt[]>(
@@ -71,6 +83,13 @@ function RealtimeSession({ children }: { children: ReactNode }) {
             "conversations",
             "notifications",
             "messageHistory",
+            "disputes",
+            "dispute",
+            "disputeDecisions",
+            "job",
+            "payment",
+            "payout",
+            "refunds",
           ])
             void cache.invalidateQueries({ queryKey: ["konet", name] });
         },
