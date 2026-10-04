@@ -1,5 +1,6 @@
 "use client";
 import { saveAccessToken } from "./transport";
+import { notifySessionEnded } from "./end-session";
 let running: Promise<void> | undefined;
 async function state() {
   const response = await fetch("/api/frontend/session", {
@@ -41,7 +42,7 @@ export function refreshSession(force = true): Promise<void> {
         headers: { "Content-Type": "application/json" },
         body: "{}",
       });
-      if (response.status === 401) saveAccessToken();
+      if (response.status === 401) notifySessionEnded();
       if (!response.ok)
         throw new Error(
           response.status === 401

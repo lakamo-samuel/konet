@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { getCurrentUser } from "@/data/repositories/user.repository";
+import { DataError } from "@/data/access/errors";
 export type Session = {
   userId: string;
   roles: string[];
@@ -11,7 +12,11 @@ export type Session = {
 export const getSession = cache(async (): Promise<Session | null> => {
   const store = await cookies();
   if (!store.has("konet_access")) return null;
-  const user = await getCurrentUser();
+  const user = await getCurrentUser(false).catch(error => {
+    if (error instanceof DataError && error.status === 401) return null;
+    throw error;
+  });
+  if (!user) return null;
   return {
     userId: user.id,
     roles: user.roles ?? [],

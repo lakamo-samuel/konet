@@ -121,8 +121,10 @@ export async function authenticate(
 export async function refreshAuth() {
   const store = await cookies();
   const refreshToken = store.get("konet_refresh")?.value;
-  if (!refreshToken)
+  if (!refreshToken) {
+    await clearSession();
     throw new DataError("Please sign in again.", 401, "SESSION_REQUIRED");
+  }
   try {
     const result = await backendRequest<{ accessToken: string; user: ApiUser }>(
       "POST",

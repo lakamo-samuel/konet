@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { usesBearerStorage } from "@/lib/auth/transport";
 import { cookies } from "next/headers";
 import { sourceMode } from "@/data/access/server";
-import { accessExpiresAt, refreshAuth } from "@/lib/auth/live";
+import { accessExpiresAt, clearSession, refreshAuth } from "@/lib/auth/live";
 import { DataError } from "@/data/access/errors";
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "private, no-store" };
@@ -55,4 +55,11 @@ export async function POST(request: NextRequest) {
       { status: error instanceof DataError ? error.status : 500, headers },
     );
   }
+}
+export async function DELETE(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  if (!origin || !URL.canParse(origin) || new URL(origin).host !== request.headers.get("host"))
+    return NextResponse.json({ error: { message: "This request is not allowed.", code: "FORBIDDEN" } }, { status: 403, headers });
+  await clearSession();
+  return NextResponse.json({ success: true }, { headers });
 }
