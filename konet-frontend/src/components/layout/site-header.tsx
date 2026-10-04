@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { primaryNavigation, publicNavigation } from "@/lib/constants/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getUnreadNotificationsForUser } from "@/data/repositories/notification.repository";
-export async function SiteHeader() {
-  const session = await getSession();
+import { optionalPublicData } from "@/data/access/availability";
+export async function SiteHeader({ publicPage = false }: { publicPage?: boolean } = {}) {
+  const session = publicPage ? (await optionalPublicData(getSession, null)).data : await getSession();
   const notifications = session
-    ? await getUnreadNotificationsForUser(session.userId)
+    ? publicPage ? (await optionalPublicData(() => getUnreadNotificationsForUser(session.userId), [])).data : await getUnreadNotificationsForUser(session.userId)
     : [];
   const accountLinks = [
     { href: "/profile", label: "Your profile" },

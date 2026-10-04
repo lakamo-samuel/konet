@@ -136,3 +136,5 @@
  .discover-welcome{padding-top:16px}
  #main{min-height:calc(100svh - 84px)}
 }
+
+.hero-directory-notice{max-width:525px;margin:12px 0 0;font-size:12px;line-height:1.6;color:var(--muted)}
