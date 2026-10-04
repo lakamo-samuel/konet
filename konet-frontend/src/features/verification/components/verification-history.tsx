@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/lib/formatters/date";
 import type { StudentVerification } from "@/types/verification";
 export const verificationLabels: Record<string, string> = {
   unverified: "Not verified",
@@ -29,9 +30,9 @@ export function VerificationHistory({
               ? "Awaiting email confirmation"
               : (verificationLabels[record.status] ?? record.status)}
           </h4>
-          <p>Submitted {new Date(record.submittedAt).toLocaleString()}</p>
+          <p>Submitted {formatDateTime(record.submittedAt)}</p>
           {record.decidedAt && (
-            <p>Reviewed {new Date(record.decidedAt).toLocaleString()}</p>
+            <p>Reviewed {formatDateTime(record.decidedAt)}</p>
           )}
           {record.reason && (
             <p>

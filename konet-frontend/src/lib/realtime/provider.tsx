@@ -3,7 +3,7 @@ import {
   createContext,
   useContext,
   useEffect,
-  useState,
+  useMemo,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -24,80 +24,77 @@ export const historyKey = (id: string) =>
   ["konet", "messageHistory", id] as const;
 export function RealtimeProvider({ children }: { children: ReactNode }) {
   const user = useDataQuery("currentUser", {});
-  return user.data ? (
-    <RealtimeSession key={user.data.id}>{children}</RealtimeSession>
-  ) : (
-    <Context.Provider value={null}>{children}</Context.Provider>
-  );
-}
-function RealtimeSession({ children }: { children: ReactNode }) {
   const cache = useQueryClient();
-  const [connection] = useState(
+  const userId = user.data?.id;
+  const connection = useMemo(
     () =>
-      new RealtimeConnection({
-        ticket: () => command("realtimeTicket", {}),
-        refresh: () => refreshSession(),
-        onMessage: (message) => {
-          cache.setQueryData<Message[]>(
-            liveMessageKey(message.conversationId),
-            (rows) => mergeMessages(rows ?? [], [message]),
-          );
-          void cache.invalidateQueries({
-            queryKey: ["konet", "conversations"],
-          });
-        },
-        onNotification: (payload) => {
-          const names = ["notifications", "conversations"];
-          if (
-            payload &&
-            typeof payload === "object" &&
-            "resourceType" in payload &&
-            payload.resourceType === "dispute"
-          )
-            names.push(
-              "disputes",
-              "dispute",
-              "disputeDecisions",
-              "job",
-              "payment",
-              "payout",
-              "refunds",
-            );
-          for (const name of names)
-            void cache.invalidateQueries({ queryKey: ["konet", name] });
-        },
-        onReceipt: (receipt) => {
-          cache.setQueryData<ReadReceipt[]>(
-            receiptKey(receipt.conversationId),
-            (rows) => [
-              ...(rows ?? []).filter((r) => r.userId !== receipt.userId),
-              receipt,
-            ],
-          );
-          void cache.invalidateQueries({
-            queryKey: ["konet", "notifications"],
-          });
-        },
-        onReconnect: () => {
-          for (const name of [
-            "conversations",
-            "notifications",
-            "messageHistory",
-            "disputes",
-            "dispute",
-            "disputeDecisions",
-            "job",
-            "payment",
-            "payout",
-            "refunds",
-          ])
-            void cache.invalidateQueries({ queryKey: ["konet", name] });
-        },
-      }),
+      userId
+        ? new RealtimeConnection({
+            ticket: () => command("realtimeTicket", {}),
+            refresh: () => refreshSession(),
+            onMessage: (message) => {
+              cache.setQueryData<Message[]>(
+                liveMessageKey(message.conversationId),
+                (rows) => mergeMessages(rows ?? [], [message]),
+              );
+              void cache.invalidateQueries({
+                queryKey: ["konet", "conversations"],
+              });
+            },
+            onNotification: (payload) => {
+              const names = ["notifications", "conversations"];
+              if (
+                payload &&
+                typeof payload === "object" &&
+                "resourceType" in payload &&
+                payload.resourceType === "dispute"
+              )
+                names.push(
+                  "disputes",
+                  "dispute",
+                  "disputeDecisions",
+                  "job",
+                  "payment",
+                  "payout",
+                  "refunds",
+                );
+              for (const name of names)
+                void cache.invalidateQueries({ queryKey: ["konet", name] });
+            },
+            onReceipt: (receipt) => {
+              cache.setQueryData<ReadReceipt[]>(
+                receiptKey(receipt.conversationId),
+                (rows) => [
+                  ...(rows ?? []).filter((r) => r.userId !== receipt.userId),
+                  receipt,
+                ],
+              );
+              void cache.invalidateQueries({
+                queryKey: ["konet", "notifications"],
+              });
+            },
+            onReconnect: () => {
+              for (const name of [
+                "conversations",
+                "notifications",
+                "messageHistory",
+                "disputes",
+                "dispute",
+                "disputeDecisions",
+                "job",
+                "payment",
+                "payout",
+                "refunds",
+              ])
+                void cache.invalidateQueries({ queryKey: ["konet", name] });
+            },
+          })
+        : null,
+    [userId, cache],
   );
   useEffect(() => {
-    connection.start();
-    return () => connection.stop();
+    connection?.start();
+    return () => connection?.stop();
   }, [connection]);
   return <Context.Provider value={connection}>{children}</Context.Provider>;
 }

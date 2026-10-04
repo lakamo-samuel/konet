@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/lib/formatters/date";
 import type { Review } from "@/types/domain";
 export function ReviewDisplay({ review }: { review: Review }) {
   return (
@@ -8,7 +9,7 @@ export function ReviewDisplay({ review }: { review: Review }) {
       </p>
       <p className="whitespace-pre-wrap break-words">{review.body}</p>
       <time dateTime={review.createdAt}>
-        {new Date(review.createdAt).toLocaleString()}
+        {formatDateTime(review.createdAt)}
       </time>
       <p>Feedback from the client of this completed job.</p>
     </article>

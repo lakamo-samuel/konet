@@ -1,4 +1,5 @@
 "use client";
+import { formatDateTime } from "@/lib/formatters/date";
 import { useState } from "react";
 import { useDataQuery } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
@@ -54,7 +55,7 @@ export function InboxList() {
                   ? `Request ${c.requestId.slice(0, 8)}`
                   : `Conversation ${c.id.slice(0, 8)}`}
             </Button>
-            <p>Updated {new Date(c.updatedAt).toLocaleString()}</p>
+            <p>Updated {formatDateTime(c.updatedAt)}</p>
           </div>
         </article>
       ))}

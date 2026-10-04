@@ -1,4 +1,5 @@
 "use client";
+import { formatDateTime } from "@/lib/formatters/date";
 import { useState } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ export function RequestList({ provider = false }: { provider?: boolean }) {
           <p>
             {r.status.replaceAll("_", " ")} ·{" "}
             {r.requestedAt
-              ? new Date(r.requestedAt).toLocaleString()
+              ? formatDateTime(r.requestedAt)
               : "Date to be agreed"}
           </p>
           <Button href={`/requests/${r.id}`} variant="secondary">

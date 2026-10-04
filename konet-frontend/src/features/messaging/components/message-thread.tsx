@@ -1,4 +1,5 @@
 "use client";
+import { formatDateTime } from "@/lib/formatters/date";
 import { useEffect, useRef, useState } from "react";
 import {
   useInfiniteQuery,
@@ -200,7 +201,7 @@ export function MessageThread({ conversationId }: { conversationId: string }) {
             >
               <p className="whitespace-pre-wrap break-words">{m.content}</p>
               <time className="text-xs" dateTime={m.createdAt}>
-                {new Date(m.createdAt).toLocaleString()}
+                {formatDateTime(m.createdAt)}
               </time>
               {m.senderId === user.data.id &&
                 readByOther.some(

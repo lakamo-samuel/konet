@@ -1,4 +1,5 @@
 "use client";
+import { formatDateTime } from "@/lib/formatters/date";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDataQuery, useDataCommand } from "@/lib/query/hooks";
@@ -59,7 +60,7 @@ export function DisputeList() {
           <p>
             {labels[item.status]} · Job {item.jobId.slice(0, 8)}
           </p>
-          <p>{new Date(item.createdAt).toLocaleString()}</p>
+          <p>{formatDateTime(item.createdAt)}</p>
           <Button href={`/disputes/${item.id}`}>View case</Button>
         </article>
       ))}
@@ -192,9 +193,9 @@ export function DisputeDetail({ id }: { id: string }) {
         <h2>{dispute.reason}</h2>
         <p>{labels[dispute.status]}</p>
         <p className="whitespace-pre-wrap">{dispute.description}</p>
-        <p>Opened {new Date(dispute.createdAt).toLocaleString()}</p>
+        <p>Opened {formatDateTime(dispute.createdAt)}</p>
         {dispute.resolvedAt && (
-          <p>Resolved {new Date(dispute.resolvedAt).toLocaleString()}</p>
+          <p>Resolved {formatDateTime(dispute.resolvedAt)}</p>
         )}
       </article>
       {["open", "under_review"].includes(dispute.status) && (
@@ -220,7 +221,7 @@ export function DisputeDetail({ id }: { id: string }) {
                 {formatNaira(decision.refundAmountMinor / 100)}
               </p>
             )}
-            <p>{new Date(decision.createdAt).toLocaleString()}</p>
+            <p>{formatDateTime(decision.createdAt)}</p>
           </article>
         ))}
       </section>

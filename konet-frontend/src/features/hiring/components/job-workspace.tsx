@@ -1,4 +1,5 @@
 "use client";
+import { formatDateTime } from "@/lib/formatters/date";
 import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/data/access/client";
@@ -62,7 +63,7 @@ function JobDetails({
             </ul>
             {quote.data.deliveryAt && (
               <p>
-                Delivery: {new Date(quote.data.deliveryAt).toLocaleString()}
+                Delivery: {formatDateTime(quote.data.deliveryAt)}
               </p>
             )}
           </>
@@ -71,7 +72,7 @@ function JobDetails({
           <p role="alert">{errorMessage(request.error ?? quote.error)}</p>
         )}
         {job.scheduledAt && (
-          <p>Scheduled: {new Date(job.scheduledAt).toLocaleString()}</p>
+          <p>Scheduled: {formatDateTime(job.scheduledAt)}</p>
         )}
         {job.status === "awaiting_payment" && (
           <p role="status">

@@ -1,4 +1,5 @@
 "use client";
+import { formatDate } from "@/lib/formatters/date";
 import { useEffect, useRef } from "react";
 import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
@@ -133,7 +134,7 @@ export function PaymentRow({ payment }: { payment: Payment }) {
         </Button>
         <p>{paymentLabel[payment.status]}</p>
       </div>
-      <span>{new Date(payment.createdAt).toLocaleDateString()}</span>
+      <span>{formatDate(payment.createdAt)}</span>
       <b>{formatNaira(payment.amountMinor / 100)}</b>
     </article>
   );

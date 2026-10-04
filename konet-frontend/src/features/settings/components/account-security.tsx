@@ -1,4 +1,5 @@
 "use client";
+import { formatTime } from "@/lib/formatters/date";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -131,7 +132,7 @@ function EmailChange({ email }: { email: string }) {
         >
           <p>
             Code queued for {target}. Expires{" "}
-            {new Date(challenge.expiresAt).toLocaleTimeString()}.{" "}
+            {formatTime(challenge.expiresAt)}.{" "}
             {expired && "Request a new code."}
           </p>
           <label className="field">

@@ -1,4 +1,5 @@
 "use client";
+import { formatTime } from "@/lib/formatters/date";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -238,7 +239,7 @@ function StudentVerificationForm({ user }: { user: User }) {
                   >
                     <p>
                       Enter the code sent to {sentEmail}. It expires at{" "}
-                      {new Date(challenge.expiresAt).toLocaleTimeString()}.
+                      {formatTime(challenge.expiresAt)}.
                     </p>
                     <label className="field">
                       Verification code

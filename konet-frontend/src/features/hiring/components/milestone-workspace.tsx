@@ -1,4 +1,5 @@
 "use client";
+import { formatDateTime } from "@/lib/formatters/date";
 import { useState } from "react";
 import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,7 @@ export function MilestoneWorkspace({
           <p>{m.description}</p>
           <p>
             {m.status.replaceAll("_", " ")}
-            {m.dueAt ? ` · Due ${new Date(m.dueAt).toLocaleString()}` : ""}
+            {m.dueAt ? ` · Due ${formatDateTime(m.dueAt)}` : ""}
           </p>
           {editable &&
             job.status === "in_progress" &&

@@ -1,4 +1,5 @@
 "use client";
+import { formatDateTime } from "@/lib/formatters/date";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useDataCommand } from "@/lib/query/hooks";
@@ -68,7 +69,7 @@ function EvidenceEditor({
       )}
       {record?.submittedAt && (
         <p>
-          Submitted {new Date(record.submittedAt).toLocaleString()} · Revision{" "}
+          Submitted {formatDateTime(record.submittedAt)} · Revision{" "}
           {record.revision}
         </p>
       )}

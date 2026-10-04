@@ -1,4 +1,5 @@
 "use client";
+import { formatDateTime } from "@/lib/formatters/date";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
@@ -40,7 +41,7 @@ export function RequestWorkspace({ id }: { id: string }) {
         <p>Status: {record.status.replaceAll("_", " ")}</p>
         <p>
           {record.requestedAt
-            ? new Date(record.requestedAt).toLocaleString()
+            ? formatDateTime(record.requestedAt)
             : "No preferred date"}{" "}
           · {record.location || "Location to be agreed"}
         </p>
@@ -61,7 +62,7 @@ export function RequestWorkspace({ id }: { id: string }) {
           <strong>
             {formatNaira(q.amountMinor / 100)} · {q.status}
           </strong>
-          <p>Expires {new Date(q.expiresAt).toLocaleString()}</p>
+          <p>Expires {formatDateTime(q.expiresAt)}</p>
           <Button href={`/quotes/${q.id}`} variant="secondary">
             View quote
           </Button>

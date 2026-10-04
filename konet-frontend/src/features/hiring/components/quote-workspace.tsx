@@ -1,4 +1,5 @@
 "use client";
+import { formatDateTime } from "@/lib/formatters/date";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
@@ -37,9 +38,9 @@ export function QuoteWorkspace({ id }: { id: string }) {
       <p>Provider earnings: {formatNaira(q.providerAmountMinor / 100)}</p>
       <p>The client pays the quoted total. Konet covers transaction fees.</p>
       <p>Status: {q.status === "sent" && !available ? "expired" : q.status}</p>
-      <p>Expires {new Date(q.expiresAt).toLocaleString()}</p>
+      <p>Expires {formatDateTime(q.expiresAt)}</p>
       {q.deliveryAt && (
-        <p>Delivery: {new Date(q.deliveryAt).toLocaleString()}</p>
+        <p>Delivery: {formatDateTime(q.deliveryAt)}</p>
       )}
       <h3>Included</h3>
       <ul>

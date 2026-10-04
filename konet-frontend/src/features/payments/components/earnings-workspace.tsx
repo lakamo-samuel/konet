@@ -1,4 +1,5 @@
 "use client";
+import { formatDate } from "@/lib/formatters/date";
 import { useState } from "react";
 import { useDataQuery } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
@@ -56,7 +57,7 @@ export function EarningsWorkspace() {
             </Button>
             <p>
               {formatNaira(p.amountMinor / 100)} · {p.status} ·{" "}
-              {new Date(p.createdAt).toLocaleDateString()}
+              {formatDate(p.createdAt)}
             </p>
             <p>Reference: {p.reference}</p>
           </article>
