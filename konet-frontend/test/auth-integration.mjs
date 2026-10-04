@@ -1604,6 +1604,16 @@ try {
     email: "student@example.com",
     password: "replacement-test-password",
   });
+  if (process.env.KONET_REVIEW_UI === "true" || process.argv.includes("--browser")) {
+    const { reviewUserInterface } = await import("./user-ui-browser.mjs");
+    await reviewUserInterface({ base, cookies: jar, routes: [
+      "/discover", "/jobs", "/requests", "/messages", "/notifications", "/profile", "/settings", "/verification", "/disputes",
+      `/providers/${ownProfile.id}`, `/requests/new?providerId=${ownProfile.id}`, `/jobs/${acceptedJob.id}`, `/jobs/${acceptedJob.id}/dispute`, `/payment-result?jobId=${acceptedJob.id}`, `/requests/${hiredRequest.id}`, `/quotes/${hiredQuote.id}`,
+      `/messages/${conversation.id}`, `/disputes/${disputeCase.id}`, `/checkout/${acceptedJob.id}`, `/reviews/${acceptedJob.id}`,
+      "/provider/dashboard", "/provider/requests", `/provider/requests/${hiredRequest.id}`, "/provider/services", "/provider/services/new", `/provider/services/${serviceRecord.json().data.id}`, "/provider/portfolio", "/provider/earnings", "/provider/settings",
+      "/provider/onboarding/profile", "/provider/onboarding/service", "/provider/onboarding/portfolio", "/provider/onboarding/verification", "/provider/onboarding/preview", "/verify-student",
+    ] });
+  }
   const saved = cookie();
   assert.equal((await command("signOut", {})).status, 200);
   assert.ok(!jar.has("konet_access"));

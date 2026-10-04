@@ -16,7 +16,8 @@
     "test:payment-redirect": "node test/payment-redirect.mjs",
     "test:realtime": "node test/realtime.mjs",
     "test:settings-client": "node test/settings-client.mjs",
-    "test:admin": "node test/admin-browser.mjs"
+    "test:admin": "node test/admin-browser.mjs",
+    "test:ui": "node test/auth-integration.mjs --browser"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.0",
