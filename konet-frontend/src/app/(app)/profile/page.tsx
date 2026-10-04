@@ -54,7 +54,7 @@ export default async function Page() {
             <div className="verification-cards">
               <div>
                 <strong>Student membership</strong>
-                <span>{user.studentVerification.replaceAll("_", " ")}</span>
+                <span data-status={user.studentVerification}>{user.studentVerification.replaceAll("_", " ")}</span>
                 <p>
                   {user.studentVerification === "verified"
                     ? "Your university membership is confirmed."
@@ -63,7 +63,7 @@ export default async function Page() {
               </div>
               <div>
                 <strong>Identity</strong>
-                <span>{user.identityVerification.replaceAll("_", " ")}</span>
+                <span data-status={user.identityVerification}>{user.identityVerification.replaceAll("_", " ")}</span>
                 <p>
                   {user.identityVerification === "verified"
                     ? "Your identity details have been reviewed."

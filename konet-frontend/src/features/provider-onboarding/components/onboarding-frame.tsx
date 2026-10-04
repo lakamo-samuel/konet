@@ -33,7 +33,7 @@ export function OnboardingFrame({
       <div className="grid gap-8 lg:grid-cols-[250px_minmax(0,1fr)] lg:gap-12">
         <nav
           aria-label="Provider setup steps"
-          className="self-start rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 lg:sticky lg:top-24"
+          className="onboarding-steps self-start rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 lg:sticky lg:top-24"
         >
           {steps.map((item, index) => (
             <Link

@@ -1,0 +1,66 @@
+/* Shared user-facing layout and navigation. Admin styling remains separate. */
+#main{min-height:calc(100svh - 76px)}
+.workspace-page{min-width:0;padding-block:48px 72px}
+.workspace-page>h1,.workspace-page>.page-heading h1{font-size:clamp(30px,3.5vw,44px);line-height:1.15;font-weight:650;letter-spacing:-1.6px;margin:0 0 16px;text-wrap:balance}
+.workspace-page>.page-heading{margin-bottom:28px}
+.workspace-page>.page-heading p{color:var(--muted);max-width:640px;font-size:15px;line-height:1.7}
+.workspace-page>.button{margin:0 0 24px}
+.workspace-page .surface-panel h2{font-size:22px;font-weight:650;letter-spacing:-.5px;margin-bottom:16px}
+.workspace-page .surface-panel h3{font-size:18px;font-weight:650;margin-bottom:10px}
+.workspace-page .form-stack>div:has(>.button){display:flex;flex-wrap:wrap;gap:10px}
+.empty-state{padding:40px 24px;background:var(--surface);border:1px dashed #d4cec3;border-radius:16px}
+.empty-state h2{font-size:24px;font-weight:600;letter-spacing:-.7px;margin:18px 0 10px}
+.empty-state p{max-width:460px;margin:0 auto 20px;color:var(--muted);font-size:14px;line-height:1.7}
+.empty-state .button{margin-top:4px}
+.footer .footer-brand>.wordmark{font-size:27px;color:#fff;line-height:1.2;display:inline-flex;margin-bottom:20px}
+.mobile-nav>a{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:600;color:var(--muted);text-decoration:none;min-height:60px}
+.mobile-nav>a[aria-current=page]{color:var(--clay);background:#c95c3509}
+.header-menu{display:none;position:relative;order:10}
+.header-menu summary{list-style:none;width:40px;height:40px;display:grid;place-items:center;cursor:pointer;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.header-menu summary::-webkit-details-marker{display:none}
+.header-menu nav{position:absolute;right:0;top:48px;width:250px;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 16px 40px #231c1320;display:grid;gap:3px;z-index:60}
+.header-menu nav>a,.header-menu nav>button{padding:12px 14px;color:var(--ink);font-size:13px;text-align:left;text-decoration:none;border-radius:8px;display:block;white-space:normal}
+.header-menu nav>a:hover,.header-menu nav>a[aria-current=page]{background:#efe9df;color:var(--clay)}
+.account-hero>div{min-width:0}.account-hero h1{font-size:clamp(28px,3vw,38px);line-height:1.2;letter-spacing:-1px;overflow-wrap:anywhere}
+.account-page .surface-panel>h2,.provider-invite h2{font-size:22px;font-weight:650;letter-spacing:-.5px}
+.account-page .section-heading{gap:16px;flex-wrap:wrap;align-items:flex-start}
+.account-page .section-heading h2{font-size:26px;line-height:1.2;margin:12px 0}
+.account-page .detail-list dd{overflow-wrap:anywhere}
+.provider-invite .eyebrow{color:#fff3e9}
+@media(max-width:1150px){.header-menu{display:block}.header-actions>.signin-button,.header-actions>button{display:none}.header-menu nav>button{display:block}}
+@media(max-width:680px){
+ .workspace-page{width:calc(100% - 40px);padding-block:32px 48px}
+ #main{min-height:calc(100svh - 127px)}
+ .page-heading h1,.messages-page>.page-heading h1{font-size:32px;letter-spacing:-1.2px;line-height:1.2}
+ .account-hero{grid-template-columns:72px minmax(0,1fr);gap:16px;margin:-28px 12px 28px;align-items:start}
+ .account-hero>.avatar{width:72px!important;height:72px!important;border-width:4px}
+ .account-hero h1{font-size:28px;margin:8px 0;letter-spacing:-1px}
+ .account-hero .eyebrow{font-size:9px;letter-spacing:1.2px;margin-top:40px}
+ .account-hero p{font-size:12px;line-height:1.6}
+ .account-hero>.button{grid-column:1/-1;width:100%}
+ .account-page .surface-panel{padding:22px}
+ .account-page .section-heading .badge{align-self:flex-start}
+ .provider-invite{padding:24px;align-items:flex-start;flex-direction:column}
+ .provider-invite .button{white-space:normal;width:100%}
+ .header-actions>.account-avatar{width:34px;height:34px}
+ .header-menu summary{width:36px;height:36px}
+ .site-header[data-authenticated=false] .header-actions>.button{display:inline-flex;padding:9px 12px;min-height:38px;font-size:12px}
+ .site-header[data-authenticated=false] .header-actions>.button svg{display:none}
+ .mobile-nav{padding-bottom:env(safe-area-inset-bottom);height:calc(66px + env(safe-area-inset-bottom));box-shadow:0 -4px 20px #231c1308}
+ .footer{padding-bottom:calc(36px + env(safe-area-inset-bottom))}
+ .search-bottom{flex-wrap:wrap}.search-bottom>.button{flex:1;white-space:nowrap}
+ .search-bottom>div{min-width:0!important;flex-basis:100%}
+ .empty-state{padding:32px 20px}
+}
+.auth-form select{min-height:50px;width:100%;border:1px solid #d7d0c4;border-radius:11px;background:var(--surface);padding:0 13px;font:inherit;color:var(--ink)}
+.auth-form select:disabled{opacity:.6;cursor:not-allowed}
+.account-hero{margin:24px 0 32px;align-items:center}
+.account-hero>.avatar{margin-top:-60px;align-self:start}
+.account-hero .eyebrow{margin-top:0}
+.verification-cards span[data-status=unverified],.verification-cards span[data-status=pending],.verification-cards span[data-status=not_submitted]{color:#97671a}
+.verification-cards span[data-status=rejected]{color:#a53b2c}
+@media(max-width:680px){.account-hero{margin:20px 0 28px;gap:14px}.account-hero>.avatar{margin-top:-44px}.account-hero .eyebrow{margin-top:0}.profile-cover{padding-bottom:28px}.account-hero h1{font-size:26px}.auth-panel,.auth-card{margin:0}.auth-content{justify-content:flex-start;padding-top:24px}.auth-mobile-header{margin-bottom:48px}}
+.workspace-page .empty-state h1{font-size:clamp(28px,3vw,40px);font-weight:650;letter-spacing:-1px;line-height:1.2;margin:16px 0}
+.provider-page>h1{font-size:clamp(30px,3.5vw,42px);font-weight:650;line-height:1.2;letter-spacing:-1.3px;margin-bottom:24px}
+@media(max-width:1000px){.onboarding-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px;gap:2px}.onboarding-steps>a{flex-direction:column;gap:6px;padding:10px 2px;font-size:10px;text-align:center;justify-content:flex-start;min-width:0;overflow-wrap:anywhere}.onboarding-steps>a>span{width:25px;height:25px}}
+@media(max-width:680px){.legal-page{margin:48px auto 64px}.legal-page h1{font-size:36px;line-height:1.2;letter-spacing:-1.4px;text-wrap:balance;margin:18px 0 20px}.legal-page>p{font-size:16px;line-height:1.75}.legal-page section{font-size:14px;line-height:1.7}.onboarding-shell .app-section{padding-top:32px}}

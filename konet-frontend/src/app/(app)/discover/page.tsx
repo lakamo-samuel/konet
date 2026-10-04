@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { ProviderCard } from "@/features/providers/components/provider-card";
 import { SearchForm } from "@/features/discovery/components/search-form";
 import { getProviders, searchProviders } from "@/data/repositories/provider.repository";
@@ -32,9 +34,9 @@ export default async function Page({ searchParams }: Props) {
     {hasFilters ? <section className="discover-block" aria-live="polite">
       <div className="section-heading"><div><span className="eyebrow muted">Search results</span><h2>{q ? `Results for “${q}”` : "Providers at your campus"}</h2><p>{providers.length} provider{providers.length === 1 ? "" : "s"} found</p></div><Link href="/discover">Clear filters</Link></div>
       {providers.length ? <div className="provider-grid">{providers.map(card)}</div> : <div className="empty-state"><h2>No providers match yet</h2><p>Try another service or search across all campuses.</p></div>}
-    </section> : <>
+    </section> : !providers.length ? <section className="discover-block"><EmptyState icon="briefcase" title="No providers published yet" description="This marketplace is getting started. Approved providers will appear here as they publish their services." action={<Button href="/provider/onboarding">Offer a service</Button>} /></section> : <>
       <section className="discover-block"><div className="section-heading"><div><span className="eyebrow muted">Explore</span><h2>Student providers</h2><p>Compare trusted work and choose who fits your project.</p></div></div><div className="provider-grid">{providers.map(card)}</div></section>
-      <section className="discover-block"><div className="section-heading"><div><span className="eyebrow muted">Available now</span><h2>Ready for new requests</h2></div></div><div className="provider-grid rising-grid">{providers.filter(item => item.available).slice(0, 3).map(card)}</div></section>
+      {providers.some(item => item.available) && <section className="discover-block"><div className="section-heading"><div><span className="eyebrow muted">Available now</span><h2>Ready for new requests</h2></div></div><div className="provider-grid rising-grid">{providers.filter(item => item.available).slice(0, 3).map(card)}</div></section>}
     </>}
   </section>;
 }

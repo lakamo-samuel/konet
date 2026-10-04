@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { useDataQuery } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
@@ -21,7 +22,7 @@ export function RequestList({ provider = false }: { provider?: boolean }) {
   );
   return (
     <div className="form-stack">
-      {!rows.length && <p>No requests to show.</p>}
+      {!rows.length && <EmptyState icon="message" title={offset ? "No requests on this page" : "No requests yet"} description="When you send or receive a service request, you can track it here." action={<Button href="/discover">Find a provider</Button>} />}
       {rows.map((r) => (
         <article className="surface-panel" key={r.id}>
           <h3>{r.description.slice(0, 100)}</h3>
@@ -90,7 +91,7 @@ export function JobList() {
         </select>
       </label>
       {!rows.length && (
-        <p>No jobs to show. Accepted quotes create jobs here.</p>
+        <EmptyState icon="briefcase" title={offset ? "No jobs on this page" : "No jobs yet"} description="Your jobs appear here after a quote is accepted. Find a provider and start a conversation to get going." action={<Button href="/discover">Explore services</Button>} />
       )}
       {rows.map((j) => (
         <article className="surface-panel" key={j.id}>

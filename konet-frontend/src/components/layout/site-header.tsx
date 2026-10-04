@@ -1,3 +1,4 @@
+import { HeaderMenu } from "./header-menu";
 import { isStaff } from "@/features/admin/operations";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
@@ -13,7 +14,7 @@ export async function SiteHeader() {
     ? await getUnreadNotificationsForUser(session.userId)
     : [];
   return (
-    <header className="site-header">
+    <header className="site-header" data-authenticated={!!session}>
       <div className="header-inner">
         <Link className="wordmark" href={session ? "/discover" : "/"}>
           konet
@@ -35,6 +36,7 @@ export async function SiteHeader() {
           )}
         </nav>
         <div className="header-actions">
+          <HeaderMenu authenticated={!!session} links={session ? [...primaryNavigation, { href: "/profile", label: "Your profile" }, { href: "/settings", label: "Account settings" }, { href: session.providerProfileId ? "/provider/dashboard" : "/provider/onboarding", label: session.providerProfileId ? "Provider workspace" : "Offer a service" }, ...(isStaff(session.roles) ? [{ href: "/admin", label: "Admin dashboard" }] : [])] : [{ href: "/how-it-works", label: "How it works" }, { href: "/for-providers", label: "For providers" }, { href: "/trust-and-safety", label: "Trust & safety" }, { href: "/sign-in", label: "Sign in" }, { href: "/sign-up", label: "Create an account" }]} />
           {session ? (
             <>
               <NotificationBell
