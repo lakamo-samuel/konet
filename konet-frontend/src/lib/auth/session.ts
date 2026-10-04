@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { serverQuery } from "@/data/access/server";
+import { getCurrentUser } from "@/data/repositories/user.repository";
 export type Session = {
   userId: string;
   roles: string[];
@@ -11,7 +11,7 @@ export type Session = {
 export const getSession = cache(async (): Promise<Session | null> => {
   const store = await cookies();
   if (!store.has("konet_access")) return null;
-  const user = await serverQuery("currentUser", {});
+  const user = await getCurrentUser();
   return {
     userId: user.id,
     roles: user.roles ?? [],
