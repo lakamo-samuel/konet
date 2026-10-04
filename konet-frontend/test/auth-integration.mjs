@@ -203,7 +203,7 @@ async function call(
     headers: {
       ...(rawCookie ? { Cookie: rawCookie } : {}),
       ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
-      ...(method === "POST"
+      ...(["POST", "DELETE"].includes(method)
         ? { Origin: origin, "Content-Type": "application/json" }
         : {}),
     },
@@ -1287,6 +1287,9 @@ try {
   });
   assert.equal(blockedCommand.status, 403);
   checks++;
+  assert.equal((await call("/api/frontend/session", { method: "DELETE", origin: "https://untrusted.example" })).status, 403);
+  assert.ok(jar.has("konet_access"));
+  checks++;
   const oldRefresh = jar.get("konet_refresh");
   const refreshed = await call("/api/frontend/session", {
     method: "POST",
@@ -1313,6 +1316,20 @@ try {
   );
   assert.ok(!jar.has("konet_access"));
   assert.ok(!jar.has("konet_refresh"));
+  jar.set("konet_access", "expired-access");
+  const publicHome = await call("/");
+  assert.equal(publicHome.status, 200, "Expired credentials must not redirect the public homepage");
+  assert.ok(!publicHome.headers.has("location"));
+  checks++;
+  assert.equal((await call("/api/frontend/session", { method: "POST", body: {} })).status, 401);
+  assert.ok(!jar.has("konet_access"), "Missing refresh credentials must clear stale access cookies");
+  checks++;
+  jar.set("konet_access", "expired-access");
+  jar.set("konet_refresh", "unusable-refresh");
+  assert.equal((await call("/api/frontend/session", { method: "DELETE" })).status, 200);
+  assert.ok(!jar.has("konet_access"));
+  assert.ok(!jar.has("konet_refresh"));
+  checks++;
   assert.equal(
     (
       await command("signIn", {

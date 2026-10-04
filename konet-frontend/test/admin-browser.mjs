@@ -295,7 +295,7 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
   }
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH });
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
   });
@@ -308,7 +308,7 @@ try {
   for (const width of [1440, 1024, 768, 390]) {
     await page.setViewportSize({ width, height: 900 });
     for (const route of ["/", "/sign-in", "/sign-up", "/forgot-password", "/how-it-works", "/for-providers", "/trust-and-safety"]) {
-      await page.goto(base + route);
+      await page.goto(base + route, { waitUntil: "domcontentloaded" });
       await expect(page.locator(".wordmark:visible").first()).toBeVisible();
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${route} overflows at ${width}px`);
       if (route === "/sign-in" && [1440, 390].includes(width)) await page.screenshot({ path: `/tmp/konet-login-${width}.png`, fullPage: true });
