@@ -1,11 +1,12 @@
 import { HeaderMenu } from "./header-menu";
 import { isStaff } from "@/features/admin/operations";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
-import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { AccountMenu } from "./account-menu";
+import { DesktopNavigation } from "@/components/navigation/desktop-navigation";
 import Link from "next/link";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
-import { primaryNavigation } from "@/lib/constants/navigation";
+import { primaryNavigation, publicNavigation } from "@/lib/constants/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getUnreadNotificationsForUser } from "@/data/repositories/notification.repository";
 export async function SiteHeader() {
@@ -13,6 +14,12 @@ export async function SiteHeader() {
   const notifications = session
     ? await getUnreadNotificationsForUser(session.userId)
     : [];
+  const accountLinks = [
+    { href: "/profile", label: "Your profile" },
+    { href: "/settings", label: "Account settings" },
+    { href: session?.providerProfileId ? "/provider/dashboard" : "/provider/onboarding", label: session?.providerProfileId ? "Provider workspace" : "Offer a service" },
+    ...(session && isStaff(session.roles) ? [{ href: "/admin", label: "Admin dashboard" }] : []),
+  ];
   return (
     <header className="site-header" data-authenticated={!!session}>
       <div className="header-inner">
@@ -20,23 +27,9 @@ export async function SiteHeader() {
           konet
           <span className="logo-dot" />
         </Link>
-        <nav className="desktop-nav" aria-label="Primary navigation">
-          {session ? (
-            primaryNavigation.map((item) => (
-              <Link key={item.href} href={item.href}>
-                {item.label}
-              </Link>
-            ))
-          ) : (
-            <>
-              <Link href="/how-it-works">How it works</Link>
-              <Link href="/for-providers">For providers</Link>
-              <Link href="/trust-and-safety">Trust & safety</Link>
-            </>
-          )}
-        </nav>
+        <DesktopNavigation authenticated={!!session} />
         <div className="header-actions">
-          <HeaderMenu authenticated={!!session} links={session ? [...primaryNavigation, { href: "/profile", label: "Your profile" }, { href: "/settings", label: "Account settings" }, { href: session.providerProfileId ? "/provider/dashboard" : "/provider/onboarding", label: session.providerProfileId ? "Provider workspace" : "Offer a service" }, ...(isStaff(session.roles) ? [{ href: "/admin", label: "Admin dashboard" }] : [])] : [{ href: "/how-it-works", label: "How it works" }, { href: "/for-providers", label: "For providers" }, { href: "/trust-and-safety", label: "Trust & safety" }, { href: "/sign-in", label: "Sign in" }, { href: "/sign-up", label: "Create an account" }]} />
+          <HeaderMenu authenticated={!!session} links={session ? primaryNavigation : publicNavigation} accountLinks={session ? accountLinks : [{ href: "/sign-in", label: "Sign in" }, { href: "/sign-up", label: "Create an account" }]} />
           {session ? (
             <>
               <NotificationBell
@@ -44,14 +37,13 @@ export async function SiteHeader() {
                 initialNotifications={notifications}
               />
               <Link
-                className="account-avatar"
+                className="account-avatar mobile-account-avatar"
                 href="/profile"
                 aria-label="Your profile"
               >
                 {session.name?.charAt(0) ?? "Account"}
               </Link>
-              <SignOutButton />
-              {isStaff(session.roles) && <Button href="/admin" variant="secondary">Staff dashboard</Button>}
+              <AccountMenu name={session.name ?? "Account"} links={accountLinks} />
               {session.providerProfileId ? (
                 <Button className="header-cta" href="/provider/dashboard">
                   My workspace

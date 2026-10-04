@@ -25,7 +25,7 @@ export function RequestList({ provider = false }: { provider?: boolean }) {
     <div className="form-stack">
       {!rows.length && <EmptyState icon="message" title={offset ? "No requests on this page" : "No requests yet"} description="When you send or receive a service request, you can track it here." action={<Button href="/discover">Find a provider</Button>} />}
       {rows.map((r) => (
-        <article className="surface-panel" key={r.id}>
+        <article className="surface-panel work-record" key={r.id}>
           <h3>{r.description.slice(0, 100)}</h3>
           <p>
             {r.status.replaceAll("_", " ")} ·{" "}
@@ -95,7 +95,7 @@ export function JobList() {
         <EmptyState icon="briefcase" title={offset ? "No jobs on this page" : "No jobs yet"} description="Your jobs appear here after a quote is accepted. Find a provider and start a conversation to get going." action={<Button href="/discover">Explore services</Button>} />
       )}
       {rows.map((j) => (
-        <article className="surface-panel" key={j.id}>
+        <article className="surface-panel work-record" key={j.id}>
           <h3>Job {j.id.slice(0, 8)}</h3>
           <p>
             {j.status.replaceAll("_", " ")} ·{" "}
