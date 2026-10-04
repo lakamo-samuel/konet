@@ -17,7 +17,7 @@ export default async function Page({
   const services = await getServicesByProvider(providerId);
   return (
     <section className="workspace-page narrow">
-      <h1>Request a service from {provider.fullName}</h1>
+      <h1>Request a service from {provider.fullName ?? provider.professionalTitle}</h1>
       <RequestForm providerId={providerId} services={services} />
     </section>
   );

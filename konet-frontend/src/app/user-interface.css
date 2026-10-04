@@ -64,3 +64,12 @@
 .provider-page>h1{font-size:clamp(30px,3.5vw,42px);font-weight:650;line-height:1.2;letter-spacing:-1.3px;margin-bottom:24px}
 @media(max-width:1000px){.onboarding-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px;gap:2px}.onboarding-steps>a{flex-direction:column;gap:6px;padding:10px 2px;font-size:10px;text-align:center;justify-content:flex-start;min-width:0;overflow-wrap:anywhere}.onboarding-steps>a>span{width:25px;height:25px}}
 @media(max-width:680px){.legal-page{margin:48px auto 64px}.legal-page h1{font-size:36px;line-height:1.2;letter-spacing:-1.4px;text-wrap:balance;margin:18px 0 20px}.legal-page>p{font-size:16px;line-height:1.75}.legal-page section{font-size:14px;line-height:1.7}.onboarding-shell .app-section{padding-top:32px}}
+.provider-page>h2{font-size:24px;font-weight:650;letter-spacing:-.6px;margin:16px 0 4px}
+.provider-page .surface-panel h3{font-size:18px;font-weight:650;line-height:1.4;margin-bottom:10px}
+.form-stack>.surface-panel+.surface-panel{margin-top:0}
+.provider-page .surface-panel h2{font-size:22px;font-weight:650;letter-spacing:-.5px;margin-bottom:16px}
+.provider-navigation nav{display:grid;gap:4px}
+.provider-navigation a[aria-current=page]{background:#efe9df;color:var(--clay);font-weight:700}
+@media(max-width:1000px){.provider-shell>.provider-navigation{display:block;overflow:visible}.provider-navigation .eyebrow{padding:4px 8px 12px;white-space:nowrap}.provider-navigation nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.provider-navigation nav>a{text-align:center;padding:10px 4px;font-size:12px;border:1px solid var(--border);border-radius:8px;white-space:nowrap}}
+.onboarding-label-compact{display:none}
+@media(max-width:1000px){.onboarding-label-full{display:none}.onboarding-label-compact{display:inline}.onboarding-steps>a>.onboarding-label-compact{width:auto;height:auto;white-space:nowrap}}

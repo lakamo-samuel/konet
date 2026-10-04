@@ -33,13 +33,13 @@ export default async function ProviderLayout({
   return (
     <AppShell>
       <div className="provider-shell">
-        <aside>
+        <aside className="provider-navigation">
           <span className="eyebrow">Provider workspace</span>
-          {links.map(([label, href]) => (
-            <Link key={href} href={href}>
+          <nav aria-label="Provider navigation">{links.map(([label, href]) => (
+            <Link key={href} href={href} aria-current={path === href || path.startsWith(`${href}/`) ? "page" : undefined}>
               {label}
             </Link>
-          ))}
+          ))}</nav>
         </aside>
         <div>{children}</div>
       </div>

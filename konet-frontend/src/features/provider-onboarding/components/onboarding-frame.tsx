@@ -2,11 +2,11 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 const steps = [
-  { label: "Your profile", href: "/provider/onboarding/profile" },
-  { label: "First service", href: "/provider/onboarding/service" },
-  { label: "Portfolio", href: "/provider/onboarding/portfolio" },
-  { label: "Verification", href: "/provider/onboarding/verification" },
-  { label: "Review", href: "/provider/onboarding/preview" },
+  { label: "Your profile", compactLabel: "Profile", href: "/provider/onboarding/profile" },
+  { label: "First service", compactLabel: "Service", href: "/provider/onboarding/service" },
+  { label: "Portfolio", compactLabel: "Portfolio", href: "/provider/onboarding/portfolio" },
+  { label: "Verification", compactLabel: "Verify", href: "/provider/onboarding/verification" },
+  { label: "Review", compactLabel: "Review", href: "/provider/onboarding/preview" },
 ];
 export function OnboardingFrame({
   step,
@@ -39,6 +39,7 @@ export function OnboardingFrame({
             <Link
               href={item.href}
               key={item.href}
+              aria-label={`${index + 1}. ${item.label}`}
               aria-current={step === index + 1 ? "step" : undefined}
               className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${step === index + 1 ? "bg-[var(--canvas)] text-[var(--ink)]" : "text-[var(--muted)] hover:bg-[var(--canvas)] hover:text-[var(--ink)]"}`}
             >
@@ -47,7 +48,7 @@ export function OnboardingFrame({
               >
                 {index + 1}
               </span>
-              {item.label}
+              <span className="onboarding-label-full">{item.label}</span><span className="onboarding-label-compact">{item.compactLabel}</span>
             </Link>
           ))}
         </nav>
