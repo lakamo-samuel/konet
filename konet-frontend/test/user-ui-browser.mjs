@@ -4,7 +4,7 @@ import { chromium, expect } from "@playwright/test";
 
 // Runs against the HTTP integration fixture after its normal journeys populate
 // records. No passwords are saved, and no production data is modified.
-export async function reviewUserInterface({ base, cookies, routes }) {
+export async function reviewUserInterface({ base, cookies, routes, setUnavailable = () => {} }) {
   const browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH });
   const directory = "/tmp/konet-user-ui";
   await fs.mkdir(directory, { recursive: true });
@@ -112,6 +112,20 @@ export async function reviewUserInterface({ base, cookies, routes }) {
     await page.getByRole("navigation", {name: "Account navigation"}).getByRole("link", {name: "Account settings"}).click();
     await expect(page).toHaveURL(/\/settings$/);
     await expect(page.locator(".account-dropdown")).not.toHaveAttribute("open", "");
+    try {
+      setUnavailable(["/api/v1/providers", "/api/v1/universities", "/api/v1/auth/me"]);
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({width, height: 1000});
+        await page.goto(base + "/", {waitUntil: "domcontentloaded"});
+        await expect(page.getByRole("heading", {name: "Talent is temporarily unavailable"})).toBeVisible();
+        await expect(page.getByRole("status")).toContainText("University filters are temporarily unavailable");
+        await page.screenshot({path: `${directory}/home-unavailable-${width}.png`, fullPage: true});
+      }
+    } finally {
+      setUnavailable([]);
+    }
+    await page.getByRole("button", {name: "Try again", exact: true}).click();
+    await expect(page.getByRole("heading", {name: "Your campus marketplace is growing"})).toBeVisible();
     const expired = await browser.newContext();
     const expiredPage = await expired.newPage();
     const staleCookies = () => expired.addCookies([

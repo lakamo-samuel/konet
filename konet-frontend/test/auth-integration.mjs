@@ -31,6 +31,7 @@ const access = new Map();
 const refresh = new Map();
 const accounts = accountFixture(users, access, refresh, university, hiring);
 let forgotAvailable = true;
+const unavailablePaths = new Set();
 let registered;
 const issue = (user) => {
   const payload = Buffer.from(
@@ -55,6 +56,7 @@ const backend = http.createServer(async (req, res) => {
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(data === undefined ? "" : JSON.stringify(data));
   };
+  if (unavailablePaths.has(url.pathname)) return send(503, { message: "Temporarily unavailable." });
   const auth = access.get(
     (req.headers.authorization ?? "").replace("Bearer ", ""),
   );
@@ -1290,6 +1292,17 @@ try {
   assert.equal((await call("/api/frontend/session", { method: "DELETE", origin: "https://untrusted.example" })).status, 403);
   assert.ok(jar.has("konet_access"));
   checks++;
+  for (const paths of [["/api/v1/providers"], ["/api/v1/universities"], ["/api/v1/providers", "/api/v1/universities", "/api/v1/auth/me"]]) {
+    paths.forEach(path => unavailablePaths.add(path));
+    try {
+      const home = await call("/");
+      assert.equal(home.status, 200, "Optional public data failures must not crash the homepage");
+      assert.match(home.text, /Talent is temporarily unavailable/);
+      assert.match(home.text, /Your campus has/);
+      assert.doesNotMatch(home.text, /Your campus marketplace is growing/);
+      checks++;
+    } finally { unavailablePaths.clear(); }
+  }
   const oldRefresh = jar.get("konet_refresh");
   const refreshed = await call("/api/frontend/session", {
     method: "POST",
@@ -1623,7 +1636,7 @@ try {
   });
   if (process.env.KONET_REVIEW_UI === "true" || process.argv.includes("--browser")) {
     const { reviewUserInterface } = await import("./user-ui-browser.mjs");
-    await reviewUserInterface({ base, cookies: jar, routes: [
+    await reviewUserInterface({ base, cookies: jar, setUnavailable: paths => { unavailablePaths.clear(); paths.forEach(path => unavailablePaths.add(path)); }, routes: [
       "/discover", "/jobs", "/requests", "/messages", "/notifications", "/profile", "/settings", "/verification", "/disputes",
       `/providers/${ownProfile.id}`, `/requests/new?providerId=${ownProfile.id}`, `/jobs/${acceptedJob.id}`, `/jobs/${acceptedJob.id}/dispute`, `/payment-result?jobId=${acceptedJob.id}`, `/requests/${hiredRequest.id}`, `/quotes/${hiredQuote.id}`,
       `/messages/${conversation.id}`, `/disputes/${disputeCase.id}`, `/checkout/${acceptedJob.id}`, `/reviews/${acceptedJob.id}`,
