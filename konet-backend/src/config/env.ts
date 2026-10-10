@@ -33,6 +33,10 @@ class Environment {
   @IsString()
   DATABASE_URL!: string;
 
+  @IsOptional()
+  @IsString()
+  DIRECT_URL?: string;
+
   @IsString()
   @MinLength(32)
   JWT_ACCESS_SECRET!: string;

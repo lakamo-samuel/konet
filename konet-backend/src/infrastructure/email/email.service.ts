@@ -126,8 +126,9 @@ export class EmailService
     this.timer = setInterval(() => {
       if (!this.running)
         this.running = this.processNext()
-          .catch(() =>
+          .catch((err: unknown) =>
             this.logger.error(
+              { err },
               "Email worker failed; pending messages will be retried.",
             ),
           )
