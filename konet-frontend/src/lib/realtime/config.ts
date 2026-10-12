@@ -1,7 +1,8 @@
 import "server-only";
 import { DataError } from "@/data/access/errors";
 export function socketConfiguration() {
-  const base = process.env.KONET_API_URL ?? "http://localhost:4000/api/v1";
+  const base =
+    process.env.KONET_API_URL ?? "https://api-konet.onrender.com/api/v1";
   const url = new URL(
     process.env.KONET_SOCKET_URL || new URL("/chat", base).toString(),
   );

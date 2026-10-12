@@ -13,8 +13,10 @@ export function AuthForm({
 }) {
   const router = useRouter();
   const [school, setSchool] = useState("");
+  const [campusId, setCampusId] = useState("");
   const universities = useDataQuery("universities", {});
   const selected = universities.data?.find((u) => u.id === school);
+  const campusOptions = selected?.campusOptions ?? [];
   const signIn = useDataCommand("signIn");
   const signUp = useDataCommand("signUp");
   const recover = useDataCommand("forgotPassword");
@@ -75,7 +77,15 @@ export function AuthForm({
             <select
               name="universityId"
               value={school}
-              onChange={(event) => setSchool(event.target.value)}
+              onChange={(event) => {
+                const universityId = event.target.value;
+                const university = universities.data?.find(
+                  (item) => item.id === universityId,
+                );
+                const options = university?.campusOptions ?? [];
+                setSchool(universityId);
+                setCampusId(options.length === 1 ? options[0].id : "");
+              }}
               required
               disabled={universities.isPending}
             >
@@ -91,17 +101,13 @@ export function AuthForm({
             Campus
             <select
               name="campusId"
-              key={school}
-              defaultValue=""
+              value={campusId}
+              onChange={(event) => setCampusId(event.target.value)}
               required
-              disabled={!school}
+              disabled={!school || campusOptions.length === 0}
             >
               <option value="">Select your campus</option>
-              {(
-                selected?.campusOptions ??
-                selected?.campuses.map((name) => ({ id: name, name })) ??
-                []
-              ).map((c) => (
+              {campusOptions.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -155,7 +161,10 @@ export function AuthForm({
         disabled={
           active.isPending ||
           (mode === "sign-up" &&
-            (universities.isPending || universities.isError || !selected))
+            (universities.isPending ||
+              universities.isError ||
+              !selected ||
+              !campusId))
         }
       >
         {active.isPending

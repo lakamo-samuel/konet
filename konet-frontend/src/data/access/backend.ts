@@ -11,7 +11,7 @@ export async function backendRequest<T>(
   options: { body?: unknown; accessToken?: string; refreshToken?: string } = {},
 ): Promise<BackendResult<T>> {
   const configured =
-    process.env.KONET_API_URL ?? "http://localhost:4000/api/v1";
+    process.env.KONET_API_URL ?? "https://api-konet.onrender.com/api/v1";
   const url = new URL(`${configured.replace(/\/$/, "")}${path}`);
   if (!["http:", "https:"].includes(url.protocol))
     throw new DataError(

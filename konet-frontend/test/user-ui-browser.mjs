@@ -10,6 +10,7 @@ export async function reviewUserInterface({ base, cookies, routes, setUnavailabl
   await fs.mkdir(directory, { recursive: true });
   const issues = [];
   const results = [];
+  let signupContext;
   try {
     const context = await browser.newContext();
     await context.addCookies(
@@ -22,6 +23,8 @@ export async function reviewUserInterface({ base, cookies, routes, setUnavailabl
       })),
     );
     const page = await context.newPage();
+    signupContext = await browser.newContext();
+    const signupPage = await signupContext.newPage();
     page.on("pageerror", (error) =>
       issues.push({
         route: new URL(page.url()).pathname,
@@ -86,6 +89,25 @@ export async function reviewUserInterface({ base, cookies, routes, setUnavailabl
         );
       }
     }
+    await signupPage.goto(base + "/sign-up", { waitUntil: "load" });
+    const universitySelect = signupPage.locator('select[name="universityId"]');
+    const campusSelect = signupPage.locator('select[name="campusId"]');
+    await expect(universitySelect.locator("option")).toHaveCount(2);
+    await universitySelect.selectOption({ label: "Integration University" });
+    await expect(campusSelect).toHaveValue("00000000-0000-4000-8000-000000000003");
+    await signupPage.locator('input[name="name"]').fill("Single Campus Student");
+    await signupPage.locator('input[name="email"]').fill("single-campus@example.com");
+    await signupPage.locator('input[name="password"]').fill("single-campus-password");
+    const registrationRequest = signupPage.waitForRequest((request) =>
+      request.url().includes("/api/frontend") &&
+      request.method() === "POST" &&
+      JSON.parse(request.postData() ?? "{}").name === "signUp",
+    );
+    await signupPage.getByRole("button", { name: "Create account" }).click();
+    const registration = JSON.parse((await registrationRequest).postData()).input;
+    assert.equal(registration.universityId, "00000000-0000-4000-8000-000000000002");
+    assert.equal(registration.campusId, "00000000-0000-4000-8000-000000000003");
+    await signupContext.close();
     for (const width of [1152, 1280, 1440, 1920]) {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto(base + "/jobs");
@@ -175,6 +197,7 @@ export async function reviewUserInterface({ base, cookies, routes, setUnavailabl
       `Reviewed ${results.length} populated user-page views, including mobile menu interaction. Screenshots: ${directory}`,
     );
   } finally {
+    await signupContext?.close();
     await browser.close();
   }
 }

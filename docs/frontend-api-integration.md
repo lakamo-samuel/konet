@@ -26,13 +26,13 @@ The reset form reads `token` from the recovery link fragment and submits it in t
 
 ## Run locally
 
-In `konet-frontend/.env.local`:
+In `konet-frontend/.env.local` (the Render backend is the default; use localhost when running the API locally):
 
 ```dotenv
-KONET_API_URL=http://localhost:4000/api/v1
+KONET_API_URL=https://api-konet.onrender.com/api/v1
 ```
 
-Run `npm run dev` in the frontend. For a deployed backend, set `KONET_API_URL=https://YOUR_API_HOST/api/v1`; your teammate does not need Docker or a local database. The API needs an active university/campus directory for registration; missing directory data is shown rather than replaced with fixtures. Configure Resend for recovery and SUPPORT_EMAIL for contact delivery. These are backend settings; no backend secrets belong in the frontend environment.
+Run `npm run dev` in the frontend. Set `KONET_API_URL=http://localhost:4000/api/v1` to use a local API, or replace the default with another deployed API host. Your teammate does not need Docker or a local database. The API needs an active university/campus directory for registration; missing directory data is shown rather than replaced with fixtures. Configure Resend for recovery and SUPPORT_EMAIL for contact delivery. These are backend settings; no backend secrets belong in the frontend environment.
 
 Mock mode and fixture data have been removed. Missing HTTP mappings return an explicit error.
 

@@ -1,6 +1,6 @@
 import "dotenv/config";
 import * as argon2 from "argon2";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import {
@@ -18,6 +18,7 @@ import {
   universities,
   users,
 } from "../database/schema";
+import { universityCatalog } from "./university-catalog";
 
 async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -25,43 +26,40 @@ async function main() {
   try {
     await db
       .insert(universities)
-      .values([
-        {
-          name: "Federal University of Technology, Minna",
-          shortName: "FUT Minna",
-          slug: "fut-minna",
-          city: "Minna",
-          state: "Niger",
+      .values(
+        universityCatalog.map(({ name, shortName, slug, city, state }) => ({
+          name,
+          shortName,
+          slug,
+          city,
+          state,
           country: "Nigeria",
-        },
-        {
-          name: "University of Lagos",
-          shortName: "UNILAG",
-          slug: "unilag",
-          city: "Lagos",
-          state: "Lagos",
-          country: "Nigeria",
-        },
-        {
-          name: "University of Nigeria, Nsukka",
-          shortName: "UNN",
-          slug: "unn",
-          city: "Nsukka",
-          state: "Enugu",
-          country: "Nigeria",
-        },
-      ])
+        })),
+      )
       .onConflictDoNothing();
     const schools = await db.select().from(universities);
-    for (const university of schools)
-      await db
-        .insert(campuses)
-        .values({
-          universityId: university.id,
-          name: "Main Campus",
-          slug: "main",
-        })
-        .onConflictDoNothing();
+    const campusRecords = universityCatalog.flatMap((school) => {
+      const university = schools.find((item) => item.slug === school.slug);
+      if (!university)
+        throw new Error(`Seeded university missing: ${school.slug}`);
+      return school.campuses.map((name, index) => ({
+        universityId: university.id,
+        name,
+        slug: index === 0 ? "main" : name
+          .normalize("NFKD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, ""),
+      }));
+    });
+    await db
+      .insert(campuses)
+      .values(campusRecords)
+      .onConflictDoUpdate({
+        target: [campuses.universityId, campuses.slug],
+        set: { name: sql`excluded.name` },
+      });
     const categoryNames = [
       "Beauty & Grooming",
       "Photography & Video",
