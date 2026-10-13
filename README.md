@@ -227,9 +227,11 @@ Requirements: Node.js and npm compatible with Next.js 16/NestJS 11, plus Docker 
    # Replace both JWT secrets with different values of at least 32 characters.
    npm ci
    npm run db:migrate
-   npm run db:seed
+   npm run db:seed:universities
    npm run start:dev
    ```
+
+   `db:seed:universities` prepares the signup directory without adding demo accounts or marketplace data. Use `db:seed` only when you explicitly want development fixtures.
 
 3. Configure and run the frontend in another terminal:
 
