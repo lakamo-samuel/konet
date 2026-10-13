@@ -11,6 +11,10 @@ let expectedPurpose = "student_evidence";
 let fetched = 0;
 let url = "https://api.cloudinary.com/v1_1/test/image/upload";
 let failTransfer = false;
+let transferResponse = {
+  status: 400,
+  json: async () => ({ error: { message: "Invalid file" } }),
+};
 const fields = {
   api_key: "public-key",
   signature: "signed-ticket",
@@ -46,7 +50,7 @@ const context = {
     for (const [key, value] of Object.entries(fields))
       assert.equal(options.body.get(key), value);
     assert.equal(options.body.get("file").name, "student.pdf");
-    return { ok: !failTransfer };
+    return { ok: !failTransfer, ...transferResponse };
   },
 };
 vm.runInNewContext(compiled, context);
@@ -94,9 +98,25 @@ url = "https://api.cloudinary.com/v1_1/test/image/upload";
 failTransfer = true;
 await assert.rejects(
   send(file, "student_evidence", signal, () => {}),
-  /upload failed/,
+  /Document upload failed \(400\): Invalid file/,
 );
 failTransfer = false;
+transferResponse = {
+  status: 503,
+  json: async () => {
+    throw new Error("not JSON");
+  },
+};
+failTransfer = true;
+await assert.rejects(
+  send(file, "student_evidence", signal, () => {}),
+  /Document upload failed \(HTTP 503\)/,
+);
+failTransfer = false;
+transferResponse = {
+  status: 400,
+  json: async () => ({ error: { message: "Invalid file" } }),
+};
 expectedPurpose = "provider_evidence";
 assert.equal(await send(file, expectedPurpose, signal, () => {}), upload);
 console.log(
