@@ -138,3 +138,31 @@
 }
 
 .hero-directory-notice{max-width:525px;margin:12px 0 0;font-size:12px;line-height:1.6;color:var(--muted)}
+
+/* Signup selectors */
+.auth-select{width:100%}
+.auth-select>[aria-haspopup]{min-height:50px;border-radius:12px;background:var(--surface);box-shadow:0 1px 2px #231c1308}
+.auth-select>[aria-haspopup]:disabled{cursor:not-allowed;opacity:.58}
+.select-menu{max-height:min(360px,60vh);display:flex;flex-direction:column;gap:5px;animation:select-menu-in .14s ease-out}
+.select-options{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.select-search{flex:none;width:100%;height:42px!important;margin:0!important;border:1px solid var(--border)!important;border-radius:9px!important;background:var(--canvas)!important;padding:0 12px!important;color:var(--ink);font:inherit;font-size:13px}
+.select-search:focus{outline:2px solid color-mix(in srgb,var(--clay) 34%,transparent);outline-offset:1px}
+.select-no-results{margin:0;padding:15px 12px;color:var(--muted);font-size:13px}
+@keyframes select-menu-in{from{opacity:0;transform:translateY(-4px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* Request, job, and inbox loading states */
+.workspace-skeleton{display:grid;gap:12px;width:100%}
+.workspace-skeleton-messages{max-width:880px;padding:22px;background:var(--surface);border:1px solid var(--border);border-radius:16px}
+.skeleton-record{display:flex;align-items:center;gap:15px;min-height:82px;padding:17px 19px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
+.skeleton-record-copy{display:grid;flex:1;gap:10px;min-width:0}
+.skeleton-line{height:12px;border-radius:8px}
+.skeleton-line-title{width:min(48%,360px);height:15px}
+.skeleton-line-meta{width:min(31%,220px);height:10px}
+.skeleton-action{width:116px;height:38px;border-radius:10px}
+.inbox-title-skeleton{width:105px;height:20px;margin:1px 0 7px;border-radius:8px}
+.inbox-avatar-skeleton{width:44px;height:44px;flex:none;border-radius:50%}
+.eyebrow-skeleton{width:78px;height:10px;margin-bottom:13px;border-radius:8px}
+.message-subtitle-skeleton{width:min(320px,72%);height:12px;margin-top:14px;border-radius:8px}
+.job-action-skeleton{width:150px;height:40px;margin-bottom:20px;border-radius:10px}
+@media(max-width:680px){.workspace-skeleton-messages{padding:17px;border-radius:0;border-inline:0}.skeleton-record{min-height:72px;padding:14px}.skeleton-action{width:82px;height:34px}.skeleton-line-title{width:68%}.skeleton-line-meta{width:45%}}
+@media(prefers-reduced-motion:reduce){.skeleton,.select-menu{animation:none!important}}

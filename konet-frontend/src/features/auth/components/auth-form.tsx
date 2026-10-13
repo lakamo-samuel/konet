@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { errorMessage } from "@/data/access/client";
 import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
 export function AuthForm({
@@ -74,11 +75,11 @@ export function AuthForm({
         <>
           <label>
             University
-            <select
+            <Select
+              label="University"
               name="universityId"
               value={school}
-              onChange={(event) => {
-                const universityId = event.target.value;
+              onValueChange={(universityId) => {
                 const university = universities.data?.find(
                   (item) => item.id === universityId,
                 );
@@ -86,33 +87,36 @@ export function AuthForm({
                 setSchool(universityId);
                 setCampusId(options.length === 1 ? options[0].id : "");
               }}
+              options={(universities.data ?? []).map((university) => ({
+                value: university.id,
+                label: university.name,
+              }))}
+              searchable
+              searchPlaceholder="Search universities…"
+              placeholder="Select your university"
               required
               disabled={universities.isPending}
-            >
-              <option value="">Select your university</option>
-              {universities.data?.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
+              className="auth-select"
+            />
           </label>
           <label>
             Campus
-            <select
+            <Select
+              label="Campus"
               name="campusId"
               value={campusId}
-              onChange={(event) => setCampusId(event.target.value)}
+              onValueChange={setCampusId}
+              options={campusOptions.map((campus) => ({
+                value: campus.id,
+                label: campus.name,
+              }))}
+              searchable
+              searchPlaceholder="Search campuses…"
+              placeholder="Select your campus"
               required
               disabled={!school || campusOptions.length === 0}
-            >
-              <option value="">Select your campus</option>
-              {campusOptions.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              className="auth-select"
+            />
           </label>
           {universities.isError && (
             <p role="alert" className="field-error">

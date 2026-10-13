@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useDataQuery } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
 import { formatNaira } from "@/lib/formatters/currency";
+import { WorkspaceSkeleton } from "@/components/ui/workspace-skeleton";
 export function RequestList({ provider = false }: { provider?: boolean }) {
   const [offset, setOffset] = useState(0);
   const user = useDataQuery("currentUser", {});
@@ -13,7 +14,7 @@ export function RequestList({ provider = false }: { provider?: boolean }) {
     refetchInterval: 15000,
   });
   if (user.isPending || requests.isPending)
-    return <p role="status">Loading requests…</p>;
+    return <WorkspaceSkeleton variant="requests" />;
   if (user.isError || requests.isError)
     return <p role="alert">{errorMessage(user.error ?? requests.error)}</p>;
   const rows = requests.data.filter((r) =>
@@ -69,7 +70,7 @@ export function JobList() {
   const [tab, setTab] = useState("all");
   if (user.isError) return <p role="alert">{errorMessage(user.error)}</p>;
   if (user.isPending || jobs.isPending)
-    return <p role="status">Loading jobs…</p>;
+    return <WorkspaceSkeleton variant="jobs" />;
   if (user.isError || jobs.isError)
     return <p role="alert">{errorMessage(user.error ?? jobs.error)}</p>;
   const rows = jobs.data.filter(

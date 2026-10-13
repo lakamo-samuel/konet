@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useDataQuery } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
 import { Button } from "@/components/ui/button";
+import { WorkspaceSkeleton } from "@/components/ui/workspace-skeleton";
 import { useRealtime } from "@/lib/realtime/provider";
 export function InboxList() {
   const [offset, setOffset] = useState(0);
@@ -22,6 +23,17 @@ export function InboxList() {
         .toLowerCase()
         .includes(search.trim().toLowerCase()),
     ) ?? [];
+  if (user.isError || inbox.isError) {
+    return (
+      <section className="surface-panel form-stack">
+        <h2>Inbox</h2>
+        <p role="alert">{errorMessage(user.error ?? inbox.error)}</p>
+      </section>
+    );
+  }
+  if (user.isPending || inbox.isPending) {
+    return <WorkspaceSkeleton variant="messages" />;
+  }
   return (
     <section className="surface-panel form-stack">
       <h2>Inbox</h2>
@@ -39,12 +51,6 @@ export function InboxList() {
           placeholder="Job, request or conversation ID"
         />
       </label>
-      {(user.isError || inbox.isError) && (
-        <p role="alert">{errorMessage(user.error ?? inbox.error)}</p>
-      )}
-      {!user.isError && inbox.isPending && (
-        <p role="status">Loading conversations…</p>
-      )}
       {rows.map((c) => (
         <article key={c.id} className="notification-row">
           <div>
