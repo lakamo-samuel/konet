@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/database/migrate.ts",
     "db:seed": "tsx src/config/seed.ts",
+    "db:seed:universities": "tsx src/config/seed-universities.ts",
     "docs:export": "npm run build && node scripts/export-openapi.cjs",
     "staff:role": "npm run build && node scripts/staff-role.cjs"
   },

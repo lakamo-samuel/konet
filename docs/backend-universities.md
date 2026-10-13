@@ -1,11 +1,13 @@
 # Feature 2: university directory and staff permissions
 
+The initial signup directory is a curated catalog maintained in `konet-backend/src/config/university-catalog.ts`, seeded into PostgreSQL with `npm run db:seed:universities`. The catalog is intentionally separate from the demo-data seed. If a school or campus is missing, an administrator can add it from the admin dashboard; the public signup list then reads it from the same database-backed API. The NUC maintains the authoritative [Nigerian University System directory](https://enuc.nuc.edu.ng/nus), and the catalog should be reviewed against it as institutions change.
+
 Universities, campuses, and approved university-email domains now have working management APIs. Changes require an administrator role and create an audit event in the same database transaction. Directory administration does not require a human to approve each student action.
 
 ## Set up the first administrator
 
-1. Apply migrations with `cd konet-backend && npm run db:migrate`. Migration `0002_typical_norrin_radd.sql` adds staff roles and audit events.
-2. Register the administrator's normal account, or use an existing active account.
+1. Apply migrations and populate the signup directory with `cd konet-backend && npm run db:migrate && npm run db:seed:universities`. This safe seed creates only the curated Nigerian university/campus directory; it does not create demo users or marketplace records. It is idempotent and can be run again after deployment.
+2. Register the administrator's normal account, or use an existing active account. Registration selects an active university and campus from `GET /api/v1/universities`.
 3. From the trusted backend environment, run:
 
    ```bash

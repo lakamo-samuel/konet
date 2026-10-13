@@ -6,7 +6,7 @@ Production-oriented NestJS modular monolith for Konet's student service marketpl
 
 1. Copy `.env.example` to `.env` and replace both JWT secrets.
 2. Start PostgreSQL with `docker compose up -d postgres`.
-3. Run `npm ci`, `npm run db:migrate`, and `npm run db:seed`.
+3. Run `npm ci`, `npm run db:migrate`, and `npm run db:seed:universities` to populate the signup university directory. `npm run db:seed` also creates demo marketplace data and is intended only for development.
 4. Start the API with `npm run start:dev`.
 
 Set `KONET_API_URL=http://localhost:4000/api/v1` in the Next.js frontend environment to use API-backed university, provider, discovery, and service repositories.
@@ -32,6 +32,7 @@ Provider publishing requires a verified student and an active provider profile. 
 - `npm run test:journey` (requires the API and PostgreSQL to be running)
 - `npm run db:generate`
 - `npm run db:migrate`
+- `npm run db:seed:universities` (safe to rerun; seeds only universities and campuses)
 - `npm run db:seed`
 - `npm run docs:export`
 

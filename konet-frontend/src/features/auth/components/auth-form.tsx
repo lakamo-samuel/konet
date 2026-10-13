@@ -122,6 +122,13 @@ export function AuthForm({
               </button>
             </p>
           )}
+          {!universities.isPending &&
+            !universities.isError &&
+            universities.data?.length === 0 && (
+              <p role="status" className="field-error">
+                The university list is being set up. Please try again shortly.
+              </p>
+            )}
         </>
       )}
       <label>
