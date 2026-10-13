@@ -279,7 +279,7 @@ function StudentVerificationForm({ user }: { user: User }) {
                     setMessage("");
                     if (!readyUpload || readyUpload.status !== "ready") {
                       setFieldError(
-                        "Upload a document and wait for its security scan before submitting.",
+                        "Upload and confirm a document before submitting.",
                       );
                       return;
                     }

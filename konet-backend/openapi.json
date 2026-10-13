@@ -5813,7 +5813,7 @@
         ],
         "x-implementation-status": "implemented",
         "summary": "Read provider verification dimensions",
-        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nIdentity and work are required; CAC is optional. Evidence must be your own scanned ready unused provider_evidence upload. Returns uploadId/revision/reason, never private storage keys. One pending submission per dimension; 3 submissions per dimension per day. Rejected evidence can be resubmitted.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nIdentity and work are required; CAC is optional. Evidence must be your own ready unused provider_evidence upload. Returns uploadId/revision/reason, never private storage keys. One pending submission per dimension; 3 submissions per dimension per day. Rejected evidence can be resubmitted.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       },
       "post": {
         "operationId": "post_me_provider_verifications",
@@ -5930,7 +5930,7 @@
         ],
         "x-implementation-status": "implemented",
         "summary": "Submit private provider evidence",
-        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nIdentity and work are required; CAC is optional. Evidence must be your own scanned ready unused provider_evidence upload. Returns uploadId/revision/reason, never private storage keys. One pending submission per dimension; 3 submissions per dimension per day. Rejected evidence can be resubmitted.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nIdentity and work are required; CAC is optional. Evidence must be your own ready unused provider_evidence upload. Returns uploadId/revision/reason, never private storage keys. One pending submission per dimension; 3 submissions per dimension per day. Rejected evidence can be resubmitted.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
     "/api/v1/me/provider-profile/submit": {
@@ -7374,7 +7374,7 @@
         ],
         "x-implementation-status": "implemented",
         "summary": "Record provider dimension decision",
-        "description": "Requires an active admin or reviewer role, in addition to a live Bearer session. Evidence access and decisions are audited; self-review is forbidden.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nAdmin/reviewer only. Send current revision, decision and reason. Approval requires available scanned evidence and a verified active student; self-review, stale revisions and repeated decisions fail. Required-proof rejection returns a pending profile for corrections.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+        "description": "Requires an active admin or reviewer role, in addition to a live Bearer session. Evidence access and decisions are audited; self-review is forbidden.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nAdmin/reviewer only. Send current revision, decision and reason. Approval requires available evidence and a verified active student; self-review, stale revisions and repeated decisions fail. Required-proof rejection returns a pending profile for corrections.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
     "/api/v1/admin/providers": {
@@ -7885,7 +7885,7 @@
             }
           },
           "503": {
-            "description": "Required storage, malware moderation, or email service is unconfigured or unavailable.",
+            "description": "Required storage or email service is unconfigured or unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7905,7 +7905,7 @@
         ],
         "x-implementation-status": "implemented",
         "summary": "Create private upload ticket",
-        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nCurrently supports student_evidence and provider_evidence; other purposes return 501. Private Cloudinary authenticated upload: POST multipart/form-data with all returned fields and file. Complete within 10 minutes. Configure storage and malware moderation first (503 otherwise).\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nCurrently supports student_evidence and provider_evidence; other purposes return 501. Private Cloudinary authenticated upload: POST multipart/form-data with all returned fields and file. Complete within 10 minutes. Configure Cloudinary storage first (503 otherwise).\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
     "/api/v1/uploads/{id}/complete": {
@@ -8015,7 +8015,7 @@
             }
           },
           "503": {
-            "description": "Required storage, malware moderation, or email service is unconfigured or unavailable.",
+            "description": "Required storage or email service is unconfigured or unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8034,8 +8034,8 @@
           "uploads"
         ],
         "x-implementation-status": "implemented",
-        "summary": "Confirm upload and enqueue evidence scanning",
-        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nChecks Cloudinary metadata and Perception Point moderation, never a client-reported scan result. Poll this endpoint while status is scanning. Only ready evidence can be submitted.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
+        "summary": "Confirm upload and validate evidence metadata",
+        "description": "Requires a valid Bearer access token and resource ownership where applicable.\n\nExisting backend handler is retained. Implementation status describes handler availability, not completion of every product acceptance rule.\n\nChecks Cloudinary ownership, content type, resource type and byte size. Valid private evidence becomes ready immediately; invalid metadata is rejected. Only ready evidence can be submitted.\n\nMoney uses integer minor units (NGN kobo: 100 kobo = ₦1). Dates use ISO 8601 with timezone; response timestamps are UTC. Lists return arrays, not pagination envelopes."
       }
     },
     "/api/v1/uploads/{id}": {
@@ -8145,7 +8145,7 @@
             }
           },
           "503": {
-            "description": "Required storage, malware moderation, or email service is unconfigured or unavailable.",
+            "description": "Required storage or email service is unconfigured or unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8266,7 +8266,7 @@
             }
           },
           "503": {
-            "description": "Required storage, malware moderation, or email service is unconfigured or unavailable.",
+            "description": "Required storage or email service is unconfigured or unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8396,7 +8396,7 @@
             }
           },
           "503": {
-            "description": "Required storage, malware moderation, or email service is unconfigured or unavailable.",
+            "description": "Required storage or email service is unconfigured or unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -18425,7 +18425,7 @@
             }
           },
           "503": {
-            "description": "Required storage, malware moderation, or email service is unconfigured or unavailable.",
+            "description": "Required storage or email service is unconfigured or unavailable.",
             "content": {
               "application/json": {
                 "schema": {

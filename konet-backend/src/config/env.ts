@@ -104,10 +104,6 @@ class Environment {
   @IsOptional() @Matches(/^[a-zA-Z0-9_-]+$/) CLOUDINARY_CLOUD_NAME?: string;
   @IsOptional() @IsString() CLOUDINARY_API_KEY?: string;
   @IsOptional() @IsString() CLOUDINARY_API_SECRET?: string;
-  @Transform(toBoolean)
-  @IsOptional()
-  @IsBoolean()
-  CLOUDINARY_MALWARE_SCAN_ENABLED?: boolean;
   @Type(() => Number) @IsInt() @Min(1) @Max(365) EVIDENCE_RETENTION_DAYS = 30;
 
   @IsString()
@@ -147,7 +143,6 @@ export function validateEnvironment(
     "CLOUDINARY_CLOUD_NAME",
     "CLOUDINARY_API_KEY",
     "CLOUDINARY_API_SECRET",
-    "CLOUDINARY_MALWARE_SCAN_ENABLED",
   ]) {
     if (normalized[key] === "") delete normalized[key];
   }
@@ -224,7 +219,6 @@ const KNOWN_KEYS = [
   "CLOUDINARY_CLOUD_NAME",
   "CLOUDINARY_API_KEY",
   "CLOUDINARY_API_SECRET",
-  "CLOUDINARY_MALWARE_SCAN_ENABLED",
   "EVIDENCE_RETENTION_DAYS",
   "RESEND_API_KEY",
   "EMAIL_FROM",

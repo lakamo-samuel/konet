@@ -408,12 +408,6 @@ try {
   assert.equal(
     (await command("completeUpload", { id: ticket.upload.id })).json().data
       .status,
-    "scanning",
-  );
-  assert.equal((await command("submitVerification", document)).status, 409);
-  assert.equal(
-    (await command("completeUpload", { id: ticket.upload.id })).json().data
-      .status,
     "ready",
   );
   assert.equal(
@@ -446,19 +440,19 @@ try {
     "pending",
   );
   checks++;
-  verification.configure({ rejectScan: true });
-  const failedScan = (await command("createUpload", uploadInput)).json().data;
+  verification.configure({ rejectUpload: true });
+  const invalidUpload = (await command("createUpload", uploadInput)).json().data;
   assert.equal(
-    (await command("completeUpload", { id: failedScan.upload.id })).json().data
+    (await command("completeUpload", { id: invalidUpload.upload.id })).json().data
       .status,
     "rejected",
   );
   assert.equal(
-    (await command("deleteUpload", { id: failedScan.upload.id })).json().data
+    (await command("deleteUpload", { id: invalidUpload.upload.id })).json().data
       .success,
     true,
   );
-  verification.configure({ rejectScan: false });
+  verification.configure({ rejectUpload: false });
   const unused = (await command("createUpload", uploadInput)).json().data;
   assert.equal(
     (await command("deleteUpload", { id: unused.upload.id })).json().data

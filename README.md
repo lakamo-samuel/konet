@@ -140,7 +140,7 @@ The [backend requirements](docs/backend-requirements.md) and [frontend requireme
 | Accessible components | Radix UI primitives or a compatible component system | Dialogs, menus, selects, and focus handling; choose a visual system before adopting broadly |
 | Frontend testing | Playwright for critical journeys; Vitest/React Testing Library for complex components | Verify auth, hiring, and payment handoffs once they are wired |
 | Backend email | Email provider such as Resend | University address proof, recovery links, notifications |
-| Backend evidence | Cloudinary authenticated uploads and malware moderation | Student evidence implemented; account configuration required; public portfolio uploads pending; private provider evidence implemented |
+| Backend evidence | Private Cloudinary authenticated uploads with metadata validation | Student and provider evidence implemented; malware scanning is currently disabled; public portfolio uploads pending |
 | Backend async jobs | BullMQ + Redis when needed | Email delivery, payment event processing, reconciliation |
 | Payment provider | Paystack for NGN collection and transfers | Hosted checkout, backend verification and queued payouts; merchant configuration required |
 

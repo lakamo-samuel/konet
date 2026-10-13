@@ -7,7 +7,6 @@ describe("private Cloudinary gateway", () => {
     CLOUDINARY_CLOUD_NAME: "test-cloud",
     CLOUDINARY_API_KEY: "test-key",
     CLOUDINARY_API_SECRET: "test-secret",
-    CLOUDINARY_MALWARE_SCAN_ENABLED: true,
   };
   it("accepts empty integration placeholders while retaining required secret validation", () => {
     const base = {
@@ -41,7 +40,7 @@ describe("private Cloudinary gateway", () => {
     expect(ticket.method).toBe("POST");
     expect(ticket.fields.type).toBe("authenticated");
     expect(ticket.fields.overwrite).toBe("false");
-    expect(ticket.fields.moderation).toBe("perception_point");
+    expect(ticket.fields).not.toHaveProperty("moderation");
     expect(JSON.stringify(ticket)).not.toContain("test-secret");
     const { api_key, signature, ...params } = ticket.fields;
     expect(api_key).toBe("test-key");
@@ -49,18 +48,14 @@ describe("private Cloudinary gateway", () => {
       cloudinary.utils.api_sign_request(params, "test-secret"),
     );
   });
-  it("fails closed when credentials or malware moderation are missing", () => {
+  it("requires storage credentials without requesting paid moderation", () => {
     expect(() =>
       new CloudinaryGateway(new ConfigService({})).ticket("key"),
     ).toThrow("Cloudinary storage is not configured");
-    expect(() =>
-      new CloudinaryGateway(
-        new ConfigService({
-          ...values,
-          CLOUDINARY_MALWARE_SCAN_ENABLED: false,
-        }),
-      ).ticket("key"),
-    ).toThrow("Enable Cloudinary malware");
+    const ticket = new CloudinaryGateway(
+      new ConfigService(values),
+    ).ticket("key");
+    expect(ticket.fields).not.toHaveProperty("moderation");
   });
   it("reads authoritative private metadata and reports provider errors without exposing them", async () => {
     const resource = jest
@@ -75,7 +70,6 @@ describe("private Cloudinary gateway", () => {
       expect.objectContaining({
         type: "authenticated",
         resource_type: "image",
-        moderation: true,
       }),
     );
     resource.mockRejectedValue({

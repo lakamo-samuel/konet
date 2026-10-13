@@ -281,7 +281,7 @@ export function providerFixture(verification) {
         )
           return reply(409, {
             code: "EVIDENCE_NOT_READY",
-            message: "Upload and scan provider evidence.",
+            message: "Upload and confirm provider evidence.",
           });
         const dimension = evidence.find((e) => e.dimension === body.dimension);
         Object.assign(dimension, {

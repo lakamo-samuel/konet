@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { command, errorMessage } from "@/data/access/client";
 import { uploadPrivateFile } from "@/lib/uploads/private-file";
@@ -21,41 +20,24 @@ export function PrivateEvidenceUpload({
   const [upload, setUpload] = useState<PrivateUpload | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [scanStarted, setScanStarted] = useState(0);
-  const [now, setNow] = useState(() => Date.now());
-  const [transferred, setTransferred] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => () => controller.current?.abort(), []);
-  useEffect(() => {
-    if (!scanStarted) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [scanStarted]);
-  const timedOut = scanStarted > 0 && now - scanStarted > 10 * 60_000;
-  const scan = useQuery({
-    queryKey: ["konet", "uploadScan", upload?.id],
-    queryFn: () => command("completeUpload", { id: upload!.id }),
-    enabled:
-      !!upload &&
-      transferred &&
-      !disabled &&
-      !timedOut &&
-      ["pending", "scanning"].includes(upload.status),
-    retry: false,
-    refetchInterval: (query) =>
-      !query.state.error &&
-      query.state.data?.status !== "ready" &&
-      query.state.data?.status !== "rejected" &&
-      !timedOut
-        ? 3000
-        : false,
-  });
-  useEffect(() => {
-    if (!scan.data) return;
-    onReady(scan.data.status === "ready" ? scan.data : null);
-  }, [scan.data, onReady]);
-  const displayedUpload = scan.data?.id === upload?.id ? scan.data : upload;
+  const [confirming, setConfirming] = useState(false);
+  const displayedUpload = upload;
+  const confirmUpload = async (id: string) => {
+    setConfirming(true);
+    setError("");
+    try {
+      const confirmed = await command("completeUpload", { id });
+      setUpload(confirmed);
+      onReady(confirmed.status === "ready" ? confirmed : null);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setConfirming(false);
+    }
+  };
   const discard = async () => {
     if (!upload) return;
     setBusy(true);
@@ -63,8 +45,6 @@ export function PrivateEvidenceUpload({
     try {
       await command("deleteUpload", { id: upload.id });
       setUpload(null);
-      setTransferred(false);
-      setScanStarted(0);
       onReady(null);
       if (input.current) input.current.value = "";
     } catch (cause) {
@@ -98,10 +78,7 @@ export function PrivateEvidenceUpload({
                 setUpload,
               );
               setUpload(result);
-              setTransferred(true);
-              const time = Date.now();
-              setScanStarted(time);
-              setNow(time);
+              await confirmUpload(result.id);
             } catch (cause) {
               if (!abort.signal.aborted) setError(errorMessage(cause));
             } finally {
@@ -111,31 +88,25 @@ export function PrivateEvidenceUpload({
         />
       </label>
       <p>
-        JPEG, PNG or PDF, up to 10 MiB. Your document is private and must pass a
-        security scan before submission.
+        JPEG, PNG or PDF, up to 10 MiB. Your document stays private and is
+        checked for file type and size before submission.
       </p>
       {busy && <p role="status">Uploading your document…</p>}
       {displayedUpload?.status === "ready" && (
-        <p role="status">Document scanned and ready to submit.</p>
+        <p role="status">Document uploaded and ready to submit.</p>
       )}
       {displayedUpload?.status === "rejected" && (
         <p role="alert">
-          The document failed validation or its security scan. Remove it and
-          choose another file.
+          The document does not match the accepted file type or size. Remove it
+          and choose another file.
         </p>
       )}
-      {transferred &&
-        upload &&
-        ["pending", "scanning"].includes(displayedUpload!.status) && (
-          <p role="status">
-            {timedOut
-              ? "The scan is taking longer than expected. Check again to continue."
-              : "Checking the document security scan…"}
-          </p>
-        )}
-      {(error || scan.isError) && (
+      {upload && ["pending", "scanning"].includes(upload.status) && (
+        <p role="status">Confirm the uploaded document to continue.</p>
+      )}
+      {error && (
         <p role="alert" className="field-error">
-          {error || errorMessage(scan.error)}
+          {error}
         </p>
       )}
       {upload && !disabled && (
@@ -143,23 +114,18 @@ export function PrivateEvidenceUpload({
           <Button
             type="button"
             variant="secondary"
-            disabled={busy || scan.isFetching}
+            disabled={busy || confirming}
             onClick={discard}
           >
             Remove document
           </Button>
-          {transferred && (timedOut || scan.isError) && (
+          {upload && ["pending", "scanning"].includes(upload.status) && (
             <Button
               type="button"
-              disabled={busy || scan.isFetching}
-              onClick={() => {
-                const time = Date.now();
-                setScanStarted(time);
-                setNow(time);
-                void scan.refetch();
-              }}
+              disabled={busy || confirming}
+              onClick={() => void confirmUpload(upload.id)}
             >
-              Check scan again
+              Confirm upload
             </Button>
           )}
         </div>

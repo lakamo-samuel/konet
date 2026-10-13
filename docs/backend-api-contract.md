@@ -59,7 +59,7 @@ Live messaging uses Socket.IO namespace `/chat` on the backend origin, with tran
 - The frontend uses canonical backend statuses. Use the OpenAPI job, payment, verification, and availability enums.
 - All staff permissions, financial reconciliation and reporting are implemented; live provider credentials and deployment verification remain required. New quotes snapshot the implemented 10% commission; see [commission policy](backend-commission.md).
 
-- Student verification and provider onboarding/review are implemented; live email and evidence uploads need Resend and Cloudinary malware moderation configured. See the [verification setup guide](backend-verification.md) and [provider onboarding guide](backend-provider-onboarding.md).
+- Student verification and provider onboarding/review are implemented; live email needs Resend, and evidence uploads need Cloudinary credentials. Evidence is private and metadata-checked but is not malware-scanned. See the [verification setup guide](backend-verification.md) and [provider onboarding guide](backend-provider-onboarding.md).
 
 ## Complete route inventory
 

@@ -1,4 +1,4 @@
-// Contract fixture only: real ownership, rate limits and moderation are covered by backend tests.
+// Contract fixture only: real ownership, rate limits and metadata checks are covered by backend tests.
 import assert from "node:assert/strict";
 export function verificationFixture(universityId, campusId) {
   const history = [];
@@ -6,8 +6,7 @@ export function verificationFixture(universityId, campusId) {
   let emailConfigured = true;
   let storageConfigured = true;
   let challenge;
-  let scans = 0;
-  let rejectScan = false;
+  let rejectUpload = false;
   let uploadSerial = 10;
   const challengeId = "00000000-0000-4000-8000-000000000012";
   const record = (auth, method, status, uploadId = null) => ({
@@ -29,7 +28,7 @@ export function verificationFixture(universityId, campusId) {
     configure: (settings) => {
       emailConfigured = settings.email ?? emailConfigured;
       storageConfigured = settings.storage ?? storageConfigured;
-      rejectScan = settings.rejectScan ?? rejectScan;
+      rejectUpload = settings.rejectUpload ?? rejectUpload;
     },
     expireChallenge: () => {
       challenge.expiresAt = new Date(0).toISOString();
@@ -124,7 +123,6 @@ export function verificationFixture(universityId, campusId) {
           retainUntil: new Date(Date.now() + 86400000).toISOString(),
         };
         uploads.set(uploadId, { upload, owner: auth.id });
-        scans = 0;
         return reply(201, {
           upload,
           uploadUrl: "https://api.cloudinary.com/v1_1/test/image/upload",
@@ -133,7 +131,6 @@ export function verificationFixture(universityId, campusId) {
             api_key: "public-key",
             signature: "test-signature",
             type: "authenticated",
-            moderation: "perception_point",
           },
           expiresAt: new Date(Date.now() + 600000).toISOString(),
         });
@@ -151,11 +148,7 @@ export function verificationFixture(universityId, campusId) {
           return reply(204);
         }
         if (url.pathname.endsWith("/complete"))
-          found.upload.status = rejectScan
-            ? "rejected"
-            : ++scans < 2
-              ? "scanning"
-              : "ready";
+          found.upload.status = rejectUpload ? "rejected" : "ready";
         return reply(200, found.upload);
       }
       if (method === "GET") return reply(200, history);
@@ -175,7 +168,7 @@ export function verificationFixture(universityId, campusId) {
       if (!evidence || evidence.upload.status !== "ready")
         return reply(409, {
           code: "EVIDENCE_NOT_READY",
-          message: "Wait for the document scan.",
+          message: "Confirm the document upload before submitting.",
         });
       auth.studentVerificationStatus = "pending";
       history.unshift(record(auth, body.method, "pending", evidence.upload.id));

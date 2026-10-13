@@ -243,7 +243,7 @@ export function applyRouteContracts(document: OpenAPIObject): OpenAPIObject {
     ) {
       operation.responses[503] = {
         description:
-          "Required storage, malware moderation, or email service is unconfigured or unavailable.",
+          "Required storage or email service is unconfigured or unavailable.",
         content: errorContent,
       };
     }

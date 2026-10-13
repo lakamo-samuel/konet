@@ -4225,7 +4225,7 @@ export const routeContracts: RouteContract[] = [
     query: null,
 
     code: 200,
-    note: "Identity and work are required; CAC is optional. Evidence must be your own scanned ready unused provider_evidence upload. Returns uploadId/revision/reason, never private storage keys. One pending submission per dimension; 3 submissions per dimension per day. Rejected evidence can be resubmitted.",
+    note: "Identity and work are required; CAC is optional. Evidence must be your own ready unused provider_evidence upload. Returns uploadId/revision/reason, never private storage keys. One pending submission per dimension; 3 submissions per dimension per day. Rejected evidence can be resubmitted.",
   },
   {
     method: "post",
@@ -4238,7 +4238,7 @@ export const routeContracts: RouteContract[] = [
     query: null,
 
     code: 201,
-    note: "Identity and work are required; CAC is optional. Evidence must be your own scanned ready unused provider_evidence upload. Returns uploadId/revision/reason, never private storage keys. One pending submission per dimension; 3 submissions per dimension per day. Rejected evidence can be resubmitted.",
+    note: "Identity and work are required; CAC is optional. Evidence must be your own ready unused provider_evidence upload. Returns uploadId/revision/reason, never private storage keys. One pending submission per dimension; 3 submissions per dimension per day. Rejected evidence can be resubmitted.",
   },
   {
     method: "post",
@@ -5144,12 +5144,12 @@ export const routeContracts: RouteContract[] = [
 
     code: 201,
 
-    note: "Currently supports student_evidence and provider_evidence; other purposes return 501. Private Cloudinary authenticated upload: POST multipart/form-data with all returned fields and file. Complete within 10 minutes. Configure storage and malware moderation first (503 otherwise).",
+    note: "Currently supports student_evidence and provider_evidence; other purposes return 501. Private Cloudinary authenticated upload: POST multipart/form-data with all returned fields and file. Complete within 10 minutes. Configure Cloudinary storage first (503 otherwise).",
   },
   {
     method: "post",
     path: "uploads/{id}/complete",
-    summary: "Confirm upload and enqueue evidence scanning",
+    summary: "Confirm upload and validate evidence metadata",
     response: "Upload",
     body: null,
     auth: "user",
@@ -5157,7 +5157,7 @@ export const routeContracts: RouteContract[] = [
     query: null,
 
     code: 202,
-    note: "Checks Cloudinary metadata and Perception Point moderation, never a client-reported scan result. Poll this endpoint while status is scanning. Only ready evidence can be submitted.",
+    note: "Checks Cloudinary ownership, content type, resource type and byte size. Valid private evidence becomes ready immediately; invalid metadata is rejected. Only ready evidence can be submitted.",
   },
   {
     method: "get",
@@ -5419,7 +5419,7 @@ export const routeContracts: RouteContract[] = [
     query: null,
 
     code: 201,
-    note: "Admin/reviewer only. Send current revision, decision and reason. Approval requires available scanned evidence and a verified active student; self-review, stale revisions and repeated decisions fail. Required-proof rejection returns a pending profile for corrections.",
+    note: "Admin/reviewer only. Send current revision, decision and reason. Approval requires available evidence and a verified active student; self-review, stale revisions and repeated decisions fail. Required-proof rejection returns a pending profile for corrections.",
   },
   {
     method: "post",

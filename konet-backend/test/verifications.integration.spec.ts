@@ -157,7 +157,6 @@ describeDatabase("student verification PostgreSQL API integration", () => {
       format: "pdf",
       resource_type: "image",
       type: "authenticated",
-      moderation: [{ kind: "perception_point", status: "approved" }],
     }));
   });
   afterAll(async () => {
@@ -375,7 +374,7 @@ describeDatabase("student verification PostgreSQL API integration", () => {
       .send({ method: "manual_document", evidenceObjectKey: null })
       .expect(400);
   });
-  it("requires ready, owned evidence; reviewers cannot open unattached or scanning files", async () => {
+  it("requires ready, owned evidence and restricts reviewer access", async () => {
     gateway.inspect.mockImplementation(async (publicId: string) => ({
       public_id: publicId,
       asset_id: "asset",
@@ -384,26 +383,13 @@ describeDatabase("student verification PostgreSQL API integration", () => {
       format: "pdf",
       resource_type: "image",
       type: "authenticated",
-      moderation: [{ kind: "perception_point", status: "pending" }],
     }));
     const upload = await evidence();
     await api("post", "me/student-verification")
       .send({ method: "manual_document", evidenceObjectKey: upload.objectKey })
-      .expect(409);
-    await api("get", `uploads/${upload.id}/download`).expect(409);
-    gateway.inspect.mockImplementation(async (publicId: string) => ({
-      public_id: publicId,
-      asset_id: "asset",
-      version: 1,
-      bytes: 1234,
-      format: "pdf",
-      resource_type: "image",
-      type: "authenticated",
-      moderation: [{ kind: "perception_point", status: "approved" }],
-    }));
-    await api("post", `uploads/${upload.id}/complete`).expect(202);
+      .expect(201);
     await api("get", `uploads/${upload.id}/download`, reviewer.token).expect(
-      403,
+      200,
     );
     await api("post", "me/student-verification", other.token)
       .send({ method: "manual_document", evidenceObjectKey: upload.objectKey })
@@ -506,7 +492,7 @@ describeDatabase("student verification PostgreSQL API integration", () => {
       (await api("get", "me/student-verification").expect(200)).body,
     ).toHaveLength(2);
   });
-  it("rejects provider metadata mismatch and never treats missing malware moderation as ready", async () => {
+  it("rejects provider metadata mismatch and accepts valid metadata without moderation", async () => {
     gateway.inspect.mockImplementation(async (publicId: string) => ({
       public_id: publicId,
       asset_id: "asset",
@@ -532,7 +518,7 @@ describeDatabase("student verification PostgreSQL API integration", () => {
     const missing = await evidence();
     expect(
       (await api("get", `uploads/${missing.id}`).expect(200)).body.status,
-    ).toBe("scanning");
+    ).toBe("ready");
   });
   it("purges expired evidence and denies subsequent downloads or approvals", async () => {
     const { upload, verification } = await submission();

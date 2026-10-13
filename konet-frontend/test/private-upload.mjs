@@ -19,7 +19,6 @@ const fields = {
   api_key: "public-key",
   signature: "signed-ticket",
   type: "authenticated",
-  moderation: "perception_point",
   overwrite: "false",
 };
 const upload = { id: "private-upload-id", status: "pending" };

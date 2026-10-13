@@ -243,7 +243,7 @@ export class VerificationsService {
       if (!evidence)
         throw new DomainError(
           "EVIDENCE_NOT_READY",
-          "Use your own scanned, ready, unused student evidence upload.",
+          "Use your own ready, unused student evidence upload.",
           409,
         );
       await this.invalidate(tx, userId);
@@ -698,7 +698,7 @@ export class VerificationsService {
         if (!evidence)
           throw new DomainError(
             "EVIDENCE_NOT_READY",
-            "Approval requires available scanned evidence.",
+            "Approval requires available evidence.",
             409,
           );
       }

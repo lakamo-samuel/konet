@@ -27,7 +27,7 @@ A pending document review blocks email verification. An already verified student
 
 1. Send `POST /uploads/presign` with `purpose: "student_evidence"`, `fileName`, `contentType`, and `sizeBytes`. JPEG, PNG, and PDF are accepted, up to 10 MiB. Private provider evidence is also implemented in the [provider onboarding feature](backend-provider-onboarding.md); portfolio/avatar/message purposes return `501 UPLOAD_PURPOSE_NOT_IMPLEMENTED`.
 2. Upload to the returned `uploadUrl` using **POST multipart/form-data**. Add **every returned `fields` entry**, then add the binary under `file`. Do not manually set the multipart Content-Type; the browser supplies the boundary. The API secret never leaves the backend.
-3. Call `POST /uploads/{id}/complete` (`202`). The backend reads Cloudinary metadata and malware moderation. Repeat this endpoint while `status` is `scanning`; `GET /uploads/{id}` reads the last recorded status and does not poll Cloudinary. Missing moderation never counts as a clean scan.
+3. Call `POST /uploads/{id}/complete` (`202`). The backend checks Cloudinary metadata against the expected owner key, content type, and byte size. A matching private upload becomes `ready`; a mismatch becomes `rejected`.
 4. When `status` is `ready`, send `POST /me/student-verification` with `method: "student_id"`, `studentNumber`, and `evidenceObjectKey: upload.objectKey`. `manual_document` also requires ready evidence but does not require a student number.
 5. Show pending status and the history from `GET /me/student-verification`. A student can resubmit new evidence after rejection or a request for more information. At most three submissions per day, one pending document submission, and five retained unused uploads per account are allowed. Upload tickets are also limited to twenty per day per account.
 
@@ -44,7 +44,7 @@ if (!response.ok) throw new Error("Document upload failed");
 // Then call Konet POST /uploads/{ticket.upload.id}/complete.
 ```
 
-Cloudinary assets use `type=authenticated`, fixed opaque object keys, and `overwrite=false`. The backend checks provider metadata against the declared content type, expected size, resource type, and key. It accepts only explicit `perception_point: approved` moderation as ready. A mismatch or rejected scan marks the upload rejected. The student number is stored as a keyed hash scoped to the university; raw numbers and evidence keys are withheld from verification responses.
+Cloudinary assets use `type=authenticated`, fixed opaque object keys, and `overwrite=false`. The backend checks provider metadata against the declared content type, expected size, resource type, and key. It does not run malware scanning; staff review the uploaded document after submission. The student number is stored as a keyed hash scoped to the university; raw numbers and evidence keys are withheld from verification responses.
 
 Unattached files can be removed using `DELETE /uploads/{id}` (`204`). Submitted evidence follows the retention policy and cannot be independently deleted by the student. Evidence is not exposed by a public document URL.
 
@@ -65,7 +65,7 @@ Decision request:
 { "decision": "verified", "reason": "Student card and university details checked." }
 ```
 
-Only the owner can see unattached evidence. An admin/reviewer can download attached student evidence; every authorized download is audited. Downloads require retained, ready evidence. Concurrent decisions produce exactly one decision; subsequent attempts return `409 VERIFICATION_ALREADY_DECIDED`. Approval checks the student's active current university/campus against the submission snapshot and requires available scanned evidence. If the context changed or the evidence expired, request new information instead. Existing legacy document submissions without tracked scanned evidence can be rejected or returned for resubmission, but cannot be approved.
+Only the owner can see unattached evidence. An admin/reviewer can download attached student evidence; every authorized download is audited. Downloads require retained, ready evidence. Concurrent decisions produce exactly one decision; subsequent attempts return `409 VERIFICATION_ALREADY_DECIDED`. Approval checks the student's active current university/campus against the submission snapshot and requires available evidence. If the context changed or the evidence expired, request new information instead. Existing legacy document submissions without tracked evidence can be rejected or returned for resubmission, but cannot be approved.
 
 ## Configuration, migration, and retention
 
@@ -77,13 +77,12 @@ Set the following environment variables in the server environment:
 CLOUDINARY_CLOUD_NAME=<cloud name>
 CLOUDINARY_API_KEY=<API key>
 CLOUDINARY_API_SECRET=<API secret>
-CLOUDINARY_MALWARE_SCAN_ENABLED=true
 EVIDENCE_RETENTION_DAYS=30
 ```
 
-All three credentials must be provided together. Activate Cloudinary's **Perception Point malware moderation add-on** before enabling the scan flag; check availability and pricing for the account. Setting a flag alone cannot pass a scan: the backend still checks the provider's actual moderation result. The implementation does not subscribe your account to an add-on. See Cloudinary's [malware add-on documentation](https://cloudinary.com/documentation/perception_point_malware_detection_addon), [moderation documentation](https://cloudinary.com/documentation/moderate_assets), and [authenticated access documentation](https://cloudinary.com/documentation/control_access_to_media).
+All three credentials must be provided together. Evidence is stored privately and checked for metadata consistency, but malware scanning is currently disabled. Review documents carefully before approving them.
 
-Without storage credentials or the scan flag, private upload requests return `503` with `STORAGE_NOT_CONFIGURED` or `EVIDENCE_SCANNING_NOT_CONFIGURED`. Provider lookup failures return `503 STORAGE_UNAVAILABLE`, while an asset not uploaded yet returns `409 UPLOAD_NOT_FOUND_AT_PROVIDER`. Do not treat those errors as successful uploads.
+Without storage credentials, private upload requests return `503 STORAGE_NOT_CONFIGURED`. Provider lookup failures return `503 STORAGE_UNAVAILABLE`, while an asset not uploaded yet returns `409 UPLOAD_NOT_FOUND_AT_PROVIDER`. Do not treat those errors as successful uploads.
 
 Email confirmation uses the existing `RESEND_API_KEY`, `EMAIL_FROM`, and `EMAIL_OUTBOX_KEY` settings from the [account guide](backend-accounts.md). Without them, requesting a code returns `503 EMAIL_DELIVERY_NOT_CONFIGURED`. The JWT refresh secret is also used with purpose prefixes for keyed verification hashes; rotating it invalidates outstanding verification codes.
 
@@ -93,4 +92,4 @@ No real Cloudinary uploads or Resend deliveries were performed during implementa
 
 ## Validation
 
-The full backend suite passes 58 tests across seven suites using isolated PostgreSQL databases and mocked external providers. Verification tests cover codes, expiry, resend invalidation, ownership, attempt/send limits, concurrent address claims, manual-review permissions, self-review, evidence readiness, context changes, concurrent decisions, resubmission, and retention cleanup. Cloudinary adapter tests cover signed parameters, credential/scanning requirements, download expiry and provider failures. Typecheck, lint, build and offline OpenAPI export pass.
+The backend suite uses isolated PostgreSQL databases and mocked external providers. Verification tests cover codes, expiry, resend invalidation, ownership, attempt/send limits, concurrent address claims, manual-review permissions, self-review, evidence metadata checks, context changes, concurrent decisions, resubmission, and retention cleanup. Cloudinary adapter tests cover signed parameters, credential requirements, download expiry and provider failures. No malware scan is performed. Typecheck, lint, build and offline OpenAPI export are required before deployment.

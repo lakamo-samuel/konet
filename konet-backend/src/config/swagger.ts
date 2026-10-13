@@ -18,7 +18,7 @@ export function setupSwagger(
   const config = new DocumentBuilder()
     .setTitle("Konet API")
     .setDescription(
-      "Konet v1 integration contract. Authenticate with Authorization: Bearer <accessToken>. Routes marked [contract only] return 501 until implemented; their success schemas are targets for frontend mocks. Paystack checkout needs PAYSTACK_SECRET_KEY; empty credentials return 503. All money is integer NGN kobo; timestamps are ISO 8601. Lists are arrays. Paystack charge collection is implemented; payout/refund operations remain contract-only.",
+      "Konet v1 integration contract. Authenticate with Authorization: Bearer <accessToken>. Routes are implemented; configured integrations remain required. Cloudinary evidence uploads are private and metadata-validated; malware scanning is currently disabled. Paystack checkout needs PAYSTACK_SECRET_KEY; empty credentials return 503. All money is integer NGN kobo; timestamps are ISO 8601. Lists are arrays.",
     )
     .setVersion("1.0")
     .addBearerAuth(

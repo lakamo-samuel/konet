@@ -1238,7 +1238,7 @@ export class ProviderOnboardingService {
         if (!evidence)
           throw new DomainError(
             "EVIDENCE_NOT_READY",
-            "Approval requires available scanned evidence.",
+            "Approval requires available evidence.",
             409,
           );
       }

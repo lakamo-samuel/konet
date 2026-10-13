@@ -157,15 +157,7 @@ export class UploadsService
       asset.bytes === row.expectedBytes &&
       asset.bytes <= 10485760 &&
       formats[row.contentType]?.includes(asset.format);
-    const scan = asset.moderation?.find(
-      (item) => item.kind === "perception_point",
-    )?.status;
-    const status =
-      !valid || scan === "rejected"
-        ? "rejected"
-        : scan === "approved"
-          ? "ready"
-          : "scanning";
+    const status = valid ? "ready" : "rejected";
     const [changed] = await this.db
       .update(uploads)
       .set({ status, assetId: asset.asset_id, version: asset.version })
@@ -189,7 +181,7 @@ export class UploadsService
       if (!row || row.status !== "ready" || row.retainUntil <= new Date())
         throw new DomainError(
           "EVIDENCE_NOT_READY",
-          "Scanned evidence is unavailable.",
+          "Ready evidence is unavailable.",
           409,
         );
       if (row.userId !== userId) {

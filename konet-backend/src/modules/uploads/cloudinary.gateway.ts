@@ -10,7 +10,6 @@ export interface CloudinaryAsset {
   format: string;
   resource_type: string;
   type: string;
-  moderation?: { kind: string; status: string }[];
 }
 @Injectable()
 export class CloudinaryGateway {
@@ -27,12 +26,6 @@ export class CloudinaryGateway {
       throw new DomainError(
         "STORAGE_NOT_CONFIGURED",
         "Cloudinary storage is not configured.",
-        503,
-      );
-    if (!this.config.get<boolean>("CLOUDINARY_MALWARE_SCAN_ENABLED"))
-      throw new DomainError(
-        "EVIDENCE_SCANNING_NOT_CONFIGURED",
-        "Enable Cloudinary malware moderation before accepting student evidence.",
         503,
       );
   }
@@ -52,7 +45,6 @@ export class CloudinaryGateway {
       public_id: publicId,
       type: "authenticated",
       overwrite: false,
-      moderation: "perception_point",
       allowed_formats: "jpg,jpeg,png,pdf",
     };
     const fields: Record<string, string> = {
@@ -79,7 +71,6 @@ export class CloudinaryGateway {
         ...this.options(),
         resource_type: "image",
         type: "authenticated",
-        moderation: true,
       })) as CloudinaryAsset;
     } catch (error) {
       const status = error as {

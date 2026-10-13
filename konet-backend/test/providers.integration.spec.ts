@@ -162,7 +162,6 @@ describeDatabase("provider onboarding PostgreSQL API integration", () => {
       format: "pdf",
       resource_type: "image",
       type: "authenticated",
-      moderation: [{ kind: "perception_point", status: "approved" }],
     }));
   });
   afterAll(async () => {

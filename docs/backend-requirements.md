@@ -12,7 +12,7 @@ Konet serves verified university students who hire other students for services. 
 | --- | --- | --- | --- |
 | F1 | Account and session | Register, log in, refresh, log out, reset password | Registration/login/refresh/logout/reset, password/profile/email changes and deactivation implemented; recovery delivery requires Resend configuration |
 | F2 | University directory | Manage universities, campuses, approved email domains | Public directory, admin management, staff roles, and audit records implemented |
-| F3 | Student verification | Confirm an applicant belongs to selected university; record evidence and decision | Automatic email codes, scanned private Cloudinary evidence, admin/reviewer queue, decisions, retention and audit implemented; provider credentials required |
+| F3 | Student verification | Confirm an applicant belongs to selected university; record evidence and decision | Automatic email codes, private Cloudinary evidence, admin/reviewer queue, decisions, retention and audit implemented; malware scanning currently disabled |
 | F4 | Provider onboarding | Verified student creates profile, submits identity/work evidence, receives approval | Drafts, services/portfolio metadata, private evidence, mandatory identity/work review, optional CAC, revisioned decisions and controlled publication implemented |
 | F5 | Catalog and discovery | Publish active services and search by query, university, category, availability | Admin category management, hierarchy validation, public filtering/pagination and service visibility implemented |
 | F6 | Hiring | Request, quote, accept one quote, create job and conversation | Implemented; see [hiring guide](backend-hiring.md) |
@@ -30,7 +30,7 @@ Konet serves verified university students who hire other students for services. 
 3. For institutions without usable student email, staff review a student ID or document. The system stores a private object key, not a public document URL; reviewers record approver, timestamp, reason, and decision. Limit retries and prevent duplicate active submissions.
 4. Student status moves `unverified/not_submitted → pending → verified/rejected/requires_more_information`. Only an authoritative backend decision may set `verified`. Rejected applicants can resubmit under a documented policy.
 5. Provider verification separately records identity, work, and optional business/CAC proof. The team selected identity and work as mandatory, with CAC optional. Only approved active providers may publish visible services.
-6. Verification evidence needs retention and deletion rules, restricted access, malware/content checks, and an audit record. Never log raw student numbers or documents.
+6. Verification evidence needs retention and deletion rules, restricted access, malware/content checks, and an audit record. Malware scanning is currently disabled. Never log raw student numbers or documents.
 
 ### Hiring and jobs
 
@@ -54,7 +54,7 @@ Konet serves verified university students who hire other students for services. 
 - Keep the NestJS modular monolith and PostgreSQL/Drizzle schema as the transactional core. Put verification, payment, transfer, and dispute actions behind services with explicit state machines.
 - Expose versioned REST endpoints and OpenAPI. Validate DTOs, authenticate protected routes, enforce resource ownership, and use a separate admin role with least privilege.
 - Add a `verification_challenges` table for one-time email codes/expiry and extend the existing `audit_events` table to verification decisions and money actions. Add payout/transfer records and immutable payment event records before real settlement. Schema details should be finalized with the selected provider's event model.
-- Use Cloudinary (selected by the team) for evidence and portfolio uploads, with private evidence storage and authorized short-lived access. Scan and inspect evidence before reviewers use it; restrict download URLs to authorized reviewers.
+- Use Cloudinary (selected by the team) for evidence and portfolio uploads, with private evidence storage and authorized short-lived access. Evidence metadata is checked, but malware scanning is currently disabled; restrict download URLs to authorized reviewers.
 - Extend the implemented Resend delivery service and encrypted database outbox to verification. Keep sending asynchronous, retry transient failures, and make links single-use and short-lived.
 - Add a queue only for concrete asynchronous jobs (email, webhook processing, reconciliation). BullMQ with Redis is a reasonable proposal once workers are deployed; the current app intentionally has no queue.
 - Add structured logs, correlation IDs, metrics, traces, error monitoring, backup/restore, migration checks, and secret management before launch. Avoid sensitive payloads in logs.
@@ -67,7 +67,7 @@ Konet serves verified university students who hire other students for services. 
 | Payment collection and transfers | Paystack selected for the NGN-first pilot | Verify merchant eligibility, settlement timing, transfer access, fees, and support for client-approved delayed payout. Split payments alone do not meet that requirement. |
 | University email | One-time email link/code plus approved per-university domains | Must provide a manual review path for universities without reliable student domains. |
 | Transactional email | Resend (implemented for recovery) | Resend selected; configure verified sending domain, API key, and durable outbox encryption key. |
-| File storage | Cloudinary (student evidence implemented; credentials/add-on required) | Private signed uploads, restricted downloads, malware moderation and retention implemented for student evidence; public portfolio uploads pending; private provider evidence is implemented. |
+| File storage | Cloudinary (student evidence implemented; credentials required) | Private signed uploads, metadata validation, restricted downloads and retention; malware scanning currently disabled; public portfolio uploads pending. |
 | Background work | BullMQ + Redis when jobs are needed | Adds infrastructure and worker deployment; avoid until requirements justify it. |
 | API contract | Nest Swagger/OpenAPI with generated TypeScript client | Prevent frontend/backend status and field drift. |
 | Monitoring | Sentry plus structured Pino logs and OpenTelemetry | Choose hosting and data retention before integration. |
@@ -111,7 +111,7 @@ sequenceDiagram
 
 ### Backend delivery order
 
-1. Configure and validate recovery email delivery, configure private evidence storage/malware moderation, apply the verification migration, and connect the implemented challenge/review and staff APIs. See [student verification implementation](backend-verification.md).
+1. Configure and validate recovery email delivery, configure private evidence storage, apply the verification migration, and connect the implemented challenge/review and staff APIs. Malware scanning is currently disabled and should be revisited before broader production use. See [student verification implementation](backend-verification.md).
 2. Define shared OpenAPI responses, pagination, money/status enums, and generate the frontend client.
 3. Complete provider approval and catalog management, then connect authenticated requests, quotes, jobs, and messaging.
 4. Select a provider after validating delayed payout capabilities and terms; implement sandbox collection, signed webhooks, reconciliation, and transfer/refund flows.
@@ -120,4 +120,4 @@ sequenceDiagram
 ### References
 
 - [Paystack payment acceptance](https://paystack.com/docs/payments/accept-payments/), [webhook verification](https://paystack.com/docs/payments/webhooks/), [transaction verification](https://paystack.com/docs/payments/verify-payments/), [transfers](https://paystack.com/docs/transfers/single-transfers/), [split payments](https://docs-v2.paystack.com/payments/split-payments/)
-- [Cloudinary authenticated access](https://cloudinary.com/documentation/control_access_to_media), [Perception Point malware moderation](https://cloudinary.com/documentation/perception_point_malware_detection_addon)
+- [Cloudinary authenticated access](https://cloudinary.com/documentation/control_access_to_media)

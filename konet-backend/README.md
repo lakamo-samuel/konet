@@ -40,7 +40,7 @@ Password recovery and password changes are implemented. Apply the new migration 
 
 University and staff-role management are implemented. Apply the latest migration and bootstrap the first administrator with the trusted server command. See [university directory and staff setup](../docs/backend-universities.md).
 
-Student verification is implemented: automatic university email codes, private Cloudinary evidence, and admin/reviewer document decisions. Configure Cloudinary malware moderation and Resend, apply the latest migration, and connect the frontend forms/dashboard. See [verification setup and frontend flows](../docs/backend-verification.md).
+Student verification is implemented: automatic university email codes, private Cloudinary evidence, and admin/reviewer document decisions. Configure Cloudinary storage and Resend, apply the latest migration, and connect the frontend forms/dashboard. Evidence malware scanning is currently disabled. See [verification setup and frontend flows](../docs/backend-verification.md).
 
 Provider onboarding and approval are implemented. Identity and work are mandatory, CAC optional; profile approval and owner publication are separate. Draft services can now be created during onboarding. Apply the provider review migration and connect the frontend using [provider onboarding and dashboard flows](../docs/backend-provider-onboarding.md).
 
