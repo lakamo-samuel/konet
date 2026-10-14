@@ -6,10 +6,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 const require = createRequire(import.meta.url);
-const backendRequire = createRequire(
-  new URL("../../konet-backend/package.json", import.meta.url),
-);
-const { Server } = backendRequire("socket.io");
+const { Server } = require("socket.io");
 function load(file) {
   const context = { exports: {}, require, setTimeout, clearTimeout };
   vm.runInNewContext(
