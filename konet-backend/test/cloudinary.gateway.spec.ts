@@ -48,6 +48,48 @@ describe("private Cloudinary gateway", () => {
       cloudinary.utils.api_sign_request(params, "test-secret"),
     );
   });
+  it("signs public profile image uploads without exposing the API secret", () => {
+    const gateway = new CloudinaryGateway(new ConfigService(values));
+    const ticket = gateway.avatarTicket(
+      "konet/avatars/owner/00000000-0000-4000-8000-000000000001",
+    );
+    expect(ticket.uploadUrl).toBe(
+      "https://api.cloudinary.com/v1_1/test-cloud/image/upload",
+    );
+    expect(ticket.method).toBe("POST");
+    expect(ticket.fields.type).toBe("upload");
+    expect(ticket.fields.overwrite).toBe("false");
+    expect(ticket.fields.allowed_formats).toBe("jpg,jpeg,png,webp");
+    const { api_key, signature, ...params } = ticket.fields;
+    expect(api_key).toBe("test-key");
+    expect(signature).toBe(
+      cloudinary.utils.api_sign_request(params, "test-secret"),
+    );
+    expect(JSON.stringify(ticket)).not.toContain("test-secret");
+  });
+  it("inspects profile images as public assets and creates optimized HTTPS URLs", async () => {
+    const resource = jest
+      .spyOn(cloudinary.api, "resource")
+      .mockResolvedValue({
+        public_id: "konet/avatars/owner/image",
+      } as any);
+    const gateway = new CloudinaryGateway(new ConfigService(values));
+    await expect(gateway.inspectAvatar("konet/avatars/owner/image")).resolves
+      .toMatchObject({
+        public_id: "konet/avatars/owner/image",
+      });
+    expect(resource).toHaveBeenCalledWith(
+      "konet/avatars/owner/image",
+      expect.objectContaining({ type: "upload", resource_type: "image" }),
+    );
+    const url = new URL(
+      gateway.avatarUrl("konet/avatars/owner/image", 123),
+    );
+    expect(url.protocol).toBe("https:");
+    expect(url.hostname).toBe("res.cloudinary.com");
+    expect(url.pathname).toContain("/c_fill");
+    expect(url.pathname).toContain("/v123/");
+  });
   it("requires storage credentials without requesting paid moderation", () => {
     expect(() =>
       new CloudinaryGateway(new ConfigService({})).ticket("key"),

@@ -122,6 +122,8 @@ const commandShapes: Record<CommandName, Shape> = {
     contentType: "string",
     sizeBytes: "number",
   },
+  createAvatarUpload: { contentType: "string", sizeBytes: "number" },
+  completeAvatarUpload: { publicId: "string" },
   completeUpload: { id: "string" },
   deleteUpload: { id: "string" },
   submitVerification: { method: "string", evidenceObjectKey: "string" },
@@ -228,6 +230,9 @@ export function validateOperation(
     for (const key of allowed)
       if (
         values[key] !== undefined &&
+        !(name === "updateAccountProfile" &&
+          key === "avatarUrl" &&
+          values[key] === null) &&
         (key === "responseTimeMinutes"
           ? !Number.isInteger(values[key]) ||
             Number(values[key]) < 1 ||
@@ -249,6 +254,7 @@ export function validateOperation(
     for (const key of ["avatarUrl", "coverImageUrl"])
       if (
         values[key] !== undefined &&
+        values[key] !== null &&
         (!URL.canParse(String(values[key])) ||
           new URL(String(values[key])).protocol !== "https:" ||
           String(values[key]).length > 2048)
@@ -297,6 +303,21 @@ export function validateOperation(
       Number(values.sizeBytes) > 10485760)
   )
     throw new DataError("Choose a JPEG, PNG or PDF file up to 10 MiB.");
+  if (
+    name === "createAvatarUpload" &&
+    (!["image/jpeg", "image/png", "image/webp"].includes(
+      String(values.contentType),
+    ) ||
+      !Number.isInteger(values.sizeBytes) ||
+      Number(values.sizeBytes) < 1 ||
+      Number(values.sizeBytes) > 5242880)
+  )
+    throw new DataError("Choose a JPEG, PNG or WebP image up to 5 MiB.");
+  if (
+    name === "completeAvatarUpload" &&
+    String(values.publicId).length > 255
+  )
+    throw new DataError("The uploaded image reference is invalid.");
   if (
     typeof values.email === "string" &&
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)

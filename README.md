@@ -2,7 +2,7 @@
 
 Konet is a student service marketplace. A student can discover another student's services, send a brief, receive a quote, hire the provider, discuss the job, confirm delivery, and review the work. Providers can build a profile, publish services, respond to requests, and manage jobs. The product is designed around university identity, provider trust, and protected payments.
 
-> **Current state:** The backend implements all 158 registered endpoints. Frontend marketplace workflows and the separate `/admin` staff dashboard are connected. Staff access requires live roles and production MFA; finance reports and durable reconciliation are implemented. New quotes carry a saved 10% commission. Deployment verification, actual escrow custody and shared infrastructure for multi-instance messaging remain outstanding. See [staff dashboard setup](docs/admin-dashboard.md) and [frontend integration](docs/frontend-api-integration.md).
+> **Current state:** The backend implements all 160 registered endpoints. Frontend marketplace workflows and the separate `/admin` staff dashboard are connected. Staff access requires live roles and production MFA; finance reports and durable reconciliation are implemented. New quotes carry a saved 10% commission. GitHub Actions runs frontend and backend checks on pushes and pull requests; production hosting and deployment are separate. Actual escrow custody and shared infrastructure for multi-instance messaging remain outstanding. See [CI checks](docs/ci-cd.md), [staff dashboard setup](docs/admin-dashboard.md), and [frontend integration](docs/frontend-api-integration.md).
 
 ## Contents
 
@@ -14,6 +14,7 @@ Konet is a student service marketplace. A student can discover another student's
 - [Database schema](#database-schema)
 - [State and payment rules](#state-and-payment-rules)
 - [Local setup](#local-setup)
+- [CI checks](docs/ci-cd.md)
 - [Current implementation and gaps](#current-implementation-and-gaps)
 - [Where to change things](#where-to-change-things)
 

@@ -27,7 +27,7 @@
 .account-page .section-heading h2{font-size:26px;line-height:1.2;margin:12px 0}
 .account-page .detail-list dd{overflow-wrap:anywhere}
 .provider-invite .eyebrow{color:#fff3e9}
-@media(max-width:1150px){.header-menu{display:block}.header-actions>.signin-button,.header-actions>button{display:none}.header-menu nav>button{display:block}}
+@media(max-width:1200px){.header-menu{display:block}.header-actions>.signin-button,.header-actions>button{display:none}.header-menu nav>button{display:block}}
 @media(max-width:680px){
  .workspace-page{width:calc(100% - 40px);padding-block:32px 48px}
  #main{min-height:calc(100svh - 127px)}

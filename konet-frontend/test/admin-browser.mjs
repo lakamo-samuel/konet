@@ -310,6 +310,10 @@ try {
     for (const route of ["/", "/sign-in", "/sign-up", "/forgot-password", "/how-it-works", "/for-providers", "/trust-and-safety"]) {
       await page.goto(base + route, { waitUntil: "domcontentloaded" });
       await expect(page.locator(".wordmark:visible").first()).toBeVisible();
+      if (route === "/")
+        await expect(page.locator("footer.footer")).toBeVisible();
+      else
+        await expect(page.locator("footer.footer")).toHaveCount(0);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${route} overflows at ${width}px`);
       if (route === "/sign-in" && [1440, 390].includes(width)) await page.screenshot({ path: `/tmp/konet-login-${width}.png`, fullPage: true });
       if (route === "/how-it-works" && width === 1440) {

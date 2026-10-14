@@ -12,7 +12,10 @@ import { randomUUID } from "node:crypto";
 import { DATABASE, Database } from "../../database/database.module";
 import { auditEvents, uploads, userRoles, users } from "../../database/schema";
 import { DomainError } from "../../common/errors/domain.error";
-import { UploadInput } from "../contracts/contract.dto";
+import {
+  AvatarUploadInput,
+  UploadInput,
+} from "../contracts/contract.dto";
 import { CloudinaryGateway } from "./cloudinary.gateway";
 @Injectable()
 export class UploadsService
@@ -113,6 +116,76 @@ export class UploadsService
         expiresAt: row.expiresAt,
       };
     });
+  }
+  async avatarTicket(userId: string, input: AvatarUploadInput) {
+    this.gateway.requireConfigured();
+    if (
+      !["image/jpeg", "image/png", "image/webp"].includes(input.contentType) ||
+      input.sizeBytes < 1 ||
+      input.sizeBytes > 5242880
+    )
+      throw new DomainError(
+        "INVALID_AVATAR",
+        "Choose a JPEG, PNG or WebP image up to 5 MiB.",
+        422,
+      );
+    const [user] = await this.db
+      .select({ status: users.accountStatus })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (!user || user.status !== "active")
+      throw new DomainError(
+        "ACCOUNT_UNAVAILABLE",
+        "Account is unavailable.",
+        403,
+      );
+    const publicId = `konet/avatars/${userId}/${randomUUID()}`;
+    return {
+      publicId,
+      ...this.gateway.avatarTicket(publicId),
+      expiresAt: new Date(Date.now() + 600000),
+    };
+  }
+  async completeAvatar(userId: string, publicId: string) {
+    const prefix = `konet/avatars/${userId}/`;
+    if (
+      !publicId.startsWith(prefix) ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        publicId.slice(prefix.length),
+      )
+    )
+      throw new DomainError(
+        "UPLOAD_FORBIDDEN",
+        "This image upload does not belong to your account.",
+        403,
+      );
+    const [user] = await this.db
+      .select({ status: users.accountStatus })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (!user || user.status !== "active")
+      throw new DomainError(
+        "ACCOUNT_UNAVAILABLE",
+        "Account is unavailable.",
+        403,
+      );
+    const asset = await this.gateway.inspectAvatar(publicId);
+    const valid =
+      asset.type === "upload" &&
+      asset.resource_type === "image" &&
+      asset.public_id === publicId &&
+      asset.bytes > 0 &&
+      asset.bytes <= 5242880 &&
+      ["jpg", "jpeg", "png", "webp"].includes(asset.format);
+    if (!valid)
+      throw new DomainError(
+        "INVALID_AVATAR",
+        "The uploaded file is not a supported profile image.",
+        422,
+      );
+    return { avatarUrl: this.gateway.avatarUrl(publicId, asset.version) };
   }
   private async own(userId: string, id: string) {
     const [row] = await this.db

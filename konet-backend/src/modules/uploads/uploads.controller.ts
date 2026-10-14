@@ -16,7 +16,11 @@ import {
   AuthUser,
   CurrentUser,
 } from "../../common/decorators/current-user.decorator";
-import { UploadInput } from "../contracts/contract.dto";
+import {
+  AvatarUploadCompleteInput,
+  AvatarUploadInput,
+  UploadInput,
+} from "../contracts/contract.dto";
 import { UploadsService } from "./uploads.service";
 @ApiTags("uploads")
 @ApiBearerAuth()
@@ -29,6 +33,22 @@ export class UploadsController {
     @Body() body: UploadInput,
   ) {
     return this.service.ticket(user.userId, body);
+  }
+  @Post("avatar")
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  avatarTicket(
+    @CurrentUser() user: AuthUser,
+    @Body() body: AvatarUploadInput,
+  ) {
+    return this.service.avatarTicket(user.userId, body);
+  }
+  @Post("avatar/complete")
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  completeAvatar(
+    @CurrentUser() user: AuthUser,
+    @Body() body: AvatarUploadCompleteInput,
+  ) {
+    return this.service.completeAvatar(user.userId, body.publicId);
   }
   @Post(":id/complete") @HttpCode(202) complete(
     @CurrentUser() user: AuthUser,

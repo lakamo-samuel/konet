@@ -14,6 +14,38 @@ export interface RouteContract {
 }
 
 export const contractSchemas: Record<string, SchemaObject> = {
+  AvatarUploadInput: {
+    type: "object",
+    required: ["contentType", "sizeBytes"],
+    properties: {
+      contentType: {
+        type: "string",
+        enum: ["image/jpeg", "image/png", "image/webp"],
+      },
+      sizeBytes: { type: "integer", minimum: 1, maximum: 5242880 },
+    },
+  },
+  AvatarUploadCompleteInput: {
+    type: "object",
+    required: ["publicId"],
+    properties: { publicId: { type: "string", minLength: 1, maxLength: 255 } },
+  },
+  AvatarUploadTicket: {
+    type: "object",
+    required: ["publicId", "uploadUrl", "method", "fields", "expiresAt"],
+    properties: {
+      publicId: { type: "string" },
+      uploadUrl: { type: "string", format: "uri" },
+      method: { type: "string", enum: ["POST"] },
+      fields: { type: "object", additionalProperties: { type: "string" } },
+      expiresAt: { type: "string", format: "date-time" },
+    },
+  },
+  AvatarUpload: {
+    type: "object",
+    required: ["avatarUrl"],
+    properties: { avatarUrl: { type: "string", format: "uri" } },
+  },
   StudentReviewDetail:{allOf:[{$ref:'#/components/schemas/studentVerifications'},{type:'object',properties:{applicant:{type:'object',properties:{id:{type:'string',format:'uuid'},fullName:{type:'string'},universityId:{type:'string',format:'uuid'},campusId:{type:'string',format:'uuid'},accountStatus:{type:'string'},studentVerificationStatus:{type:'string'}}}}}]},
   StaffDispute:{allOf:[{$ref:'#/components/schemas/disputes'},{type:'object',properties:{job:{$ref:'#/components/schemas/jobs'},payment:{$ref:'#/components/schemas/payments'},decisions:{type:'array',items:{$ref:'#/components/schemas/Decision'}},milestones:{type:'array',items:{$ref:'#/components/schemas/Milestone'}},messages:{type:'array',description:'Up to 100 latest undeleted messages from this job conversation; access is audited',items:{type:'object',properties:{id:{type:'string',format:'uuid'},sender:{type:'string'},type:{type:'string'},content:{type:'string'},createdAt:{type:'string',format:'date-time'}}}},messageLimit:{type:'integer',enum:[100]}}}]},
   StaffSecurityStatus: {type:'object',required:['enabled','verified','recoveryCodesRemaining'],properties:{enabled:{type:'boolean'},verified:{type:'boolean'},expiresAt:{type:'string',format:'date-time',nullable:true},recoveryCodesRemaining:{type:'integer'}}},
@@ -5143,8 +5175,31 @@ export const routeContracts: RouteContract[] = [
     query: null,
 
     code: 201,
-
     note: "Currently supports student_evidence and provider_evidence; other purposes return 501. Private Cloudinary authenticated upload: POST multipart/form-data with all returned fields and file. Complete within 10 minutes. Configure Cloudinary storage first (503 otherwise).",
+  },
+  {
+    method: "post",
+    path: "uploads/avatar",
+    summary: "Create signed profile image upload",
+    response: "AvatarUploadTicket",
+    body: "AvatarUploadInput",
+    auth: "user",
+    existing: true,
+    query: null,
+    note: "Creates a ten-minute, user-scoped signed Cloudinary image upload. JPEG, PNG and WebP up to 5 MiB. Upload directly to Cloudinary without sending Konet credentials.",
+    code: 201,
+  },
+  {
+    method: "post",
+    path: "uploads/avatar/complete",
+    summary: "Verify profile image upload",
+    response: "AvatarUpload",
+    body: "AvatarUploadCompleteInput",
+    auth: "user",
+    existing: true,
+    query: null,
+    note: "Verifies the user-scoped Cloudinary asset and returns its optimized HTTPS delivery URL.",
+    code: 201,
   },
   {
     method: "post",

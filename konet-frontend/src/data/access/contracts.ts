@@ -1,6 +1,7 @@
 import type { AdminQueryInput, AdminCommandInput, AdminResponse } from "@/features/admin/operations";
 import type {
   AccountProfileInput,
+  AvatarUploadTicket,
   EmailChangeChallenge,
 } from "@/types/account-settings";
 import type { Dispute, DisputeDecision, DisputeStatus } from "@/types/disputes";
@@ -222,6 +223,11 @@ export type CommandContract = {
     },
     UploadTicket,
   ];
+  createAvatarUpload: [
+    { contentType: string; sizeBytes: number },
+    AvatarUploadTicket,
+  ];
+  completeAvatarUpload: [{ publicId: string }, { avatarUrl: string }];
   completeUpload: [{ id: string }, PrivateUpload];
   deleteUpload: [{ id: string }, { success: boolean }];
   submitVerification: [

@@ -8,6 +8,8 @@ import { ConfigService } from "@nestjs/config";
 import request = require("supertest");
 import { ThrottlerGuard } from "@nestjs/throttler";
 import { DomainExceptionFilter } from "../src/common/filters/domain-exception.filter";
+import { ProfileInput } from "../src/modules/contracts/contract.dto";
+import { validateSync } from "class-validator";
 import { DATABASE } from "../src/database/database.module";
 import { applyRouteContracts } from "../src/modules/contracts/openapi-contracts";
 import {
@@ -117,6 +119,19 @@ describe("v1 frontend API contracts", () => {
     expect(routeContracts.filter((route) => !route.existing)).toEqual([]);
   });
 
+  it("allows removing an avatar while keeping non-HTTPS avatar URLs invalid", () => {
+    expect(
+      validateSync(Object.assign(new ProfileInput(), { avatarUrl: null })),
+    ).toEqual([]);
+    expect(
+      validateSync(
+        Object.assign(new ProfileInput(), {
+          avatarUrl: "http://example.com/avatar.png",
+        }),
+      ),
+    ).not.toEqual([]);
+  });
+
   it("validates required fields, UUIDs, file size, and unknown request fields", async () => {
     await request(app.getHttpServer())
       .post("/api/v1/auth/reset-password")
@@ -136,6 +151,24 @@ describe("v1 frontend API contracts", () => {
         sizeBytes: 10485761,
       })
       .expect(400);
+    await request(app.getHttpServer())
+      .post("/api/v1/uploads/avatar")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ contentType: "image/svg+xml", sizeBytes: 1 })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post("/api/v1/uploads/avatar/complete")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ publicId: "invalid", extra: true })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post("/api/v1/uploads/avatar/complete")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        publicId:
+          "konet/avatars/00000000-0000-4000-8000-000000000099/00000000-0000-4000-8000-000000000001",
+      })
+      .expect(403);
     await request(app.getHttpServer())
       .post("/api/v1/contact")
       .send({

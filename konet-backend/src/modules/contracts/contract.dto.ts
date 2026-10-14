@@ -75,11 +75,11 @@ export class ProfileInput {
   @MinLength(2)
   @MaxLength(150)
   fullName?: string;
-  @ApiPropertyOptional({ type: "string", format: "uri" })
-  @ValidateIf((_, value) => value !== undefined)
+  @ApiPropertyOptional({ type: "string", format: "uri", nullable: true })
+  @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsUrl({ protocols: ["https"], require_protocol: true })
   @MaxLength(2048)
-  avatarUrl?: string;
+  avatarUrl?: string | null;
   @ApiPropertyOptional({ type: "string", format: "uuid" })
   @ValidateIf((_, value) => value !== undefined)
   @IsUUID()
@@ -540,6 +540,30 @@ export class UploadInput {
   @Min(1)
   @Max(10485760)
   sizeBytes!: number;
+}
+
+export class AvatarUploadInput {
+  @ApiProperty({
+    type: "string",
+    enum: ["image/jpeg", "image/png", "image/webp"],
+  })
+  @IsString()
+  @IsIn(["image/jpeg", "image/png", "image/webp"])
+  contentType!: string;
+  @ApiProperty({ type: "integer", minimum: 1, maximum: 5242880 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5242880)
+  sizeBytes!: number;
+}
+
+export class AvatarUploadCompleteInput {
+  @ApiProperty({ type: "string", minLength: 1, maxLength: 255 })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(255)
+  publicId!: string;
 }
 
 export class PayoutAccountInput {

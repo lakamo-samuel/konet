@@ -7,5 +7,5 @@
 .wordmark{text-decoration:none;white-space:nowrap;display:inline-flex;align-items:baseline;gap:2px}
 .account-avatar{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;flex-shrink:0}
 .header-actions .button{white-space:nowrap}
-@media(max-width:1150px){.header-inner{grid-template-columns:auto minmax(0,1fr);gap:16px}.desktop-nav{display:none}.header-actions{justify-content:flex-end}}
+@media(max-width:1200px){.header-inner{grid-template-columns:auto minmax(0,1fr);gap:16px}.desktop-nav{display:none}.header-actions{justify-content:flex-end}}
 @media(max-width:680px){.header-inner{width:calc(100% - 32px)}.header-actions{gap:8px}.header-actions .icon-button{width:36px;height:36px}}

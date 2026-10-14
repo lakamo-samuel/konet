@@ -15,7 +15,7 @@ The REST API is rooted at `/api/v1`; Swagger is at `/api/docs`; health is at `/a
 
 ## Frontend integration contracts
 
-All 158 registered operations are implemented and documented. Swagger specifies authentication, required and optional fields, validation, success schemas and errors. External services still require configured credentials; Paystack checkout returns 503 until its secret key is configured. Staff endpoints require live roles and production MFA. See the [staff dashboard and operations guide](../docs/admin-dashboard.md) for first-admin bootstrap, authenticator setup, reports and durable reconciliation.
+All 160 registered operations are implemented and documented. Swagger specifies authentication, required and optional fields, validation, success schemas and errors. External services still require configured credentials; Paystack checkout returns 503 until its secret key is configured. Staff endpoints require live roles and production MFA. See the [staff dashboard and operations guide](../docs/admin-dashboard.md) for first-admin bootstrap, authenticator setup, reports and durable reconciliation.
 
 See the [API handoff and full route inventory](../docs/backend-api-contract.md). Share [openapi.json](openapi.json) with the frontend developer, or fetch `/api/docs/json`. Run `npm run docs:export` to regenerate the offline snapshot without a database or running API.
 

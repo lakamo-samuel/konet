@@ -4,7 +4,9 @@ Migration `0009_rapid_zombie.sql` adds email-change challenges. All four routes 
 
 ## Profile
 
-`PATCH /me/profile` accepts at least one of `fullName` (2–150 characters), `avatarUrl` (HTTPS, at most 2048 characters), `universityId` and `campusId`. Null values and privileged fields are rejected. The selected campus must belong to the active university; moving to another university generally requires sending its campus ID too. Password hashes are never returned.
+`PATCH /me/profile` accepts at least one of `fullName` (2–150 characters), `avatarUrl` (HTTPS, at most 2048 characters; `null` removes it), `universityId` and `campusId`. Other null values and privileged fields are rejected. The selected campus must belong to the active university; moving to another university generally requires sending its campus ID too. Password hashes are never returned.
+
+`POST /uploads/avatar` issues a ten-minute, user-scoped signed Cloudinary ticket for JPEG, PNG or WebP images up to 5 MiB. The browser uploads directly to Cloudinary without Konet credentials; `POST /uploads/avatar/complete` verifies the resulting asset and returns an optimized HTTPS URL for the profile form to save. These routes use the existing `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` settings. The API secret is never returned to the browser.
 
 Changing university/campus requires no active jobs or outstanding money. It resets student verification to `unverified`, invalidates pending verification challenges and resets provider approval/publication. Historical decisions/evidence are retained. Students must verify the new affiliation, and providers must submit for review and publish again. Name/avatar changes do not reset student verification.
 

@@ -90,11 +90,23 @@ export async function reviewUserInterface({ base, cookies, routes, setUnavailabl
       }
     }
     await signupPage.goto(base + "/sign-up", { waitUntil: "load" });
-    const universitySelect = signupPage.locator('select[name="universityId"]');
-    const campusSelect = signupPage.locator('select[name="campusId"]');
-    await expect(universitySelect.locator("option")).toHaveCount(2);
-    await universitySelect.selectOption({ label: "Integration University" });
-    await expect(campusSelect).toHaveValue("00000000-0000-4000-8000-000000000003");
+    const universityField = signupPage.locator('input[name="universityId"]');
+    const campusField = signupPage.locator('input[name="campusId"]');
+    const universitySelect = signupPage.getByRole("button", {
+      name: "University",
+    });
+    await universitySelect.click();
+    await signupPage
+      .getByRole("option", { name: "Integration University" })
+      .click();
+    await expect(universityField).toHaveValue(
+      "00000000-0000-4000-8000-000000000002",
+    );
+    await signupPage.getByRole("button", { name: "Campus" }).click();
+    await signupPage.getByRole("option", { name: "Main Campus" }).click();
+    await expect(campusField).toHaveValue(
+      "00000000-0000-4000-8000-000000000003",
+    );
     await signupPage.locator('input[name="name"]').fill("Single Campus Student");
     await signupPage.locator('input[name="email"]').fill("single-campus@example.com");
     await signupPage.locator('input[name="password"]').fill("single-campus-password");
@@ -108,7 +120,15 @@ export async function reviewUserInterface({ base, cookies, routes, setUnavailabl
     assert.equal(registration.universityId, "00000000-0000-4000-8000-000000000002");
     assert.equal(registration.campusId, "00000000-0000-4000-8000-000000000003");
     await signupContext.close();
-    for (const width of [1152, 1280, 1440, 1920]) {
+    await page.setViewportSize({ width: 1152, height: 1000 });
+    await page.goto(base + "/jobs");
+    await expect(page.locator(".header-menu")).toBeVisible();
+    await expect(page.locator(".desktop-nav")).toBeHidden();
+    assert.ok(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      "Header overflows at the compact navigation breakpoint",
+    );
+    for (const width of [1280, 1440, 1920]) {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto(base + "/jobs");
       await page.evaluate(() => document.fonts.ready);

@@ -1,5 +1,8 @@
 import { adminQueries, adminCommands, operationPath, type AdminResponse } from "@/features/admin/operations";
-import type { EmailChangeChallenge } from "@/types/account-settings";
+import type {
+  AvatarUploadTicket,
+  EmailChangeChallenge,
+} from "@/types/account-settings";
 import type { Dispute, DisputeDecision } from "@/types/disputes";
 import { socketConfiguration } from "@/lib/realtime/config";
 import type { RealtimeTicket, ReadResult } from "@/types/messaging";
@@ -553,7 +556,7 @@ export const commandEndpoints: {
     method: "POST",
     path: () => "/me/email-change",
     body: (i) => ({ email: i.email.trim(), password: i.password }),
-    decode: (d) => d as EmailChangeChallenge,
+      decode: (d) => d as EmailChangeChallenge,
   },
   confirmEmailChange: {
     method: "POST",
@@ -704,6 +707,18 @@ export const commandEndpoints: {
     path: () => "/uploads/presign",
     body: (i) => i,
     decode: (data) => data as UploadTicket,
+  },
+  createAvatarUpload: {
+    method: "POST",
+    path: () => "/uploads/avatar",
+    body: (i) => i,
+    decode: (data) => data as AvatarUploadTicket,
+  },
+  completeAvatarUpload: {
+    method: "POST",
+    path: () => "/uploads/avatar/complete",
+    body: (i) => i,
+    decode: (data) => data as { avatarUrl: string },
   },
   completeUpload: {
     method: "POST",

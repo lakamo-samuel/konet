@@ -1,8 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
 import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
+import { uploadAvatar } from "@/lib/uploads/avatar-file";
 import type { User } from "@/types/domain";
 import type { AccountProfileInput } from "@/types/account-settings";
 import { AccountSecurity } from "./account-security";
@@ -20,9 +22,16 @@ export function AccountSettingsForm() {
 function ProfileForm({ user }: { user: User }) {
   const [universityId, setUniversityId] = useState(user.universityId);
   const [campusId, setCampusId] = useState(user.campusId ?? "");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    user.avatar || null,
+  );
   const [confirmed, setConfirmed] = useState(false);
   const [saved, setSaved] = useState(false);
   const [failure, setFailure] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const uploadController = useRef<AbortController | null>(null);
+  const avatarInput = useRef<HTMLInputElement>(null);
+  useEffect(() => () => uploadController.current?.abort(), []);
   const universities = useDataQuery("universities", {});
   const university = useDataQuery(
     "university",
@@ -44,17 +53,8 @@ function ProfileForm({ user }: { user: User }) {
         const values = new FormData(event.currentTarget);
         const input: AccountProfileInput = {};
         const fullName = String(values.get("fullName")).trim();
-        const avatarUrl = String(values.get("avatarUrl")).trim();
         if (fullName !== user.name) input.fullName = fullName;
-        if (avatarUrl !== user.avatar) {
-          if (!avatarUrl) {
-            setFailure(
-              "Enter an HTTPS image URL. Removing an existing avatar is not supported yet.",
-            );
-            return;
-          }
-          input.avatarUrl = avatarUrl;
-        }
+        if (avatarUrl !== (user.avatar || null)) input.avatarUrl = avatarUrl;
         if (moved) {
           if (!confirmed) {
             setFailure(
@@ -82,6 +82,71 @@ function ProfileForm({ user }: { user: User }) {
       }}
     >
       <h2>Profile details</h2>
+      <div className="form-stack">
+        <span className="field">Profile picture</span>
+        <div className="inline-actions">
+          <Avatar src={avatarUrl ?? ""} name={user.name} size={96} />
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={uploading || save.isPending}
+            onClick={() => avatarInput.current?.click()}
+          >
+            {uploading
+              ? "Uploading…"
+              : avatarUrl
+                ? "Change picture"
+                : "Upload picture"}
+          </Button>
+          <input
+            ref={avatarInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            aria-label="Upload profile picture"
+            disabled={uploading || save.isPending}
+            className="sr-only"
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              setUploading(true);
+              setFailure("");
+              uploadController.current = new AbortController();
+              try {
+                const url = await uploadAvatar(
+                  file,
+                  uploadController.current.signal,
+                );
+                setAvatarUrl(url);
+                setSaved(false);
+              } catch (cause) {
+                if (!uploadController.current.signal.aborted)
+                  setFailure(errorMessage(cause));
+              } finally {
+                setUploading(false);
+                event.target.value = "";
+              }
+            }}
+          />
+          {avatarUrl && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={uploading || save.isPending}
+              onClick={() => {
+                setAvatarUrl(null);
+                setSaved(false);
+              }}
+            >
+              Remove picture
+            </Button>
+          )}
+        </div>
+        <p>JPEG, PNG or WebP up to 5 MiB. Your picture is optimized for display.</p>
+        {uploading && <p role="status">Uploading your picture…</p>}
+        {!uploading && avatarUrl !== (user.avatar || null) && (
+          <p role="status">Picture ready. Save your profile to apply it.</p>
+        )}
+      </div>
       <label className="field">
         Full name
         <input
@@ -90,16 +155,6 @@ function ProfileForm({ user }: { user: User }) {
           minLength={2}
           maxLength={150}
           defaultValue={user.name}
-        />
-      </label>
-      <label className="field">
-        Avatar URL
-        <input
-          name="avatarUrl"
-          type="url"
-          pattern="https://.*"
-          maxLength={2048}
-          defaultValue={user.avatar}
         />
       </label>
       <p>
@@ -185,7 +240,10 @@ function ProfileForm({ user }: { user: User }) {
       )}
       {failure && <p role="alert">{failure}</p>}
       {saved && <p role="status">Profile saved.</p>}
-      <Button type="submit" disabled={save.isPending || (moved && !confirmed)}>
+      <Button
+        type="submit"
+        disabled={save.isPending || uploading || (moved && !confirmed)}
+      >
         {save.isPending ? "Saving…" : "Save profile"}
       </Button>
     </form>
