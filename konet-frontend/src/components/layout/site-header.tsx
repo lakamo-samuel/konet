@@ -1,4 +1,5 @@
 import { HeaderMenu } from "./header-menu";
+import { Avatar } from "@/components/ui/avatar";
 import { isStaff } from "@/features/admin/operations";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { AccountMenu } from "./account-menu";
@@ -42,9 +43,9 @@ export async function SiteHeader({ publicPage = false }: { publicPage?: boolean 
                 href="/profile"
                 aria-label="Your profile"
               >
-                {session.name?.charAt(0) ?? "Account"}
+                <Avatar src={session.avatar ?? ""} name={session.name ?? "Account"} size={34} />
               </Link>
-              <AccountMenu name={session.name ?? "Account"} links={accountLinks} />
+              <AccountMenu name={session.name ?? "Account"} avatar={session.avatar} links={accountLinks} />
               {session.providerProfileId ? (
                 <Button className="header-cta" href="/provider/dashboard">
                   My workspace

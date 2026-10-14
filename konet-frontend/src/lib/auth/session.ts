@@ -8,6 +8,7 @@ export type Session = {
   isStudentVerified: boolean;
   providerProfileId?: string;
   name?: string;
+  avatar?: string;
 };
 export const getSession = cache(async (): Promise<Session | null> => {
   const store = await cookies();
@@ -23,5 +24,6 @@ export const getSession = cache(async (): Promise<Session | null> => {
     isStudentVerified: user.studentVerification === "verified",
     providerProfileId: user.providerProfileId,
     name: user.name,
+    avatar: user.avatar,
   };
 });

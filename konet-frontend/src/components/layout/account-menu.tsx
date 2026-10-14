@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon from "@/components/ui/icon";
+import { Avatar } from "@/components/ui/avatar";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { useDropdownDismiss } from "./use-dropdown-dismiss";
 
-export function AccountMenu({ name, links }: { name: string; links: readonly {href: string; label: string}[] }) {
+export function AccountMenu({ name, avatar, links }: { name: string; avatar?: string; links: readonly {href: string; label: string}[] }) {
   const path = usePathname();
   const ref = useDropdownDismiss();
   return (
     <details className="account-dropdown" key={path} ref={ref}>
       <summary aria-label="Open account menu">
-        <span className="account-avatar" aria-hidden="true">{name.charAt(0).toUpperCase()}</span>
+        <Avatar src={avatar ?? ""} name={name} size={34} />
         <span className="account-menu-name">{name.split(" ")[0]}</span>
         <Icon name="chevron" size={15} />
       </summary>
