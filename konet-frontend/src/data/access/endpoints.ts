@@ -30,6 +30,7 @@ import type {
   OwnPortfolioItem,
   ProviderVerification,
   Category,
+  ProviderCoverUploadTicket,
 } from "@/types/provider-onboarding";
 import type {
   VerificationMethods,
@@ -719,6 +720,18 @@ export const commandEndpoints: {
     path: () => "/uploads/avatar/complete",
     body: (i) => i,
     decode: (data) => data as { avatarUrl: string },
+  },
+  createProviderCoverUpload: {
+    method: "POST",
+    path: () => "/uploads/provider-cover",
+    body: (i) => i,
+    decode: (data) => data as ProviderCoverUploadTicket,
+  },
+  completeProviderCoverUpload: {
+    method: "POST",
+    path: () => "/uploads/provider-cover/complete",
+    body: (i) => i,
+    decode: (data) => data as { coverImageUrl: string },
   },
   completeUpload: {
     method: "POST",

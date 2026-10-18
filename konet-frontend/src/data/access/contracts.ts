@@ -36,6 +36,7 @@ import type {
   ProviderVerification,
   ProviderDimension,
   Category,
+  ProviderCoverUploadTicket,
 } from "@/types/provider-onboarding";
 import type {
   VerificationMethods,
@@ -228,6 +229,14 @@ export type CommandContract = {
     AvatarUploadTicket,
   ];
   completeAvatarUpload: [{ publicId: string }, { avatarUrl: string }];
+  createProviderCoverUpload: [
+    { contentType: string; sizeBytes: number },
+    ProviderCoverUploadTicket,
+  ];
+  completeProviderCoverUpload: [
+    { publicId: string },
+    { coverImageUrl: string },
+  ];
   completeUpload: [{ id: string }, PrivateUpload];
   deleteUpload: [{ id: string }, { success: boolean }];
   submitVerification: [

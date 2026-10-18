@@ -117,7 +117,17 @@ export class UploadsService
       };
     });
   }
-  async avatarTicket(userId: string, input: AvatarUploadInput) {
+  avatarTicket(userId: string, input: AvatarUploadInput) {
+    return this.publicImageTicket(userId, input, "avatars");
+  }
+  providerCoverTicket(userId: string, input: AvatarUploadInput) {
+    return this.publicImageTicket(userId, input, "provider-covers");
+  }
+  private async publicImageTicket(
+    userId: string,
+    input: AvatarUploadInput,
+    folder: "avatars" | "provider-covers",
+  ) {
     this.gateway.requireConfigured();
     if (
       !["image/jpeg", "image/png", "image/webp"].includes(input.contentType) ||
@@ -125,8 +135,8 @@ export class UploadsService
       input.sizeBytes > 5242880
     )
       throw new DomainError(
-        "INVALID_AVATAR",
-        "Choose a JPEG, PNG or WebP image up to 5 MiB.",
+        folder === "avatars" ? "INVALID_AVATAR" : "INVALID_PROVIDER_COVER",
+        `Choose a JPEG, PNG or WebP ${folder === "avatars" ? "image" : "cover image"} up to 5 MiB.`,
         422,
       );
     const [user] = await this.db
@@ -140,15 +150,43 @@ export class UploadsService
         "Account is unavailable.",
         403,
       );
-    const publicId = `konet/avatars/${userId}/${randomUUID()}`;
+    const publicId = `konet/${folder}/${userId}/${randomUUID()}`;
     return {
       publicId,
-      ...this.gateway.avatarTicket(publicId),
+      ...(folder === "avatars"
+        ? this.gateway.avatarTicket(publicId)
+        : this.gateway.providerCoverTicket(publicId)),
       expiresAt: new Date(Date.now() + 600000),
     };
   }
   async completeAvatar(userId: string, publicId: string) {
-    const prefix = `konet/avatars/${userId}/`;
+    return this.completePublicImage(
+      userId,
+      publicId,
+      `konet/avatars/${userId}/`,
+      "INVALID_AVATAR",
+      "The uploaded file is not a supported profile image.",
+      (id, version) => this.gateway.avatarUrl(id, version),
+    ).then((avatarUrl) => ({ avatarUrl }));
+  }
+  async completeProviderCover(userId: string, publicId: string) {
+    return this.completePublicImage(
+      userId,
+      publicId,
+      `konet/provider-covers/${userId}/`,
+      "INVALID_PROVIDER_COVER",
+      "The uploaded file is not a supported cover image.",
+      (id, version) => this.gateway.providerCoverUrl(id, version),
+    ).then((coverImageUrl) => ({ coverImageUrl }));
+  }
+  private async completePublicImage(
+    userId: string,
+    publicId: string,
+    prefix: string,
+    errorCode: string,
+    invalidMessage: string,
+    makeUrl: (id: string, version: number) => string,
+  ): Promise<string> {
     if (
       !publicId.startsWith(prefix) ||
       !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -171,7 +209,7 @@ export class UploadsService
         "Account is unavailable.",
         403,
       );
-    const asset = await this.gateway.inspectAvatar(publicId);
+    const asset = await this.gateway.inspectPublicImage(publicId);
     const valid =
       asset.type === "upload" &&
       asset.resource_type === "image" &&
@@ -181,11 +219,11 @@ export class UploadsService
       ["jpg", "jpeg", "png", "webp"].includes(asset.format);
     if (!valid)
       throw new DomainError(
-        "INVALID_AVATAR",
-        "The uploaded file is not a supported profile image.",
+        errorCode,
+        invalidMessage,
         422,
       );
-    return { avatarUrl: this.gateway.avatarUrl(publicId, asset.version) };
+    return makeUrl(publicId, asset.version);
   }
   private async own(userId: string, id: string) {
     const [row] = await this.db
