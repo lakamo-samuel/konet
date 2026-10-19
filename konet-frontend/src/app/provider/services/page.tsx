@@ -1,14 +1,14 @@
 import { OwnedServices } from "@/features/provider-onboarding/components/owned-services";
+import { PageHeader } from "@/components/ui/page-header";
 export const metadata = { title: "Provider services" };
 export default function Page() {
   return (
     <section className="provider-page">
-      <div className="page-heading">
-        <h1>Your services</h1>
-        <p>
-          Draft services remain private until you publish and activate them.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Provider workspace"
+        title="Your services"
+        description="Manage your offers. Draft services stay private until you publish and activate them."
+      />
       <OwnedServices />
     </section>
   );

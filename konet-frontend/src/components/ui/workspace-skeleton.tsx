@@ -1,9 +1,10 @@
-type Variant = "requests" | "jobs" | "messages";
+type Variant = "requests" | "jobs" | "messages" | "disputes";
 
 const labels: Record<Variant, string> = {
   requests: "Loading service requests",
   jobs: "Loading jobs",
   messages: "Loading conversations",
+  disputes: "Loading disputes",
 };
 
 export function WorkspaceSkeleton({

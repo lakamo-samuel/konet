@@ -5,6 +5,11 @@ import { useDataQuery } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
 import { Button } from "@/components/ui/button";
 import { WorkspaceSkeleton } from "@/components/ui/workspace-skeleton";
+import { CollectionPagination } from "@/components/ui/collection-pagination";
+import { CollectionToolbar } from "@/components/ui/collection-toolbar";
+import { EmptyState } from "@/components/ui/empty-state";
+import Icon from "@/components/ui/icon";
+import Link from "next/link";
 import { useRealtime } from "@/lib/realtime/provider";
 export function InboxList() {
   const [offset, setOffset] = useState(0);
@@ -35,59 +40,68 @@ export function InboxList() {
     return <WorkspaceSkeleton variant="messages" />;
   }
   return (
-    <section className="surface-panel form-stack">
-      <h2>Inbox</h2>
-      <p role="status">{realtime.message}</p>
-      {realtime.status === "error" && (
-        <Button variant="secondary" onClick={realtime.connection?.reconnect}>
-          Reconnect
-        </Button>
-      )}
-      <label className="field">
-        Search conversations on this page
+    <section className="form-stack messages-inbox">
+      <CollectionToolbar
+        actions={
+          realtime.status === "error" ? (
+            <Button
+              variant="secondary"
+              onClick={realtime.connection?.reconnect}
+            >
+              Reconnect live updates
+            </Button>
+          ) : (
+            <span
+              className={`realtime-indicator ${realtime.status === "connected" ? "connected" : ""}`}
+              role="status"
+            >
+              <span /> {realtime.message || "Live updates ready"}
+            </span>
+          )
+        }
+      >
+        <label className="collection-filter collection-search">
+          <span>Search conversations on this page</span>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Job, request or conversation ID"
         />
-      </label>
+        </label>
+      </CollectionToolbar>
       {rows.map((c) => (
-        <article key={c.id} className="notification-row">
-          <div>
-            <Button variant="quiet" href={`/messages/${c.id}`}>
+        <Link key={c.id} href={`/messages/${c.id}`} className="conversation-card">
+          <span className="conversation-card-icon"><Icon name="message" size={20} /></span>
+          <div className="conversation-card-copy">
+            <strong>
               {c.jobId
                 ? `Job ${c.jobId.slice(0, 8)}`
                 : c.requestId
                   ? `Request ${c.requestId.slice(0, 8)}`
                   : `Conversation ${c.id.slice(0, 8)}`}
-            </Button>
+            </strong>
+            <span>{c.jobId ? "Job conversation" : c.requestId ? "Request conversation" : "Direct conversation"}</span>
             <p>Updated {formatDateTime(c.updatedAt)}</p>
           </div>
-        </article>
+          <Icon name="arrow" size={18} />
+        </Link>
       ))}
       {inbox.isSuccess && !rows.length && (
-        <p>
-          {inbox.data.length
-            ? "No conversations match this search."
-            : "No conversations on this page. A conversation is created when a quote is accepted."}
-        </p>
+        <EmptyState
+          icon="message"
+          title={inbox.data.length ? "No matching conversations" : "Your inbox is clear"}
+          description={inbox.data.length ? "Try a different job or request reference." : "A conversation appears here when a quote is accepted."}
+        />
       )}
-      <div className="modal-actions">
-        <Button
-          variant="secondary"
-          disabled={!offset || inbox.isFetching}
-          onClick={() => setOffset(Math.max(0, offset - 20))}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={inbox.data?.length !== 20 || inbox.isFetching}
-          onClick={() => setOffset(offset + 20)}
-        >
-          Next
-        </Button>
-      </div>
+      {(offset > 0 || inbox.data.length > 0) && (
+        <CollectionPagination
+          offset={offset}
+          count={inbox.data.length}
+          isFetching={inbox.isFetching}
+          onOffsetChange={setOffset}
+          itemName="conversations"
+        />
+      )}
     </section>
   );
 }

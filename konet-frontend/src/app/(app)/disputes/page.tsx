@@ -1,12 +1,16 @@
 import { DisputeList } from "@/features/disputes/components/dispute-workspace";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 export const metadata = { title: "Disputes" };
 export default function Page() {
   return (
-    <section className="workspace-page narrow">
-      <div className="page-heading">
-        <h1>Your disputes</h1>
-        <p>Track cases for jobs you hired or provided.</p>
-      </div>
+    <section className="workspace-page">
+      <PageHeader
+        eyebrow="Resolution center"
+        title="Your disputes"
+        description="Follow the review and outcome of cases related to your jobs."
+        action={<Button href="/jobs" variant="secondary">View jobs</Button>}
+      />
       <DisputeList />
     </section>
   );

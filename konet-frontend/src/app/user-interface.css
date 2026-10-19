@@ -14,6 +14,7 @@
 .empty-state .button{margin-top:4px}
 .footer .footer-brand>.wordmark{font-size:27px;color:#fff;line-height:1.2;display:inline-flex;margin-bottom:20px}
 .mobile-nav>a{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:600;color:var(--muted);text-decoration:none;min-height:60px}
+.mobile-nav:has(>a:nth-child(6))>a{font-size:9px;gap:3px}
 .mobile-nav>a[aria-current=page]{color:var(--clay);background:#c95c3509}
 .header-menu{display:none;position:relative;order:10}
 .header-menu summary{list-style:none;width:40px;height:40px;display:grid;place-items:center;cursor:pointer;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
@@ -215,4 +216,54 @@
 .message-subtitle-skeleton{width:min(320px,72%);height:12px;margin-top:14px;border-radius:8px}
 .job-action-skeleton{width:150px;height:40px;margin-bottom:20px;border-radius:10px}
 @media(max-width:680px){.workspace-skeleton-messages{padding:17px;border-radius:0;border-inline:0}.skeleton-record{min-height:72px;padding:14px}.skeleton-action{width:82px;height:34px}.skeleton-line-title{width:68%}.skeleton-line-meta{width:45%}}
+
+/* Shared collection layouts keep lists, filters and paging consistent. */
+.collection-page{gap:16px}
+.collection-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:16px 18px;border:1px solid var(--border);border-radius:16px;background:var(--surface)}
+.collection-filters,.collection-actions{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.collection-filter{display:grid;gap:7px;min-width:220px;color:var(--muted);font-size:11px;font-weight:700}
+.collection-filter>div,.collection-filter>input{width:100%}
+.collection-search{flex:1;max-width:440px}
+.collection-search>input{min-height:43px;border:1px solid var(--border);border-radius:10px;background:var(--canvas);padding:10px 12px;color:var(--ink);font:inherit}
+.collection-pagination{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
+.collection-pagination>p{margin:0;color:var(--muted);font-size:12px;font-weight:650}
+.collection-pagination>div{display:flex;gap:8px}
+.dispute-record{display:grid;gap:15px;margin:0!important;padding:22px 24px!important;transition:border-color .16s,box-shadow .16s}
+.dispute-record:hover{border-color:#cfc8bb;box-shadow:0 8px 24px #231c1308}
+.dispute-record-heading,.dispute-record-footer{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.dispute-record-heading h2{margin:5px 0 0!important;font-size:20px!important;line-height:1.35;letter-spacing:-.45px}
+.dispute-record-kicker{margin:0;color:var(--muted);font-size:11px;font-weight:650}
+.dispute-record-description{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;margin:0;color:var(--muted);font-size:13px;line-height:1.7}
+.dispute-record-footer{padding-top:13px;border-top:1px solid var(--border);color:var(--muted);font-size:12px}
+.dispute-record-footer .button{display:inline-flex;align-items:center;gap:8px}
+.collection-error{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 18px;border:1px solid #e8c3bb;border-radius:14px;background:#fff8f6;color:#8e3325}
+.collection-error p{margin:0}
+.messages-inbox{width:100%;max-width:none}
+.realtime-indicator{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
+.realtime-indicator>span{width:8px;height:8px;border-radius:50%;background:#aaa69f}
+.realtime-indicator.connected>span{background:#48a272;box-shadow:0 0 0 3px #48a27220}
+.conversation-card{display:grid;grid-template-columns:46px minmax(0,1fr) 20px;align-items:center;gap:15px;padding:17px 19px;border:1px solid var(--border);border-radius:15px;background:var(--surface);color:var(--ink);text-decoration:none;transition:border-color .16s,transform .16s,box-shadow .16s}
+.conversation-card:hover{transform:translateY(-1px);border-color:#cfc8bb;box-shadow:0 8px 24px #231c1308}
+.conversation-card>svg{color:var(--muted);transition:transform .16s}
+.conversation-card:hover>svg{transform:translateX(3px);color:var(--clay)}
+.conversation-card-icon{width:44px;height:44px;display:grid;place-items:center;border-radius:13px;background:#efeae0;color:var(--clay)}
+.conversation-card-copy{display:grid;gap:3px;min-width:0}
+.conversation-card-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.conversation-card-copy>span{color:var(--muted);font-size:11px}
+.conversation-card-copy p{margin:2px 0 0;color:var(--muted);font-size:11px}
+@media(max-width:680px){
+ .collection-toolbar{align-items:stretch;flex-direction:column;padding:14px}
+ .collection-filters,.collection-actions{width:100%;align-items:stretch}
+ .collection-filter{min-width:0;flex:1}
+ .collection-actions>.button{width:100%}
+ .collection-pagination{align-items:stretch;flex-direction:column}
+ .collection-pagination>div>.button{flex:1}
+ .dispute-record{padding:18px!important}
+ .dispute-record-heading{align-items:flex-start;flex-direction:column;gap:10px}
+ .dispute-record-footer{align-items:flex-start;flex-direction:column}
+ .dispute-record-footer>.button{width:100%;justify-content:center}
+ .collection-error{align-items:stretch;flex-direction:column}
+ .conversation-card{grid-template-columns:40px minmax(0,1fr) 18px;padding:14px;gap:11px}
+ .conversation-card-icon{width:40px;height:40px}
+}
 @media(prefers-reduced-motion:reduce){.skeleton,.select-menu{animation:none!important}}

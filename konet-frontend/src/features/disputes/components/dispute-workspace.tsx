@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import { useDataQuery, useDataCommand } from "@/lib/query/hooks";
 import { errorCode, errorMessage } from "@/data/access/client";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { CollectionPagination } from "@/components/ui/collection-pagination";
+import { CollectionToolbar } from "@/components/ui/collection-toolbar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Select } from "@/components/ui/select";
+import { WorkspaceSkeleton } from "@/components/ui/workspace-skeleton";
+import Icon from "@/components/ui/icon";
 import { PaymentPanel } from "@/features/payments/components/payment-panel";
 import { formatNaira } from "@/lib/formatters/currency";
 import type { DisputeStatus } from "@/types/disputes";
@@ -19,69 +26,95 @@ export function DisputeList() {
   const [offset, setOffset] = useState(0);
   const [status, setStatus] = useState<DisputeStatus | undefined>();
   const cases = useDataQuery("disputes", { offset, status });
+  const statusOptions = [
+    { value: "", label: "All statuses" },
+    ...Object.entries(labels).map(([value, label]) => ({ value, label })),
+  ];
   return (
-    <div className="form-stack">
-      <label className="field">
-        Status
-        <select
-          value={status ?? ""}
-          onChange={(event) => {
-            setStatus(
-              event.target.value
-                ? (event.target.value as DisputeStatus)
-                : undefined,
-            );
-            setOffset(0);
-          }}
-        >
-          <option value="">All statuses</option>
-          {Object.entries(labels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <Button
-        variant="secondary"
-        onClick={() => cases.refetch()}
-        disabled={cases.isFetching}
+    <div className="form-stack collection-page">
+      <CollectionToolbar
+        actions={
+          <Button
+            variant="secondary"
+            onClick={() => void cases.refetch()}
+            disabled={cases.isFetching}
+          >
+            {cases.isFetching ? "Refreshing…" : "Refresh cases"}
+          </Button>
+        }
       >
-        Refresh cases
-      </Button>
-      {cases.isPending && <p role="status">Loading disputes…</p>}
-      {cases.isError && <p role="alert">{errorMessage(cases.error)}</p>}
-      {cases.isSuccess && !cases.data.length && (
-        <p>No disputes on this page.</p>
+        <label className="collection-filter">
+          <span>Status</span>
+          <Select
+            label="Dispute status"
+            options={statusOptions}
+            value={status ?? ""}
+            onValueChange={(value) => {
+              setStatus(value ? (value as DisputeStatus) : undefined);
+              setOffset(0);
+            }}
+          />
+        </label>
+      </CollectionToolbar>
+      {cases.isPending && <WorkspaceSkeleton variant="disputes" />}
+      {cases.isError && (
+        <div className="collection-error" role="alert">
+          <p>{errorMessage(cases.error)}</p>
+          <Button variant="secondary" onClick={() => void cases.refetch()}>
+            Try again
+          </Button>
+        </div>
       )}
-      {cases.data?.map((item) => (
-        <article className="surface-panel" key={item.id}>
-          <h2>{item.reason}</h2>
-          <p>
-            {labels[item.status]} · Job {item.jobId.slice(0, 8)}
-          </p>
-          <p>{formatDateTime(item.createdAt)}</p>
-          <Button href={`/disputes/${item.id}`}>View case</Button>
-        </article>
-      ))}
-      <div className="modal-actions">
-        <Button
-          variant="secondary"
-          disabled={!offset || cases.isFetching}
-          onClick={() => setOffset(Math.max(0, offset - 20))}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={
-            !cases.isSuccess || cases.data.length < 20 || cases.isFetching
+      {cases.isSuccess && !cases.data.length && (
+        <EmptyState
+          icon="shield"
+          title={status ? `No ${labels[status].toLowerCase()} disputes` : offset ? "No cases on this page" : "No disputes yet"}
+          description={
+            status
+              ? "Try another status to see the rest of your cases."
+              : "If a job needs review, the case and its progress will appear here."
           }
-          onClick={() => setOffset(offset + 20)}
-        >
-          Next
-        </Button>
-      </div>
+        />
+      )}
+      {cases.data?.map((item) => {
+        const tone =
+          item.status === "open" || item.status === "under_review"
+            ? "amber"
+            : item.status === "closed"
+              ? "neutral"
+              : "green";
+        return (
+          <article className="surface-panel dispute-record" key={item.id}>
+            <div className="dispute-record-heading">
+              <div>
+                <p className="dispute-record-kicker">
+                  Case opened {formatDateTime(item.createdAt)}
+                </p>
+                <h2>{item.reason}</h2>
+              </div>
+              <Badge tone={tone} icon={tone === "neutral" ? "check" : "shield"}>
+                {labels[item.status]}
+              </Badge>
+            </div>
+            <p className="dispute-record-description">{item.description}</p>
+            <div className="dispute-record-footer">
+              <span>Job {item.jobId.slice(0, 8)}</span>
+              <Button href={`/disputes/${item.id}`} variant="secondary">
+                View case <Icon name="arrow" size={16} />
+              </Button>
+            </div>
+          </article>
+        );
+      })}
+      {cases.isSuccess && (offset > 0 || cases.data.length > 0) && (
+        <CollectionPagination
+          offset={offset}
+          count={cases.data.length}
+          isFetching={cases.isFetching}
+          onOffsetChange={setOffset}
+          itemName="cases"
+        />
+      )}
     </div>
   );
 }
@@ -241,9 +274,6 @@ export function DisputeDetail({ id }: { id: string }) {
       </Button>
       <Button href={`/jobs/${dispute.jobId}`} variant="secondary">
         View job
-      </Button>
-      <Button href="/disputes" variant="secondary">
-        Back to disputes
       </Button>
     </div>
   );
