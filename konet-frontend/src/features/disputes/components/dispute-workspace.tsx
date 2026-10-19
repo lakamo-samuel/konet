@@ -68,11 +68,27 @@ export function DisputeList() {
       {cases.isSuccess && !cases.data.length && (
         <EmptyState
           icon="shield"
-          title={status ? `No ${labels[status].toLowerCase()} disputes` : offset ? "No cases on this page" : "No disputes yet"}
+          className="dispute-empty-state"
+          title={
+            status
+              ? `No ${labels[status].toLowerCase()} disputes`
+              : offset
+                ? "No cases on this page"
+                : "You're all clear"
+          }
           description={
             status
               ? "Try another status to see the rest of your cases."
-              : "If a job needs review, the case and its progress will appear here."
+              : offset
+                ? "There are no cases in this part of the list. Go back to the previous page to see your other cases."
+                : "There are no open cases on your account. If a funded job needs review, its case and updates will appear here."
+          }
+          action={
+            !status && !offset ? (
+              <Button href="/jobs" variant="secondary">
+                View my jobs
+              </Button>
+            ) : undefined
           }
         />
       )}
@@ -242,7 +258,12 @@ export function DisputeDetail({ id }: { id: string }) {
         {history.isPending && <p role="status">Loading decisions…</p>}
         {history.isError && <p role="alert">{errorMessage(history.error)}</p>}
         {history.isSuccess && !history.data.length && (
-          <p>No decision recorded yet.</p>
+          <EmptyState
+            icon="shield"
+            className="decision-history-empty"
+            title="No decision recorded yet"
+            description="Case decisions and their outcomes will appear here once a reviewer completes the review."
+          />
         )}
         {history.data?.map((decision) => (
           <article key={decision.id}>

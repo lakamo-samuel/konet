@@ -236,6 +236,26 @@
 .dispute-record-description{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;margin:0;color:var(--muted);font-size:13px;line-height:1.7}
 .dispute-record-footer{padding-top:13px;border-top:1px solid var(--border);color:var(--muted);font-size:12px}
 .dispute-record-footer .button{display:inline-flex;align-items:center;gap:8px}
+.dispute-empty-state{padding:56px 28px;background:linear-gradient(145deg,#fffefa,#f8f5ee);border-style:solid}
+.dispute-empty-state .empty-icon{width:66px;height:66px;background:var(--green-bg);color:var(--green)}
+.dispute-empty-state h2{margin:14px 0 8px}
+.milestone-empty-state{padding:28px 20px;background:var(--canvas);border-color:var(--border)}
+.milestone-empty-state h2,.message-empty-state h2,.notification-empty-state h2,.owned-services-empty-state h2{margin:10px 0 6px;font-size:18px;letter-spacing:-.3px}
+.milestone-empty-state p,.message-empty-state p,.notification-empty-state p,.owned-services-empty-state p{margin-bottom:0;font-size:13px}
+.message-empty-state{display:grid;place-content:center;flex:1;min-height:250px;padding:22px;background:var(--canvas);border-color:var(--border)}
+.message-empty-state .empty-icon{width:46px;height:46px}
+.message-empty-state p{max-width:320px}
+.notification-empty-state,.owned-services-empty-state{background:var(--surface);border-color:var(--border)}
+.discover-results-empty,.verification-history-empty,.decision-history-empty{background:var(--surface);border-color:var(--border)}
+.profile-section-empty{margin-top:18px;padding:28px 20px;background:var(--canvas);border-color:var(--border)}
+.profile-section-empty h2,.decision-history-empty h2{font-size:18px;letter-spacing:-.3px}
+.profile-section-empty p{margin-bottom:0;font-size:13px}
+.verification-history-empty{padding:32px 20px}
+.verification-history-empty h2{font-size:19px}
+.empty-state-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.empty-state-actions .button{margin-top:0}
+.decision-history-empty{margin-top:14px;padding:30px 20px}
+.decision-history-empty p{margin-bottom:0;font-size:13px}
 .collection-error{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 18px;border:1px solid #e8c3bb;border-radius:14px;background:#fff8f6;color:#8e3325}
 .collection-error p{margin:0}
 .messages-inbox{width:100%;max-width:none}

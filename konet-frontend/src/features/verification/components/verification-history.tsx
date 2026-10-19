@@ -1,5 +1,6 @@
 import { formatDateTime } from "@/lib/formatters/date";
 import type { StudentVerification } from "@/types/verification";
+import { EmptyState } from "@/components/ui/empty-state";
 export const verificationLabels: Record<string, string> = {
   unverified: "Not verified",
   not_submitted: "Not submitted",
@@ -21,7 +22,14 @@ export function VerificationHistory({
   return (
     <section className="form-stack" aria-label="Verification history">
       <h3>Verification history</h3>
-      {!records.length && <p>You haven’t submitted a verification yet.</p>}
+      {!records.length && (
+        <EmptyState
+          icon="verified"
+          className="verification-history-empty"
+          title="No verification submitted"
+          description="Your student verification submissions and review updates will appear here."
+        />
+      )}
       {records.map((record) => (
         <article key={record.id} className="surface-panel">
           <h4>

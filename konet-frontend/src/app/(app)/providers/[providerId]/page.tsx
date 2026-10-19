@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   getProviderById,
   getPortfolioByProvider,
@@ -135,7 +136,12 @@ export default async function Page({ params }: Props) {
                 </article>
               ))
             ) : (
-              <p>Send a request for a service tailored to your brief.</p>
+              <EmptyState
+                icon="briefcase"
+                className="profile-section-empty"
+                title="Services coming soon"
+                description="This provider has not published a service yet. You can check back later."
+              />
             )}
           </section>
           {portfolio.length > 0 && (
@@ -187,7 +193,12 @@ export default async function Page({ params }: Props) {
                 </article>
               ))
             ) : (
-              <p>Reviews will appear after completed work.</p>
+              <EmptyState
+                icon="star"
+                className="profile-section-empty"
+                title="No reviews yet"
+                description="Reviews appear here after this provider completes work with clients."
+              />
             )}
           </section>
         </main>
