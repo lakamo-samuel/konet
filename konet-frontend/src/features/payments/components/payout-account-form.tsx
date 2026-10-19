@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 export function PayoutAccountForm() {
   const accounts = useDataQuery("payoutAccounts", {});
   const banks = useDataQuery("payoutBanks", {});
@@ -10,6 +11,7 @@ export function PayoutAccountForm() {
   const remove = useDataCommand("removePayoutAccount");
   const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
+  const [removingAccountId, setRemovingAccountId] = useState<string | null>(null);
   return (
     <section className="workspace-card form-stack">
       <h2>Payout bank account</h2>
@@ -27,17 +29,20 @@ export function PayoutAccountForm() {
           <Button
             variant="secondary"
             disabled={remove.isPending}
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Remove this payout account? Pending transfers may prevent removal.",
-                )
-              )
-                remove.mutate({ id: a.id });
-            }}
+            onClick={() => setRemovingAccountId(a.id)}
           >
             Remove account
           </Button>
+          <ConfirmationDialog
+            open={removingAccountId === a.id}
+            title="Remove payout account?"
+            description="This account will no longer receive future payouts. Pending transfers may prevent removal."
+            confirmLabel="Remove account"
+            pendingLabel="Removing…"
+            pending={remove.isPending}
+            onCancel={() => setRemovingAccountId(null)}
+            onConfirm={() => remove.mutateAsync({ id: a.id })}
+          />
         </article>
       ))}
       {accounts.isSuccess && accounts.data.length === 0 && (

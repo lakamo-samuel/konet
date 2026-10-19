@@ -3,6 +3,7 @@ import { formatTime } from "@/lib/formatters/date";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { errorMessage } from "@/data/access/client";
 import { useDataCommand } from "@/lib/query/hooks";
 import type { EmailChangeChallenge } from "@/types/account-settings";
@@ -238,26 +239,18 @@ function PasswordChange() {
 function DeactivateAccount() {
   const deactivate = useDataCommand("deactivateAccount");
   const router = useRouter();
-  const [confirmed, setConfirmed] = useState(false);
-  const [failure, setFailure] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [reason, setReason] = useState("");
   return (
     <form
       className="surface-panel form-stack"
-      onSubmit={async (event) => {
+      onSubmit={(event) => {
         event.preventDefault();
-        if (!confirmed || deactivate.isPending) return;
-        setFailure("");
-        try {
-          await deactivate.mutateAsync({
-            reason: String(
-              new FormData(event.currentTarget).get("reason"),
-            ).trim(),
-          });
-          router.replace("/sign-in");
-          router.refresh();
-        } catch (cause) {
-          setFailure(errorMessage(cause));
-        }
+        if (deactivate.isPending) return;
+        setReason(
+          String(new FormData(event.currentTarget).get("reason") ?? "").trim(),
+        );
+        setConfirming(true);
       }}
     >
       <h2>Deactivate account</h2>
@@ -268,20 +261,32 @@ function DeactivateAccount() {
       </p>
       <label className="field">
         Reason
-        <textarea name="reason" minLength={3} maxLength={2000} required />
-      </label>
-      <label className="check-row">
-        <input
-          type="checkbox"
-          checked={confirmed}
-          onChange={(event) => setConfirmed(event.target.checked)}
+        <textarea
+          name="reason"
+          minLength={3}
+          maxLength={2000}
+          required
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
         />
-        I understand and want to deactivate my account.
       </label>
-      <Button type="submit" disabled={!confirmed || deactivate.isPending}>
-        {deactivate.isPending ? "Deactivating…" : "Deactivate account"}
+      <Button type="submit" variant="danger" disabled={deactivate.isPending}>
+        Deactivate account
       </Button>
-      {failure && <p role="alert">{failure}</p>}
+      <ConfirmationDialog
+        open={confirming}
+        title="Deactivate your account?"
+        description="You will lose access to sign-in and your provider profile will be hidden. There is no self-service reactivation. Active jobs and unsettled payments must be resolved first."
+        confirmLabel="Deactivate account"
+        pendingLabel="Deactivating…"
+        pending={deactivate.isPending}
+        onCancel={() => setConfirming(false)}
+        onConfirm={async () => {
+          await deactivate.mutateAsync({ reason });
+          router.replace("/sign-in");
+          router.refresh();
+        }}
+      />
     </form>
   );
 }

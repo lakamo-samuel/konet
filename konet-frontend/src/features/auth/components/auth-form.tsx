@@ -3,6 +3,7 @@ import { safeReturnPath } from "@/lib/auth/navigation";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { errorMessage } from "@/data/access/client";
@@ -15,6 +16,7 @@ export function AuthForm({
   const router = useRouter();
   const [school, setSchool] = useState("");
   const [campusId, setCampusId] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const universities = useDataQuery("universities", {});
   const selected = universities.data?.find((u) => u.id === school);
   const campusOptions = selected?.campusOptions ?? [];
@@ -149,16 +151,27 @@ export function AuthForm({
       {mode !== "forgot-password" && (
         <label>
           Password
-          <input
-            name="password"
-            type="password"
-            autoComplete={
-              mode === "sign-in" ? "current-password" : "new-password"
-            }
-            minLength={8}
-            maxLength={1024}
-            required
-          />
+          <span className="password-input-wrap">
+            <input
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete={
+                mode === "sign-in" ? "current-password" : "new-password"
+              }
+              minLength={8}
+              maxLength={1024}
+              required
+            />
+            <button
+              className="password-visibility-toggle"
+              type="button"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword((visible) => !visible)}
+            >
+              <Icon name={showPassword ? "eye-off" : "eye"} size={19} />
+            </button>
+          </span>
           {mode === "sign-up" && <small>Use at least 8 characters.</small>}
         </label>
       )}

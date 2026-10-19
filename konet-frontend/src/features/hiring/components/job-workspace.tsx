@@ -2,12 +2,14 @@
 import { formatDateTime } from "@/lib/formatters/date";
 import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { errorMessage } from "@/data/access/client";
 import { formatNaira } from "@/lib/formatters/currency";
 import { ReasonAction } from "./reason-action";
 import { MilestoneWorkspace } from "./milestone-workspace";
 import { PaymentPanel } from "@/features/payments/components/payment-panel";
 import type { HiringJob } from "@/types/hiring";
+import { useState } from "react";
 export function JobWorkspace({ id }: { id: string }) {
   const job = useDataQuery("job", { id }, undefined, {
     refetchInterval: 15000,
@@ -34,6 +36,7 @@ function JobDetails({
   client: boolean;
   provider: boolean;
 }) {
+  const [confirmingCompletion, setConfirmingCompletion] = useState(false);
   const request = useDataQuery("request", { id: job.requestId });
   const quote = useDataQuery("quote", { id: job.quoteId });
   const conversation = useDataQuery("jobConversation", { jobId: job.id });
@@ -124,10 +127,21 @@ function JobDetails({
           </p>
           <Button
             disabled={confirm.isPending}
-            onClick={() => confirm.mutate({ jobId: job.id })}
+            onClick={() => setConfirmingCompletion(true)}
           >
-            {confirm.isPending ? "Confirming…" : "Confirm completed work"}
+            Confirm completed work
           </Button>
+          <ConfirmationDialog
+            open={confirmingCompletion}
+            title="Confirm this work is complete?"
+            description="Only confirm after reviewing the delivered work. This queues the provider’s payout."
+            confirmLabel="Confirm and queue payout"
+            pendingLabel="Confirming…"
+            pending={confirm.isPending}
+            variant="primary"
+            onCancel={() => setConfirmingCompletion(false)}
+            onConfirm={() => confirm.mutateAsync({ jobId: job.id })}
+          />
         </div>
       )}
       {[start, complete, confirm].map(

@@ -1,3 +1,56 @@
-import Link from "next/link";import type {ButtonHTMLAttributes,ReactNode} from "react";
-type Props={children:ReactNode;variant?:"primary"|"secondary"|"quiet"|"dark";href?:string;className?:string}&ButtonHTMLAttributes<HTMLButtonElement>;
-export function Button({children,variant="primary",href,className="",...props}:Props){const classes=`button ${variant} !min-h-11 !rounded-xl !px-5 !py-2.5 !text-sm !font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--clay)] disabled:cursor-not-allowed disabled:opacity-50 ${className}`;return href?<Link className={classes} href={href}>{children}</Link>:<button className={classes} {...props}>{children}</button>}
+import Link from "next/link";
+import type {
+  AnchorHTMLAttributes,
+  ButtonHTMLAttributes,
+  ReactNode,
+} from "react";
+
+type ButtonVariant = "primary" | "secondary" | "quiet" | "dark" | "danger";
+type SharedProps = {
+  children: ReactNode;
+  variant?: ButtonVariant;
+  className?: string;
+};
+
+type NativeButtonProps = SharedProps &
+  ButtonHTMLAttributes<HTMLButtonElement> & { href?: never };
+type ButtonLinkProps = SharedProps &
+  Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
+    href: string;
+  };
+
+export type ButtonProps = NativeButtonProps | ButtonLinkProps;
+
+function classes(variant: ButtonVariant, className = "") {
+  return ["button", variant, className].filter(Boolean).join(" ");
+}
+
+export function Button(props: ButtonProps) {
+  if ("href" in props && props.href) {
+    const { href, variant = "primary", className, children, ...linkProps } =
+      props;
+    return (
+      <Link className={classes(variant, className)} href={href} {...linkProps}>
+        {children}
+      </Link>
+    );
+  }
+
+  const {
+    variant = "primary",
+    className,
+    children,
+    type = "button",
+    ...buttonProps
+  } = props as NativeButtonProps;
+
+  return (
+    <button
+      className={classes(variant, className)}
+      type={type}
+      {...buttonProps}
+    >
+      {children}
+    </button>
+  );
+}

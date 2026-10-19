@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { useDataCommand } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
 import { OnboardingState } from "./onboarding-state";
@@ -37,6 +38,7 @@ export function PortfolioStep() {
 }
 function PortfolioEditor({ item }: { item?: OwnPortfolioItem }) {
   const [type, setType] = useState<PortfolioType>(item?.type ?? "project");
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const create = useDataCommand("createPortfolioItem");
   const update = useDataCommand("updatePortfolioItem");
   const remove = useDataCommand("deletePortfolioItem");
@@ -126,16 +128,26 @@ function PortfolioEditor({ item }: { item?: OwnPortfolioItem }) {
         {mutation.isPending ? "Saving…" : "Save portfolio entry"}
       </Button>
       {item && (
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={mutation.isPending || remove.isPending}
-          onClick={() => {
-            void remove.mutateAsync({ id: item.id }).catch(() => {});
-          }}
-        >
-          Remove entry
-        </Button>
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={mutation.isPending || remove.isPending}
+            onClick={() => setConfirmRemove(true)}
+          >
+            Remove entry
+          </Button>
+          <ConfirmationDialog
+            open={confirmRemove}
+            title="Remove this portfolio entry?"
+            description="This entry will be removed from your provider profile."
+            confirmLabel="Remove entry"
+            pendingLabel="Removing…"
+            pending={remove.isPending}
+            onCancel={() => setConfirmRemove(false)}
+            onConfirm={() => remove.mutateAsync({ id: item.id })}
+          />
+        </>
       )}
     </form>
   );
