@@ -228,6 +228,11 @@ export type CommandContract = {
     AvatarUploadTicket,
   ];
   completeAvatarUpload: [{ publicId: string }, { avatarUrl: string }];
+  createPortfolioImageUpload: [
+    { contentType: string; sizeBytes: number },
+    AvatarUploadTicket,
+  ];
+  completePortfolioImageUpload: [{ publicId: string }, { assetUrl: string }];
   completeUpload: [{ id: string }, PrivateUpload];
   deleteUpload: [{ id: string }, { success: boolean }];
   submitVerification: [

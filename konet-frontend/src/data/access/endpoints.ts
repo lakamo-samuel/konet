@@ -720,6 +720,18 @@ export const commandEndpoints: {
     body: (i) => i,
     decode: (data) => data as { avatarUrl: string },
   },
+  createPortfolioImageUpload: {
+    method: "POST",
+    path: () => "/uploads/portfolio-image",
+    body: (i) => i,
+    decode: (data) => data as AvatarUploadTicket,
+  },
+  completePortfolioImageUpload: {
+    method: "POST",
+    path: () => "/uploads/portfolio-image/complete",
+    body: (i) => i,
+    decode: (data) => data as { assetUrl: string },
+  },
   completeUpload: {
     method: "POST",
     path: (i) => `/uploads/${encodeURIComponent(i.id)}/complete`,

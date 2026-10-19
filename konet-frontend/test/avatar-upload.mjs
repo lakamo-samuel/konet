@@ -4,7 +4,7 @@ import vm from "node:vm";
 import ts from "typescript";
 
 const compiled = ts.transpileModule(
-  readFileSync("src/lib/uploads/avatar-file.ts", "utf8"),
+  readFileSync("src/lib/uploads/public-image.ts", "utf8"),
   { compilerOptions: { module: ts.ModuleKind.CommonJS } },
 ).outputText;
 const ticket = {
@@ -53,9 +53,20 @@ const context = {
   },
 };
 vm.runInNewContext(compiled, context);
-const upload = context.exports.uploadAvatar;
+const upload = context.exports.uploadPublicImage;
 const file = new File(["image"], "portrait.webp", { type: "image/webp" });
-const url = await upload(file, new AbortController().signal);
+const url = await upload(
+  file,
+  new AbortController().signal,
+  async (input) => {
+    calls.push(["createAvatarUpload", input]);
+    return ticket;
+  },
+  async (publicId) => {
+    calls.push(["completeAvatarUpload", { publicId }]);
+    return avatarUrl;
+  },
+);
 assert.equal(url, avatarUrl);
 assert.equal(
   JSON.stringify(calls),
@@ -70,6 +81,8 @@ await assert.rejects(
   upload(
     { type: "text/html", size: 5 },
     new AbortController().signal,
+    async () => ticket,
+    async () => avatarUrl,
   ),
   /JPEG, PNG or WebP/,
 );
@@ -77,6 +90,8 @@ await assert.rejects(
   upload(
     { type: "image/png", size: 5 * 1024 * 1024 + 1 },
     new AbortController().signal,
+    async () => ticket,
+    async () => avatarUrl,
   ),
   /5 MiB/,
 );
@@ -84,7 +99,10 @@ assert.equal(fetched, 1);
 
 destination = "https://untrusted.example/upload";
 ticket.uploadUrl = destination;
-await assert.rejects(upload(file, new AbortController().signal), /invalid destination/);
+await assert.rejects(upload(file, new AbortController().signal, async (input) => {
+  calls.push(["createAvatarUpload", input]);
+  return ticket;
+}, async () => avatarUrl), /invalid destination/);
 assert.equal(fetched, 1);
 
 destination = ticket.uploadUrl;
@@ -93,7 +111,10 @@ ticket.uploadUrl =
 destination = ticket.uploadUrl;
 transferStatus = 400;
 await assert.rejects(
-  upload(file, new AbortController().signal),
+  upload(file, new AbortController().signal, async (input) => {
+    calls.push(["createAvatarUpload", input]);
+    return ticket;
+  }, async () => avatarUrl),
   /Image upload failed \(400\): Cloudinary rejected image/,
 );
 assert.equal(calls.at(-1)[0], "createAvatarUpload");

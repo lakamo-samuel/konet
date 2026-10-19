@@ -10,7 +10,13 @@ import { ConfigService } from "@nestjs/config";
 import { and, eq, gt, inArray, isNull, lte, ne } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { DATABASE, Database } from "../../database/database.module";
-import { auditEvents, uploads, userRoles, users } from "../../database/schema";
+import {
+  auditEvents,
+  providerProfiles,
+  uploads,
+  userRoles,
+  users,
+} from "../../database/schema";
 import { DomainError } from "../../common/errors/domain.error";
 import {
   AvatarUploadInput,
@@ -186,6 +192,89 @@ export class UploadsService
         422,
       );
     return { avatarUrl: this.gateway.avatarUrl(publicId, asset.version) };
+  }
+  async portfolioImageTicket(userId: string, input: AvatarUploadInput) {
+    this.gateway.requireConfigured();
+    if (
+      !["image/jpeg", "image/png", "image/webp"].includes(input.contentType) ||
+      input.sizeBytes < 1 ||
+      input.sizeBytes > 5242880
+    )
+      throw new DomainError(
+        "INVALID_PORTFOLIO_IMAGE",
+        "Choose a JPEG, PNG or WebP image up to 5 MiB.",
+        422,
+      );
+    const [user] = await this.db
+      .select({ status: users.accountStatus })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const [profile] = await this.db
+      .select({ id: providerProfiles.id })
+      .from(providerProfiles)
+      .where(eq(providerProfiles.userId, userId))
+      .limit(1);
+    if (!user || user.status !== "active")
+      throw new DomainError(
+        "ACCOUNT_UNAVAILABLE",
+        "Account is unavailable.",
+        403,
+      );
+    if (!profile)
+      throw new DomainError(
+        "PROVIDER_PROFILE_REQUIRED",
+        "Create your provider profile before uploading portfolio images.",
+        409,
+      );
+    const publicId = `konet/portfolio/${userId}/${randomUUID()}`;
+    return {
+      publicId,
+      ...this.gateway.portfolioImageTicket(publicId),
+      expiresAt: new Date(Date.now() + 600000),
+    };
+  }
+  async completePortfolioImage(userId: string, publicId: string) {
+    const prefix = `konet/portfolio/${userId}/`;
+    if (
+      !publicId.startsWith(prefix) ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        publicId.slice(prefix.length),
+      )
+    )
+      throw new DomainError(
+        "UPLOAD_FORBIDDEN",
+        "This portfolio image upload does not belong to your account.",
+        403,
+      );
+    const [user] = await this.db
+      .select({ status: users.accountStatus })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (!user || user.status !== "active")
+      throw new DomainError(
+        "ACCOUNT_UNAVAILABLE",
+        "Account is unavailable.",
+        403,
+      );
+    const asset = await this.gateway.inspectPublicImage(publicId);
+    const valid =
+      asset.type === "upload" &&
+      asset.resource_type === "image" &&
+      asset.public_id === publicId &&
+      asset.bytes > 0 &&
+      asset.bytes <= 5242880 &&
+      ["jpg", "jpeg", "png", "webp"].includes(asset.format);
+    if (!valid)
+      throw new DomainError(
+        "INVALID_PORTFOLIO_IMAGE",
+        "The uploaded file is not a supported portfolio image.",
+        422,
+      );
+    return {
+      assetUrl: this.gateway.portfolioImageUrl(publicId, asset.version),
+    };
   }
   private async own(userId: string, id: string) {
     const [row] = await this.db

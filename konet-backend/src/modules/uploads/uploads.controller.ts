@@ -50,6 +50,22 @@ export class UploadsController {
   ) {
     return this.service.completeAvatar(user.userId, body.publicId);
   }
+  @Post("portfolio-image")
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  portfolioImageTicket(
+    @CurrentUser() user: AuthUser,
+    @Body() body: AvatarUploadInput,
+  ) {
+    return this.service.portfolioImageTicket(user.userId, body);
+  }
+  @Post("portfolio-image/complete")
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  completePortfolioImage(
+    @CurrentUser() user: AuthUser,
+    @Body() body: AvatarUploadCompleteInput,
+  ) {
+    return this.service.completePortfolioImage(user.userId, body.publicId);
+  }
   @Post(":id/complete") @HttpCode(202) complete(
     @CurrentUser() user: AuthUser,
     @Param("id", new ParseUUIDPipe()) id: string,

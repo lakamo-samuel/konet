@@ -90,6 +90,32 @@ export class CloudinaryGateway {
       fields,
     };
   }
+  portfolioImageTicket(publicId: string) {
+    this.requireConfigured();
+    const params = {
+      timestamp: Math.floor(Date.now() / 1000),
+      public_id: publicId,
+      type: "upload",
+      overwrite: false,
+      allowed_formats: "jpg,jpeg,png,webp",
+    };
+    const options = this.options();
+    const fields: Record<string, string> = {
+      ...Object.fromEntries(
+        Object.entries(params).map(([key, value]) => [key, String(value)]),
+      ),
+      api_key: options.api_key,
+      signature: cloudinary.utils.api_sign_request(
+        params,
+        options.api_secret,
+      ),
+    };
+    return {
+      uploadUrl: `https://api.cloudinary.com/v1_1/${options.cloud_name}/image/upload`,
+      method: "POST" as const,
+      fields,
+    };
+  }
   async inspect(publicId: string): Promise<CloudinaryAsset> {
     this.requireConfigured();
     try {
@@ -116,7 +142,7 @@ export class CloudinaryGateway {
       );
     }
   }
-  async inspectAvatar(publicId: string): Promise<CloudinaryAsset> {
+  async inspectPublicImage(publicId: string): Promise<CloudinaryAsset> {
     this.requireConfigured();
     try {
       return (await cloudinary.api.resource(publicId, {
@@ -142,6 +168,9 @@ export class CloudinaryGateway {
       );
     }
   }
+  inspectAvatar(publicId: string): Promise<CloudinaryAsset> {
+    return this.inspectPublicImage(publicId);
+  }
   avatarUrl(publicId: string, version: number): string {
     this.requireConfigured();
     return cloudinary.url(publicId, {
@@ -154,6 +183,17 @@ export class CloudinaryGateway {
         { width: 512, height: 512, crop: "fill", gravity: "face" },
         { quality: "auto", fetch_format: "auto" },
       ],
+    });
+  }
+  portfolioImageUrl(publicId: string, version: number): string {
+    this.requireConfigured();
+    return cloudinary.url(publicId, {
+      ...this.options(),
+      resource_type: "image",
+      type: "upload",
+      version,
+      secure: true,
+      transformation: [{ quality: "auto", fetch_format: "auto" }],
     });
   }
   download(publicId: string, format: string) {

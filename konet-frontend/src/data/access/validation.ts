@@ -124,6 +124,8 @@ const commandShapes: Record<CommandName, Shape> = {
   },
   createAvatarUpload: { contentType: "string", sizeBytes: "number" },
   completeAvatarUpload: { publicId: "string" },
+  createPortfolioImageUpload: { contentType: "string", sizeBytes: "number" },
+  completePortfolioImageUpload: { publicId: "string" },
   completeUpload: { id: "string" },
   deleteUpload: { id: "string" },
   submitVerification: { method: "string", evidenceObjectKey: "string" },
