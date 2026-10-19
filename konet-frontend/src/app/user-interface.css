@@ -75,13 +75,13 @@
 .header-menu nav>.sign-out-action{margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
 .account-dropdown nav .sign-out-action{margin-top:5px;padding-top:5px;border-top:1px solid var(--border)}
 .sign-out-action>.button{width:100%;justify-content:flex-start}
-.confirmation-dialog{width:min(480px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 32px);padding:30px;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--ink);box-shadow:0 28px 90px #17130f42}
+.confirmation-dialog{position:fixed;inset:0;margin:auto;width:min(480px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 32px);padding:30px;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--ink);box-shadow:0 28px 90px #17130f42}
 .confirmation-dialog::backdrop{background:#191611a6;backdrop-filter:blur(3px)}
 .confirmation-dialog-content h2{font-size:26px;line-height:1.2;letter-spacing:-.7px;margin:12px 0 9px}
 .confirmation-dialog-content>p:not(.field-error){color:var(--muted);margin-bottom:0}
 .confirmation-dialog-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:26px}
 .confirmation-dialog-actions .button{min-width:130px}
-@media(max-width:680px){.confirmation-dialog{align-self:end;width:100%;max-width:none;max-height:88dvh;margin:auto 0 0;padding:26px 22px calc(26px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0}.confirmation-dialog-actions{flex-direction:column-reverse}.confirmation-dialog-actions .button{width:100%}}
+@media(max-width:680px){.confirmation-dialog{inset:auto 0 0;width:100%;max-width:none;max-height:88dvh;margin:0;padding:26px 22px calc(26px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0}.confirmation-dialog-actions{flex-direction:column-reverse}.confirmation-dialog-actions .button{width:100%}}
 .discover-welcome{max-width:none;width:100%}
 .discover-welcome .discover-search{width:100%;max-width:none}
 .discover-search{display:grid;grid-template-columns:24px minmax(0,1fr) minmax(230px,300px) auto;align-items:center;gap:14px;margin-top:30px;padding:11px 12px 11px 20px;border-radius:16px;background:#fffdf9;box-shadow:0 12px 34px #231c130a}
