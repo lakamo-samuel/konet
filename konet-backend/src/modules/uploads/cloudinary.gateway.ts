@@ -96,6 +96,9 @@ export class CloudinaryGateway {
       fields,
     };
   }
+  portfolioImageTicket(publicId: string) {
+    return this.publicImageTicket(publicId);
+  }
   async inspect(publicId: string): Promise<CloudinaryAsset> {
     this.requireConfigured();
     try {
@@ -121,9 +124,6 @@ export class CloudinaryGateway {
         503,
       );
     }
-  }
-  async inspectAvatar(publicId: string): Promise<CloudinaryAsset> {
-    return this.inspectPublicImage(publicId);
   }
   async inspectPublicImage(publicId: string): Promise<CloudinaryAsset> {
     this.requireConfigured();
@@ -151,6 +151,9 @@ export class CloudinaryGateway {
       );
     }
   }
+  inspectAvatar(publicId: string): Promise<CloudinaryAsset> {
+    return this.inspectPublicImage(publicId);
+  }
   avatarUrl(publicId: string, version: number): string {
     this.requireConfigured();
     return cloudinary.url(publicId, {
@@ -177,6 +180,17 @@ export class CloudinaryGateway {
         { width: 1600, height: 900, crop: "limit" },
         { quality: "auto", fetch_format: "auto" },
       ],
+    });
+  }
+  portfolioImageUrl(publicId: string, version: number): string {
+    this.requireConfigured();
+    return cloudinary.url(publicId, {
+      ...this.options(),
+      resource_type: "image",
+      type: "upload",
+      version,
+      secure: true,
+      transformation: [{ quality: "auto", fetch_format: "auto" }],
     });
   }
   download(publicId: string, format: string) {

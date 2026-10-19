@@ -7,6 +7,9 @@ import { useDataQuery } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
 import { formatNaira } from "@/lib/formatters/currency";
 import { WorkspaceSkeleton } from "@/components/ui/workspace-skeleton";
+import { CollectionPagination } from "@/components/ui/collection-pagination";
+import { CollectionToolbar } from "@/components/ui/collection-toolbar";
+import { Select } from "@/components/ui/select";
 export function RequestList({ provider = false }: { provider?: boolean }) {
   const [offset, setOffset] = useState(0);
   const user = useDataQuery("currentUser", {});
@@ -39,22 +42,15 @@ export function RequestList({ provider = false }: { provider?: boolean }) {
           </Button>
         </article>
       ))}
-      <div>
-        <Button
-          variant="secondary"
-          disabled={offset === 0}
-          onClick={() => setOffset(offset - 20)}
-        >
-          Previous page
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={requests.data.length < 20}
-          onClick={() => setOffset(offset + 20)}
-        >
-          Next page
-        </Button>
-      </div>
+      {(offset > 0 || requests.data.length > 0) && (
+        <CollectionPagination
+          offset={offset}
+          count={requests.data.length}
+          isFetching={requests.isFetching}
+          onOffsetChange={setOffset}
+          itemName="requests"
+        />
+      )}
     </div>
   );
 }
@@ -82,16 +78,23 @@ export function JobList() {
   );
   return (
     <div className="form-stack">
-      <label className="field">
-        Show jobs
-        <select value={tab} onChange={(e) => setTab(e.target.value)}>
-          <option value="all">All my jobs</option>
-          <option value="client">As a client</option>
-          {user.data.providerProfileId && (
-            <option value="provider">As a provider</option>
-          )}
-        </select>
-      </label>
+      <CollectionToolbar>
+        <label className="collection-filter">
+          <span>Show jobs</span>
+          <Select
+            label="Filter jobs by role"
+            value={tab}
+            onValueChange={(value) => setTab(value)}
+            options={[
+              { value: "all", label: "All my jobs" },
+              { value: "client", label: "As a client" },
+              ...(user.data.providerProfileId
+                ? [{ value: "provider", label: "As a provider" }]
+                : []),
+            ]}
+          />
+        </label>
+      </CollectionToolbar>
       {!rows.length && (
         <EmptyState icon="briefcase" title={offset ? "No jobs on this page" : "No jobs yet"} description="Your jobs appear here after a quote is accepted. Find a provider and start a conversation to get going." action={<Button href="/discover">Explore services</Button>} />
       )}
@@ -107,25 +110,15 @@ export function JobList() {
           </Button>
         </article>
       ))}
-      <div>
-        <Button
-          variant="secondary"
-          disabled={offset === 0}
-          onClick={() => setOffset(offset - 20)}
-        >
-          Previous page
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={jobs.data.length < 20}
-          onClick={() => setOffset(offset + 20)}
-        >
-          Next page
-        </Button>
-      </div>
-      <Button href="/requests" variant="secondary">
-        View my requests
-      </Button>
+      {(offset > 0 || jobs.data.length > 0) && (
+        <CollectionPagination
+          offset={offset}
+          count={jobs.data.length}
+          isFetching={jobs.isFetching}
+          onOffsetChange={setOffset}
+          itemName="jobs"
+        />
+      )}
     </div>
   );
 }

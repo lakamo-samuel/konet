@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { errorMessage } from "@/data/access/client";
 import { useDataCommand } from "@/lib/query/hooks";
 import { ngnToMinor, futureDate } from "@/lib/formatters/money-input";
@@ -21,6 +22,20 @@ export function RequestForm({
         <p>The provider can review your brief and send a quote.</p>
         <Button href={`/requests/${created}`}>View request</Button>
       </div>
+    );
+  if (!services.length)
+    return (
+      <EmptyState
+        icon="briefcase"
+        title="No active services available"
+        description="This provider is not accepting requests for a published service right now. You can return to their profile or discover another provider."
+        action={
+          <div className="empty-state-actions">
+            <Button href={`/providers/${encodeURIComponent(providerId)}`} variant="secondary">View provider</Button>
+            <Button href="/discover" variant="quiet">Explore providers</Button>
+          </div>
+        }
+      />
     );
   return (
     <form
@@ -98,9 +113,6 @@ export function RequestForm({
           maxLength={10000}
         />
       </label>
-      {!services.length && (
-        <p>No active services are available for this provider.</p>
-      )}
       {error && <p role="alert">{error}</p>}
       <Button type="submit" disabled={create.isPending || !services.length}>
         {create.isPending ? "Sending…" : "Send service request"}

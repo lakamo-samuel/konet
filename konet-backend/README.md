@@ -4,10 +4,24 @@ Production-oriented NestJS modular monolith for Konet's student service marketpl
 
 ## Local setup
 
-1. Copy `.env.example` to `.env` and replace both JWT secrets.
-2. Start PostgreSQL with `docker compose up -d postgres`.
-3. Run `npm ci`, `npm run db:migrate`, and `npm run db:seed:universities` to populate the signup university directory. `npm run db:seed` also creates demo marketplace data and is intended only for development.
-4. Start the API with `npm run start:dev`.
+1. Install Docker and Docker Compose, then start only the PostgreSQL image:
+   `docker compose up -d postgres`.
+2. Copy `.env.example` to `.env` if needed. Keep `DATABASE_URL` and
+   `DIRECT_URL` pointed at `localhost:5432` for local development; production
+   Supabase settings belong only in the production environment.
+3. Install backend dependencies and prepare the local database:
+   `npm ci`, `npm run db:migrate`, and `npm run db:seed:universities`.
+4. Run the API directly with `npm run start:dev`. Check readiness with
+   `curl http://localhost:4000/api/v1/health`; Swagger is at
+   `http://localhost:4000/api/docs`.
+5. Start the frontend from `konet-frontend` with `npm run dev`; its
+   `KONET_API_URL` should be `http://localhost:4000/api/v1`.
+
+The local `.env.example` disables email, Cloudinary and Paystack. Configure
+separate test credentials only when exercising those integrations. Use
+`npm run db:seed` only when you explicitly want demo marketplace fixtures.
+Stop PostgreSQL with `docker compose down`; keep the local database volume with
+`docker compose down -v` only when you intentionally want to erase local data.
 
 Set `KONET_API_URL=http://localhost:4000/api/v1` in the Next.js frontend environment to use API-backed university, provider, discovery, and service repositories.
 

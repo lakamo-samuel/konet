@@ -51,6 +51,11 @@ export const contractSchemas: Record<string, SchemaObject> = {
     required: ["coverImageUrl"],
     properties: { coverImageUrl: { type: "string", format: "uri" } },
   },
+  PortfolioImageUpload: {
+    type: "object",
+    required: ["assetUrl"],
+    properties: { assetUrl: { type: "string", format: "uri" } },
+  },
   StudentReviewDetail:{allOf:[{$ref:'#/components/schemas/studentVerifications'},{type:'object',properties:{applicant:{type:'object',properties:{id:{type:'string',format:'uuid'},fullName:{type:'string'},universityId:{type:'string',format:'uuid'},campusId:{type:'string',format:'uuid'},accountStatus:{type:'string'},studentVerificationStatus:{type:'string'}}}}}]},
   StaffDispute:{allOf:[{$ref:'#/components/schemas/disputes'},{type:'object',properties:{job:{$ref:'#/components/schemas/jobs'},payment:{$ref:'#/components/schemas/payments'},decisions:{type:'array',items:{$ref:'#/components/schemas/Decision'}},milestones:{type:'array',items:{$ref:'#/components/schemas/Milestone'}},messages:{type:'array',description:'Up to 100 latest undeleted messages from this job conversation; access is audited',items:{type:'object',properties:{id:{type:'string',format:'uuid'},sender:{type:'string'},type:{type:'string'},content:{type:'string'},createdAt:{type:'string',format:'date-time'}}}},messageLimit:{type:'integer',enum:[100]}}}]},
   StaffSecurityStatus: {type:'object',required:['enabled','verified','recoveryCodesRemaining'],properties:{enabled:{type:'boolean'},verified:{type:'boolean'},expiresAt:{type:'string',format:'date-time',nullable:true},recoveryCodesRemaining:{type:'integer'}}},
@@ -4393,7 +4398,7 @@ export const routeContracts: RouteContract[] = [
     query: null,
 
     code: 200,
-    note: "Private owner portfolio CRUD. Image items require a public HTTPS assetUrl; external_link items require HTTPS externalUrl. Do not use private evidence URLs. Metadata/links are supported; dedicated public portfolio uploads remain pending. Canonical portfolio changes invalidate approval. Maximum 30 items.",
+    note: "Private owner portfolio CRUD. Image items require a public HTTPS assetUrl returned by uploads/portfolio-image/complete; external_link items require HTTPS externalUrl. Do not use private evidence URLs. Canonical portfolio changes invalidate approval. Maximum 30 items.",
   },
   {
     method: "post",
@@ -4406,7 +4411,7 @@ export const routeContracts: RouteContract[] = [
     query: null,
 
     code: 201,
-    note: "Private owner portfolio CRUD. Image items require a public HTTPS assetUrl; external_link items require HTTPS externalUrl. Do not use private evidence URLs. Metadata/links are supported; dedicated public portfolio uploads remain pending. Canonical portfolio changes invalidate approval. Maximum 30 items.",
+    note: "Private owner portfolio CRUD. Image items require a public HTTPS assetUrl returned by uploads/portfolio-image/complete; external_link items require HTTPS externalUrl. Do not use private evidence URLs. Canonical portfolio changes invalidate approval. Maximum 30 items.",
   },
   {
     method: "patch",
@@ -5229,6 +5234,30 @@ export const routeContracts: RouteContract[] = [
     existing: true,
     query: null,
     note: "Verifies the user-scoped Cloudinary asset and returns its optimized HTTPS delivery URL for saving to the provider profile.",
+    code: 201,
+  },
+  {
+    method: "post",
+    path: "uploads/portfolio-image",
+    summary: "Create signed portfolio image upload",
+    response: "AvatarUploadTicket",
+    body: "AvatarUploadInput",
+    auth: "user",
+    existing: true,
+    query: null,
+    note: "Creates a ten-minute user-scoped public Cloudinary image upload for an existing provider profile. JPEG, PNG and WebP up to 5 MiB. Upload directly to Cloudinary without sending Konet credentials.",
+    code: 201,
+  },
+  {
+    method: "post",
+    path: "uploads/portfolio-image/complete",
+    summary: "Verify portfolio image upload",
+    response: "PortfolioImageUpload",
+    body: "AvatarUploadCompleteInput",
+    auth: "user",
+    existing: true,
+    query: null,
+    note: "Verifies the user-scoped Cloudinary asset and returns its optimized public HTTPS assetUrl for use in portfolio create/update requests.",
     code: 201,
   },
   {

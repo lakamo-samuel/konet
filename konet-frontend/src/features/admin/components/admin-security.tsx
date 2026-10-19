@@ -5,7 +5,13 @@ import QRCode from "qrcode";
 import { AdminAction } from "./admin-action";
 import { record, text } from "../resources";
 import type { AdminRecord } from "../operations";
-export function AdminSecurity({ status }: { status: AdminRecord }) {
+export function AdminSecurity({
+  status,
+  onVerified,
+}: {
+  status: AdminRecord;
+  onVerified?: () => void;
+}) {
   const [enrollment, setEnrollment] = useState<AdminRecord | null>(null);
   const [codes, setCodes] = useState<string[]>([]);
   const [qr, setQr] = useState("");
@@ -50,6 +56,7 @@ export function AdminSecurity({ status }: { status: AdminRecord }) {
               setCodes([]);
               setEnrollment(null);
               setQr("");
+              void onVerified?.();
             }}
           >
             I have saved my recovery codes
@@ -113,7 +120,10 @@ export function AdminSecurity({ status }: { status: AdminRecord }) {
               ? `Verified until ${new Date(String(status.expiresAt)).toLocaleTimeString()}.`
               : "Verify your authenticator to open staff tools."}
           </p>
-          <AdminAction operation="verifyMfa" />
+          <AdminAction
+            operation="verifyMfa"
+            onSuccess={() => onVerified?.()}
+          />
           <p>{text(status.recoveryCodesRemaining)} recovery codes remaining.</p>
         </>
       )}

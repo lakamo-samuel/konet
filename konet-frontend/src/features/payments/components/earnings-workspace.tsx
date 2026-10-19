@@ -7,6 +7,8 @@ import { formatNaira } from "@/lib/formatters/currency";
 import { Button } from "@/components/ui/button";
 import { PaymentRow } from "./payment-panel";
 import { PayoutAccountForm } from "./payout-account-form";
+import { CollectionPagination } from "@/components/ui/collection-pagination";
+import { EmptyState } from "@/components/ui/empty-state";
 export function EarningsWorkspace() {
   const earnings = useDataQuery("earnings", {}, undefined, {
     refetchInterval: 15000,
@@ -63,14 +65,21 @@ export function EarningsWorkspace() {
           </article>
         ))}
         {payouts.isSuccess && !payouts.data.length && (
-          <p>No payouts on this page.</p>
+          <EmptyState
+            icon="shield"
+            title="No payouts yet"
+            description="Completed provider earnings and transfer updates will appear here."
+          />
         )}
-        <Pagination
-          offset={payoutOffset}
-          next={payouts.data?.length === 20}
-          pending={payouts.isFetching}
-          onChange={setPayoutOffset}
-        />
+        {payouts.isSuccess && (payoutOffset > 0 || payouts.data.length > 0) && (
+          <CollectionPagination
+            offset={payoutOffset}
+            count={payouts.data.length}
+            isFetching={payouts.isFetching}
+            onOffsetChange={setPayoutOffset}
+            itemName="payouts"
+          />
+        )}
       </section>
       <section className="workspace-card form-stack">
         <h2>Account payment history</h2>
@@ -84,45 +93,22 @@ export function EarningsWorkspace() {
           <PaymentRow key={p.id} payment={p} />
         ))}
         {payments.isSuccess && !payments.data.length && (
-          <p>No payments on this page.</p>
+          <EmptyState
+            icon="briefcase"
+            title="No payments yet"
+            description="Payments for jobs you hire or provide will appear here."
+          />
         )}
-        <Pagination
-          offset={paymentOffset}
-          next={payments.data?.length === 20}
-          pending={payments.isFetching}
-          onChange={setPaymentOffset}
-        />
+        {payments.isSuccess && (paymentOffset > 0 || payments.data.length > 0) && (
+          <CollectionPagination
+            offset={paymentOffset}
+            count={payments.data.length}
+            isFetching={payments.isFetching}
+            onOffsetChange={setPaymentOffset}
+            itemName="payments"
+          />
+        )}
       </section>
-    </div>
-  );
-}
-function Pagination({
-  offset,
-  next,
-  pending,
-  onChange,
-}: {
-  offset: number;
-  next: boolean;
-  pending: boolean;
-  onChange: (offset: number) => void;
-}) {
-  return (
-    <div className="modal-actions">
-      <Button
-        variant="secondary"
-        disabled={!offset || pending}
-        onClick={() => onChange(Math.max(0, offset - 20))}
-      >
-        Previous
-      </Button>
-      <Button
-        variant="secondary"
-        disabled={!next || pending}
-        onClick={() => onChange(offset + 20)}
-      >
-        Next
-      </Button>
     </div>
   );
 }

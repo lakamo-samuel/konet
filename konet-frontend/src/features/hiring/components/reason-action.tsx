@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { errorMessage } from "@/data/access/client";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 export function ReasonAction({
   label,
   pending,
@@ -12,20 +12,13 @@ export function ReasonAction({
   action: (reason: string) => Promise<unknown>;
 }) {
   const [reason, setReason] = useState("");
-  const [error, setError] = useState("");
+  const [confirming, setConfirming] = useState(false);
   return (
     <form
       className="form-stack"
-      onSubmit={async (e) => {
+      onSubmit={(e) => {
         e.preventDefault();
-        setError("");
-        if (pending) return;
-        try {
-          await action(reason.trim());
-          setReason("");
-        } catch (cause) {
-          setError(errorMessage(cause));
-        }
+        if (!pending) setConfirming(true);
       }}
     >
       <label className="field">
@@ -38,14 +31,26 @@ export function ReasonAction({
           onChange={(e) => setReason(e.target.value)}
         />
       </label>
-      {error && <p role="alert">{error}</p>}
       <Button
         type="submit"
         variant="secondary"
         disabled={pending || !reason.trim()}
       >
-        {pending ? "Saving…" : label}
+        {pending ? "Working…" : label}
       </Button>
+      <ConfirmationDialog
+        open={confirming}
+        title={`Confirm: ${label.toLowerCase()}?`}
+        description="This will update the current request, quote, or job and may not be reversible."
+        confirmLabel={label}
+        pendingLabel="Working…"
+        pending={pending}
+        onCancel={() => setConfirming(false)}
+        onConfirm={async () => {
+          await action(reason.trim());
+          setReason("");
+        }}
+      />
     </form>
   );
 }

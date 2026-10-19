@@ -93,6 +93,31 @@ describe("private Cloudinary gateway", () => {
     expect(url.pathname).not.toContain("/c_fill/");
     expect(url.pathname).toContain("/v123/");
   });
+  it("signs public portfolio image uploads and delivers without avatar cropping", () => {
+    const gateway = new CloudinaryGateway(new ConfigService(values));
+    const publicId =
+      "konet/portfolio/owner/00000000-0000-4000-8000-000000000001";
+    const ticket = gateway.portfolioImageTicket(publicId);
+    expect(ticket.uploadUrl).toBe(
+      "https://api.cloudinary.com/v1_1/test-cloud/image/upload",
+    );
+    expect(ticket.method).toBe("POST");
+    expect(ticket.fields.type).toBe("upload");
+    expect(ticket.fields.public_id).toBe(publicId);
+    expect(ticket.fields.overwrite).toBe("false");
+    expect(ticket.fields.allowed_formats).toBe("jpg,jpeg,png,webp");
+    const { api_key, signature, ...params } = ticket.fields;
+    expect(api_key).toBe("test-key");
+    expect(signature).toBe(
+      cloudinary.utils.api_sign_request(params, "test-secret"),
+    );
+    expect(JSON.stringify(ticket)).not.toContain("test-secret");
+    const url = new URL(gateway.portfolioImageUrl(publicId, 123));
+    expect(url.protocol).toBe("https:");
+    expect(url.hostname).toBe("res.cloudinary.com");
+    expect(url.pathname).toContain("/v123/");
+    expect(url.pathname).not.toContain("/c_fill");
+  });
   it("inspects profile images as public assets and creates optimized HTTPS URLs", async () => {
     const resource = jest
       .spyOn(cloudinary.api, "resource")

@@ -211,30 +211,31 @@ The API creates a `pending` payment row when a quote is accepted. Payment states
 
 ## Local setup
 
-Requirements: Node.js and npm compatible with Next.js 16/NestJS 11, plus Docker for the supplied PostgreSQL Compose service (or a local PostgreSQL instance).
+Requirements: Docker with Compose, and Node.js/npm for the backend and frontend.
 
-1. Start PostgreSQL:
+1. Start only the local PostgreSQL database:
 
    ```bash
    cd konet-backend
    docker compose up -d postgres
    ```
 
-2. Configure and run the API in a separate terminal:
+   Docker supplies the PostgreSQL image. Run the API directly on your machine
+   and keep its local database URLs on `localhost:5432`; Supabase is reserved
+   for the production environment.
+
+2. Install backend dependencies, migrate and seed the university directory,
+   then start the API:
 
    ```bash
    cd konet-backend
-   cp .env.example .env
-   # Replace both JWT secrets with different values of at least 32 characters.
    npm ci
    npm run db:migrate
    npm run db:seed:universities
    npm run start:dev
    ```
 
-   `db:seed:universities` prepares the signup directory without adding demo accounts or marketplace data. Use `db:seed` only when you explicitly want development fixtures.
-
-3. Configure and run the frontend in another terminal:
+3. Configure and run the frontend:
 
    ```bash
    cd konet-frontend
@@ -243,13 +244,19 @@ Requirements: Node.js and npm compatible with Next.js 16/NestJS 11, plus Docker 
    npm run dev
    ```
 
-Open the frontend at `http://localhost:3000`, API health at `http://localhost:4000/api/v1/health`, and Swagger at `http://localhost:4000/api/docs`. `KONET_API_URL` connects the frontend to a local or deployed backend. Remaining feature operations fail explicitly until their frontend integration is complete. Mock fixtures have been deleted.
+Open the frontend at `http://localhost:3000`, API health at
+`http://localhost:4000/api/v1/health`, and Swagger at
+`http://localhost:4000/api/docs`. The frontend `.env.local` should use
+`KONET_API_URL=http://localhost:4000/api/v1`. For marketplace fixtures, run
+`npm run db:seed` only when desired. Stop the database with `docker compose
+down`; add `-v` only when intentionally erasing the local database volume.
 
 | Variable | Project | Purpose |
 | --- | --- | --- |
 | `CORS_ORIGINS` | Backend | Comma-separated allowed REST and Socket.IO frontend origins |
 | `KONET_API_URL` | Frontend | Backend API base URL when the source is `http` |
 | `DATABASE_URL` | Backend | PostgreSQL connection string |
+| `DIRECT_URL` | Backend | Direct PostgreSQL connection; use localhost locally and Supabase in production |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Backend | Different secrets, at least 32 characters each |
 | `FRONTEND_URL` | Backend | Single canonical frontend URL for email links and payment redirects |
 | `PORT`, `NODE_ENV` | Backend | Server port and runtime mode |

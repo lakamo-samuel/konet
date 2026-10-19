@@ -17,7 +17,9 @@
     "test:realtime": "node test/realtime.mjs",
     "test:settings-client": "node test/settings-client.mjs",
     "test:admin": "node test/admin-browser.mjs",
-    "test:ui": "node test/auth-integration.mjs --browser"
+    "test:staff-redirect": "node test/staff-redirect.mjs",
+    "test:ui": "node test/auth-integration.mjs --browser",
+    "test:navigation": "node test/navigation-active.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.0",

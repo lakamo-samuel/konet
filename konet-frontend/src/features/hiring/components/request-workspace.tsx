@@ -7,6 +7,8 @@ import { errorMessage } from "@/data/access/client";
 import { formatNaira } from "@/lib/formatters/currency";
 import { QuoteForm } from "@/features/quotes/components/quote-form";
 import { ReasonAction } from "./reason-action";
+import { CollectionPagination } from "@/components/ui/collection-pagination";
+import { EmptyState } from "@/components/ui/empty-state";
 export function RequestWorkspace({ id }: { id: string }) {
   const [quoteOffset, setQuoteOffset] = useState(0);
   const request = useDataQuery("request", { id }, undefined, {
@@ -57,6 +59,7 @@ export function RequestWorkspace({ id }: { id: string }) {
         </p>
       </article>
       {quotes.isError && <p role="alert">{errorMessage(quotes.error)}</p>}
+      {quotes.isPending && <p role="status">Loading quotes…</p>}
       {quotes.data?.map((q) => (
         <article className="surface-panel" key={q.id}>
           <strong>
@@ -68,22 +71,22 @@ export function RequestWorkspace({ id }: { id: string }) {
           </Button>
         </article>
       ))}
-      <div>
-        <Button
-          variant="secondary"
-          disabled={quoteOffset === 0}
-          onClick={() => setQuoteOffset(quoteOffset - 20)}
-        >
-          Previous quotes
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={(quotes.data?.length ?? 0) < 20}
-          onClick={() => setQuoteOffset(quoteOffset + 20)}
-        >
-          Next quotes
-        </Button>
-      </div>
+      {quotes.isSuccess && quotes.data.length === 0 && (
+        <EmptyState
+          icon="mail"
+          title="No quotes yet"
+          description="Provider quotes will appear here when they respond to this request."
+        />
+      )}
+      {quotes.isSuccess && (quoteOffset > 0 || quotes.data.length > 0) && (
+        <CollectionPagination
+          offset={quoteOffset}
+          count={quotes.data.length}
+          isFetching={quotes.isFetching}
+          onOffsetChange={setQuoteOffset}
+          itemName="quotes"
+        />
+      )}
       {provider && open && <QuoteForm requestId={id} />}
       {open && (client || provider) && (
         <ReasonAction
