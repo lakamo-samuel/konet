@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@/types/domain";
 import { useDataQuery } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
@@ -9,6 +9,8 @@ import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { canAccess, isStaff } from "../operations";
 import { resources, record } from "../resources";
 import { AdminSecurity } from "./admin-security";
+import { Button } from "@/components/ui/button";
+import { staffVerificationDestination } from "../lib/staff-navigation";
 const StaffContext = createContext<readonly string[]>([]);
 export const useStaffRoles = () => useContext(StaffContext);
 export function AdminShell({
@@ -23,6 +25,7 @@ export function AdminShell({
   });
   const roles = user.data?.roles ?? [];
   const path = usePathname();
+  const router = useRouter();
   const security = useDataQuery(
     "adminQuery",
     { operation: "security" },
@@ -30,6 +33,16 @@ export function AdminShell({
     { enabled: isStaff(roles), refetchInterval: 30_000 },
   );
   const status = record(security.data);
+  async function openRequestedStaffPage() {
+    const refreshed = await security.refetch();
+    if (!record(refreshed.data).verified) return;
+
+    const requestedPath = new URLSearchParams(window.location.search).get(
+      "returnTo",
+    );
+    router.replace(staffVerificationDestination(requestedPath));
+    router.refresh();
+  }
   if (!isStaff(roles) || user.isError)
     return (
       <main className="admin-denied">
@@ -102,14 +115,20 @@ export function AdminShell({
               <button onClick={() => void security.refetch()}>Retry</button>
             </section>
           ) : path === "/admin/security" ? (
-            <AdminSecurity status={status} />
+            <AdminSecurity status={status} onVerified={openRequestedStaffPage} />
           ) : !status.verified ? (
-            <section>
+            <section className="admin-access-gate">
+              <span className="admin-access-eyebrow">Staff security</span>
               <h1>Verify staff access</h1>
               <p>
-                Set up or verify your authenticator before opening staff tools.
+                Confirm your authenticator to continue to the staff page you
+                requested. You’ll return there automatically after verification.
               </p>
-              <Link href="/admin/security">Open staff security</Link>
+              <Button
+                href={`/admin/security?returnTo=${encodeURIComponent(path)}`}
+              >
+                Verify and continue
+              </Button>
             </section>
           ) : (
             children

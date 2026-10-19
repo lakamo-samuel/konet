@@ -156,6 +156,25 @@
 }
 .admin-main a { color: var(--admin-accent); }
 .admin-main a:hover { color: #743820; }
+.admin-access-gate {
+  max-width: 660px;
+  margin: clamp(32px, 8vh, 88px) auto;
+  padding: clamp(26px, 5vw, 48px);
+  border: 1px solid var(--admin-border);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #fffefa, var(--admin-panel));
+  box-shadow: var(--admin-shadow);
+}
+.admin-access-eyebrow {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: var(--admin-accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.admin-access-gate p { max-width: 480px; margin-bottom: 24px; }
 
 .admin-toolbar,
 .admin-buttons,
@@ -338,7 +357,41 @@
 .admin-secret { padding: 10px 12px; overflow-wrap: anywhere; border: 1px solid var(--admin-border); border-radius: 8px; background: #f8f7f3; font-size: 13px; }
 .admin-denied { max-width: 640px; margin: 12vh auto; padding: 36px; border: 1px solid var(--admin-border); border-radius: 16px; background: var(--admin-panel); box-shadow: var(--admin-shadow); }
 .admin-muted { color: var(--admin-muted); font-size: 12px; }
-.admin-empty { padding: 48px 24px !important; color: var(--admin-muted); text-align: center; }
+.admin-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 11px;
+  margin: 20px 0;
+  padding: 44px 24px !important;
+  border: 1px dashed var(--admin-border);
+  border-radius: 14px;
+  color: var(--admin-muted);
+  background: var(--admin-panel);
+  text-align: center;
+}
+.admin-empty-state .empty-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 0 3px;
+  color: var(--admin-accent);
+  background: var(--admin-accent-soft);
+}
+.admin-empty-state h2 {
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.25px;
+}
+.admin-empty-state p {
+  max-width: 440px;
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.admin-empty-state .button { margin-top: 5px; }
+.admin-nested-empty-state { margin: 12px 0; padding: 24px !important; }
 .admin-note { padding: 14px 18px; border: 1px solid #ead9cd; border-left: 4px solid #b96b4c; border-radius: 8px; background: #fbf3ed; }
 .admin-pagination { align-items: center; justify-content: flex-end; color: var(--admin-muted); font-size: 12px; }
 .admin-pagination span { margin-inline: auto; }
