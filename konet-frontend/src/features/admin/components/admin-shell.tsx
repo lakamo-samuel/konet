@@ -26,6 +26,23 @@ export function AdminShell({
   const roles = user.data?.roles ?? [];
   const path = usePathname();
   const router = useRouter();
+  const staffName = user.data?.name ?? "Staff member";
+  const initials = staffName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+  const workspaceTitle =
+    path === "/admin"
+      ? "Overview"
+      : path === "/admin/security"
+        ? "Staff security"
+        : path === "/admin/reports"
+          ? "Financial reports"
+          : Object.entries(resources).find(([section]) =>
+                path.startsWith(`/admin/${section}`),
+              )?.[1].title ?? "Staff dashboard";
   const security = useDataQuery(
     "adminQuery",
     { operation: "security" },
@@ -59,11 +76,23 @@ export function AdminShell({
     <StaffContext.Provider value={roles}>
       <div className="admin-shell">
         <aside className="admin-sidebar">
-          <Link href="/admin" className="wordmark">
-            konet <span>staff</span>
-          </Link>
-          <p>{user.data?.name}</p>
+          <div className="admin-sidebar-brand">
+            <Link href="/admin" className="wordmark">
+              konet <span>staff</span>
+            </Link>
+            <p>Operations workspace</p>
+          </div>
+          <div className="admin-staff-card">
+            <span className="admin-staff-avatar" aria-hidden="true">
+              {initials || "S"}
+            </span>
+            <span className="admin-staff-identity">
+              <strong>{staffName}</strong>
+              <small>{roles.join(" · ")}</small>
+            </span>
+          </div>
           <nav aria-label="Staff navigation">
+            <span className="admin-nav-heading">Workspace</span>
             <Link
               href="/admin"
               aria-current={path === "/admin" ? "page" : undefined}
@@ -98,13 +127,19 @@ export function AdminShell({
               Staff security
             </Link>
           </nav>
-          <Link href="/discover">Return to marketplace</Link>
-          <SignOutButton />
+          <div className="admin-sidebar-footer">
+            <Link href="/discover">Return to marketplace <span aria-hidden="true">↗</span></Link>
+            <SignOutButton />
+          </div>
         </aside>
         <main className="admin-main">
           <div className="admin-topbar">
-            <span>Staff dashboard</span>
-            <span>{roles.join(" · ")}</span>
+            <div className="admin-breadcrumb">
+              <span>Konet staff</span>
+              <span aria-hidden="true">/</span>
+              <strong>{workspaceTitle}</strong>
+            </div>
+            <span className="admin-session-badge">{roles.join(" · ")}</span>
           </div>
           {security.isPending ? (
             <p role="status">Checking staff security…</p>

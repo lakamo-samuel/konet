@@ -1,6 +1,9 @@
 "use client";
 import { useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useDataQuery } from "@/lib/query/hooks";
 import { errorMessage } from "@/data/access/client";
 import {
@@ -25,14 +28,28 @@ export function AdminTable({
   columns,
   onSelect,
   section,
+  emptyTitle = "No related records yet",
+  emptyDescription = "Records will appear here when they are available.",
+  emptyAction,
 }: {
   rows: Record<string, unknown>[];
   columns: string[];
   onSelect?: (row: Record<string, unknown>) => void;
   section?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  emptyAction?: ReactNode;
 }) {
   if (!rows.length)
-    return <p className="admin-empty">No records match this selection.</p>;
+    return (
+      <EmptyState
+        icon={section === "disputes" ? "shield" : "grid"}
+        className="admin-empty-state"
+        title={emptyTitle}
+        description={emptyDescription}
+        action={emptyAction}
+      />
+    );
   return (
     <div className="admin-table-wrap">
       <table className="admin-table">
@@ -57,12 +74,12 @@ export function AdminTable({
                   <Link
                     href={`/admin/${section}/${encodeURIComponent(String(row.id))}`}
                   >
-                    Open record
+                    View details <span aria-hidden="true">↗</span>
                   </Link>
                 </td>
               ) : onSelect ? (
                 <td>
-                  <button onClick={() => onSelect(row)}>Open record</button>
+                    <button onClick={() => onSelect(row)}>View details</button>
                 </td>
               ) : null}
             </tr>
@@ -112,16 +129,34 @@ export function AdminResource({
   );
   if (!allowed)
     return (
-      <section>
+      <section className="admin-permission-state">
+        <span className="admin-eyebrow">Restricted workspace</span>
         <h1>Permission required</h1>
         <p>Your staff role does not allow access to this area.</p>
       </section>
     );
   const rows = records(query.data);
+  const emptyTitle = offset
+    ? "No records on this page"
+    : searchEmail
+      ? "No matching user accounts"
+      : status
+        ? `No ${resource.title.toLowerCase()} in this status`
+        : `No ${resource.title.toLowerCase()} yet`;
+  const emptyDescription = offset
+    ? "There are no records in this part of the list. Return to the previous page to keep browsing."
+    : searchEmail
+      ? `No account matches ${searchEmail}. Check the address or clear the search.`
+      : status
+        ? "Try another status filter to see the rest of the records."
+        : "New records will appear here as the platform receives or creates them.";
   return (
-    <section>
-      <Heading>{resource.title}</Heading>
-      <p>{resource.description}</p>
+    <section className="admin-resource-page">
+      <header className="admin-page-intro admin-page-intro-compact">
+        <span className="admin-eyebrow">Record management</span>
+        <Heading>{resource.title}</Heading>
+        <p>{resource.description}</p>
+      </header>
       <div className="admin-toolbar">
         {resource.statuses && (
           <label>
@@ -177,13 +212,17 @@ export function AdminResource({
           </form>
         )}
         <button
+          className="admin-refresh-button"
           disabled={query.isFetching}
           onClick={() => void query.refetch()}
         >
           Refresh records
         </button>
         {resource.create && (
-          <button onClick={() => setCreating(!creating)}>
+          <button
+            className="admin-create-button"
+            onClick={() => setCreating(!creating)}
+          >
             {creating
               ? "Close form"
               : resource.title === "Reconciliation"
@@ -199,18 +238,60 @@ export function AdminResource({
           onSuccess={() => setCreating(false)}
         />
       )}
+      {query.isSuccess && (
+        <div className="admin-results-bar" aria-live="polite">
+          <strong>
+            {rows.length
+              ? `Showing ${rows.length} ${rows.length === 1 ? "record" : "records"}`
+              : "No records to show"}
+          </strong>
+          <span>
+            {status
+              ? `Status: ${status.replaceAll("_", " ")}`
+              : searchEmail
+                ? `Email: ${searchEmail}`
+                : "Current page"}
+          </span>
+        </div>
+      )}
       {query.isPending ? (
-        <p role="status">Loading records…</p>
+        <div className="admin-table-skeleton" role="status">
+          <span className="admin-sr-only">Loading records…</span>
+          {Array.from({ length: 5 }, (_, index) => (
+            <div className="admin-skeleton-row" key={index}>
+              <i />
+              <i />
+              <i />
+              <i />
+            </div>
+          ))}
+        </div>
       ) : query.isError ? (
-        <p role="alert" className="field-error">
-          {errorMessage(query.error)}
-        </p>
+        <div role="alert" className="admin-feedback admin-feedback-error">
+          <span>
+            <strong>Records could not be loaded.</strong>
+            <small>{errorMessage(query.error)}</small>
+          </span>
+          <button onClick={() => void query.refetch()}>Try again</button>
+        </div>
       ) : (
         <AdminTable
           rows={rows}
           columns={resource.columns}
           section={resource.detail ? section : undefined}
           onSelect={!resource.detail ? setSelected : undefined}
+          emptyTitle={emptyTitle}
+          emptyDescription={emptyDescription}
+          emptyAction={
+            resource.create && !offset ? (
+              <Button
+                variant="secondary"
+                onClick={() => setCreating(true)}
+              >
+                Add the first record
+              </Button>
+            ) : undefined
+          }
         />
       )}
       {resource.paginated && (
@@ -317,7 +398,12 @@ export function RecordDetails({ data }: { data: Record<string, unknown> }) {
                 />
               )
             ) : (
-              <p>No records.</p>
+              <EmptyState
+                icon="grid"
+                className="admin-empty-state admin-nested-empty-state"
+                title="No related records"
+                description="There are no associated records to show here yet."
+              />
             )
           ) : (
             <RecordDetails data={record(value)} />
@@ -408,15 +494,31 @@ export function AdminDetail({ section, id }: { section: string; id: string }) {
               : true;
   return (
     <section className="admin-detail">
-      <Link href={`/admin/${section}`}>← {resource.title}</Link>
-      <h1>{resource.title}: record</h1>
-      <button disabled={query.isFetching} onClick={() => void query.refetch()}>
+      <Link className="admin-back-link" href={`/admin/${section}`}>← Back to {resource.title}</Link>
+      <div className="admin-page-intro admin-page-intro-compact">
+        <span className="admin-eyebrow">Record details</span>
+        <h1>{resource.title}</h1>
+        <p>Review the record and its related information.</p>
+      </div>
+      <button className="admin-refresh-button" disabled={query.isFetching} onClick={() => void query.refetch()}>
         Refresh record
       </button>
       {query.isPending ? (
-        <p role="status">Loading record…</p>
+        <div className="admin-detail-skeleton" role="status">
+          <span className="admin-sr-only">Loading record…</span>
+          <i />
+          <i />
+          <i />
+          <i />
+        </div>
       ) : query.isError ? (
-        <p role="alert">{errorMessage(query.error)}</p>
+        <div className="admin-feedback admin-feedback-error" role="alert">
+          <span>
+            <strong>Record could not be loaded.</strong>
+            <small>{errorMessage(query.error)}</small>
+          </span>
+          <button onClick={() => void query.refetch()}>Try again</button>
+        </div>
       ) : (
         <>
           <RecordDetails data={data} />
