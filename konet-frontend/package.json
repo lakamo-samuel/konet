@@ -11,7 +11,7 @@
     "test:integration": "node test/auth-integration.mjs",
     "test:integration:dev": "node test/auth-integration.mjs --development",
     "test:auth-transport": "node test/auth-transport.mjs",
-    "test:uploads": "node test/private-upload.mjs && node test/avatar-upload.mjs",
+    "test:uploads": "node test/private-upload.mjs && node test/avatar-upload.mjs && node test/provider-cover-upload.mjs",
     "test:money-input": "node test/money-input.mjs",
     "test:payment-redirect": "node test/payment-redirect.mjs",
     "test:realtime": "node test/realtime.mjs",

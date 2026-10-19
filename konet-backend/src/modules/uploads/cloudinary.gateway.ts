@@ -65,6 +65,12 @@ export class CloudinaryGateway {
     };
   }
   avatarTicket(publicId: string) {
+    return this.publicImageTicket(publicId);
+  }
+  providerCoverTicket(publicId: string) {
+    return this.publicImageTicket(publicId);
+  }
+  private publicImageTicket(publicId: string) {
     this.requireConfigured();
     const params = {
       timestamp: Math.floor(Date.now() / 1000),
@@ -117,6 +123,9 @@ export class CloudinaryGateway {
     }
   }
   async inspectAvatar(publicId: string): Promise<CloudinaryAsset> {
+    return this.inspectPublicImage(publicId);
+  }
+  async inspectPublicImage(publicId: string): Promise<CloudinaryAsset> {
     this.requireConfigured();
     try {
       return (await cloudinary.api.resource(publicId, {
@@ -152,6 +161,20 @@ export class CloudinaryGateway {
       secure: true,
       transformation: [
         { width: 512, height: 512, crop: "fill", gravity: "face" },
+        { quality: "auto", fetch_format: "auto" },
+      ],
+    });
+  }
+  providerCoverUrl(publicId: string, version: number): string {
+    this.requireConfigured();
+    return cloudinary.url(publicId, {
+      ...this.options(),
+      resource_type: "image",
+      type: "upload",
+      version,
+      secure: true,
+      transformation: [
+        { width: 1600, height: 900, crop: "limit" },
         { quality: "auto", fetch_format: "auto" },
       ],
     });

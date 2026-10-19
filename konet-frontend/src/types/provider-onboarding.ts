@@ -75,6 +75,13 @@ export interface ProviderProfileInput {
   responseTimeMinutes: number;
   coverImageUrl?: string;
 }
+export interface ProviderCoverUploadTicket {
+  publicId: string;
+  uploadUrl: string;
+  method: "POST";
+  fields: Record<string, string>;
+  expiresAt: string;
+}
 export interface ProviderServiceInput {
   categoryId: string;
   title: string;

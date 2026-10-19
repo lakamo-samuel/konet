@@ -1,8 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/data/access/client";
 import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
+import { uploadProviderCover } from "@/lib/uploads/provider-cover-file";
 import type { OwnProviderProfile } from "@/types/provider-onboarding";
 import type { CommandInput } from "@/data/access/contracts";
 export function ProviderSettingsForm() {
@@ -24,7 +26,15 @@ function ProviderEditor({ profile }: { profile: OwnProviderProfile }) {
   const status = useDataCommand("setProviderStatus");
   const [failure, setFailure] = useState("");
   const [saved, setSaved] = useState(false);
-  const pending = save.isPending || status.isPending;
+  const [coverImageUrl, setCoverImageUrl] = useState(
+    profile.coverImageUrl ?? "",
+  );
+  const [uploadFailure, setUploadFailure] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const uploadController = useRef<AbortController | null>(null);
+  const coverInput = useRef<HTMLInputElement>(null);
+  useEffect(() => () => uploadController.current?.abort(), []);
+  const pending = save.isPending || status.isPending || uploading;
   return (
     <div className="form-stack">
       <form
@@ -41,22 +51,14 @@ function ProviderEditor({ profile }: { profile: OwnProviderProfile }) {
             values.get("professionalTitle"),
           ).trim();
           const bio = String(values.get("bio")).trim();
-          const coverImageUrl = String(values.get("coverImageUrl")).trim();
           const responseTimeMinutes = Number(values.get("responseTimeMinutes"));
           const availability = String(values.get("availability")) as
             "available" | "unavailable" | "limited";
           if (professionalTitle !== profile.professionalTitle)
             input.professionalTitle = professionalTitle;
           if (bio !== profile.bio) input.bio = bio;
-          if (coverImageUrl !== (profile.coverImageUrl ?? "")) {
-            if (!coverImageUrl) {
-              setFailure(
-                "Enter an HTTPS cover URL. Removing the cover is not supported yet.",
-              );
-              return;
-            }
+          if (coverImageUrl !== (profile.coverImageUrl ?? ""))
             input.coverImageUrl = coverImageUrl;
-          }
           if (responseTimeMinutes !== profile.responseTimeMinutes)
             input.responseTimeMinutes = responseTimeMinutes;
           if (availability !== profile.availability)
@@ -117,15 +119,69 @@ function ProviderEditor({ profile }: { profile: OwnProviderProfile }) {
               defaultValue={profile.bio}
             />
           </label>
-          <label className="field">
-            Cover image URL
-            <input
-              name="coverImageUrl"
-              type="url"
-              pattern="https://.*"
-              defaultValue={profile.coverImageUrl ?? ""}
-            />
-          </label>
+          <div className="form-stack">
+            <span className="field">Public cover image</span>
+            {coverImageUrl && (
+              <Image
+                src={coverImageUrl}
+                alt="Provider cover preview"
+                className="h-40 w-full rounded-xl object-cover"
+                width={1200}
+                height={675}
+                unoptimized
+              />
+            )}
+            <div className="inline-actions">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={pending}
+                onClick={() => coverInput.current?.click()}
+              >
+                {uploading
+                  ? "Uploading…"
+                  : coverImageUrl
+                    ? "Change cover image"
+                    : "Upload cover image"}
+              </Button>
+              <input
+                ref={coverInput}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                aria-label="Upload public provider cover image"
+                disabled={pending}
+                className="sr-only"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  setUploading(true);
+                  setUploadFailure("");
+                  uploadController.current = new AbortController();
+                  try {
+                    setCoverImageUrl(
+                      await uploadProviderCover(
+                        file,
+                        uploadController.current.signal,
+                      ),
+                    );
+                    setSaved(false);
+                  } catch (cause) {
+                    if (!uploadController.current.signal.aborted)
+                      setUploadFailure(errorMessage(cause));
+                  } finally {
+                    setUploading(false);
+                    event.target.value = "";
+                  }
+                }}
+              />
+            </div>
+            <p>
+              JPEG, PNG or WebP up to 5 MiB. Upload your image, then save your
+              provider profile.
+            </p>
+            {uploading && <p role="status">Uploading your cover image…</p>}
+            {uploadFailure && <p role="alert">{uploadFailure}</p>}
+          </div>
           <label className="field">
             Response time (minutes)
             <input

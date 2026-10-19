@@ -124,6 +124,8 @@ const commandShapes: Record<CommandName, Shape> = {
   },
   createAvatarUpload: { contentType: "string", sizeBytes: "number" },
   completeAvatarUpload: { publicId: "string" },
+  createProviderCoverUpload: { contentType: "string", sizeBytes: "number" },
+  completeProviderCoverUpload: { publicId: "string" },
   completeUpload: { id: "string" },
   deleteUpload: { id: "string" },
   submitVerification: { method: "string", evidenceObjectKey: "string" },
@@ -315,6 +317,21 @@ export function validateOperation(
     throw new DataError("Choose a JPEG, PNG or WebP image up to 5 MiB.");
   if (
     name === "completeAvatarUpload" &&
+    String(values.publicId).length > 255
+  )
+    throw new DataError("The uploaded image reference is invalid.");
+  if (
+    name === "createProviderCoverUpload" &&
+    (!["image/jpeg", "image/png", "image/webp"].includes(
+      String(values.contentType),
+    ) ||
+      !Number.isInteger(values.sizeBytes) ||
+      Number(values.sizeBytes) < 1 ||
+      Number(values.sizeBytes) > 5242880)
+  )
+    throw new DataError("Choose a JPEG, PNG or WebP image up to 5 MiB.");
+  if (
+    name === "completeProviderCoverUpload" &&
     String(values.publicId).length > 255
   )
     throw new DataError("The uploaded image reference is invalid.");

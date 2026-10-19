@@ -4,7 +4,7 @@ The five `/provider/onboarding` steps now use canonical backend records. The pro
 
 ## Flow
 
-1. A verified student creates or updates a provider profile with a professional title, bio and response time. Existing values load from the backend. Changing substantive approved profile content requires another review.
+1. A verified student creates or updates a provider profile with a professional title, bio and response time. The optional public cover image is selected as a file and uploaded to Cloudinary; the verified Cloudinary URL is saved with the profile. Existing values load from the backend. Changing substantive approved profile content requires another review.
 2. Add a service using an active category, one of the backend pricing types and an NGN price when required. Prices are converted to minor units. Services are saved as drafts; service editing uses owner records rather than public catalog reads.
 3. Optionally create, edit or delete portfolio metadata: project/case-study/certificate descriptions, public HTTPS image URLs or external links. The old placeholder file input is removed. Public portfolio upload tickets are not implemented by the backend. Published profiles display linked and text-only entries as well as images.
 4. Upload identity and work evidence using the shared private Cloudinary uploader with `purpose: provider_evidence`. The backend validates private object metadata before attachment; malware scanning is currently disabled. Identity and work are required; CAC is optional. Each dimension shows its returned status, revision and reviewer reason. Pending and verified dimensions do not offer duplicate submission controls. Rejected dimensions and requests for more information allow replacement evidence.

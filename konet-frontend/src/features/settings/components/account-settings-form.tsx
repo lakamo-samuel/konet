@@ -89,6 +89,7 @@ function ProfileForm({ user }: { user: User }) {
           <Button
             type="button"
             variant="secondary"
+            className="!h-9 !min-h-9 !rounded-lg !px-3 !py-1.5 !text-xs"
             disabled={uploading || save.isPending}
             onClick={() => avatarInput.current?.click()}
           >
@@ -130,18 +131,23 @@ function ProfileForm({ user }: { user: User }) {
           {avatarUrl && (
             <Button
               type="button"
-              variant="secondary"
+              variant="quiet"
+              className="!h-9 !min-h-9 !rounded-lg !px-3 !py-1.5 !text-xs"
               disabled={uploading || save.isPending}
               onClick={() => {
                 setAvatarUrl(null);
                 setSaved(false);
+                setFailure("");
               }}
             >
               Remove picture
             </Button>
           )}
         </div>
-        <p>JPEG, PNG or WebP up to 5 MiB. Your picture is optimized for display.</p>
+        <p>
+          JPEG, PNG or WebP up to 5 MiB. Upload or remove your picture, then
+          save your profile to apply the change.
+        </p>
         {uploading && <p role="status">Uploading your picture…</p>}
         {!uploading && avatarUrl !== (user.avatar || null) && (
           <p role="status">Picture ready. Save your profile to apply it.</p>

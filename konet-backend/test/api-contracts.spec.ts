@@ -120,6 +120,9 @@ describe("v1 frontend API contracts", () => {
   });
 
   it("allows removing an avatar while keeping non-HTTPS avatar URLs invalid", () => {
+    expect(contractSchemas.ProfileInput.properties?.avatarUrl).toMatchObject({
+      nullable: true,
+    });
     expect(
       validateSync(Object.assign(new ProfileInput(), { avatarUrl: null })),
     ).toEqual([]);
@@ -167,6 +170,19 @@ describe("v1 frontend API contracts", () => {
       .send({
         publicId:
           "konet/avatars/00000000-0000-4000-8000-000000000099/00000000-0000-4000-8000-000000000001",
+      })
+      .expect(403);
+    await request(app.getHttpServer())
+      .post("/api/v1/uploads/provider-cover")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ contentType: "image/svg+xml", sizeBytes: 1 })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post("/api/v1/uploads/provider-cover/complete")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        publicId:
+          "konet/provider-covers/00000000-0000-4000-8000-000000000099/00000000-0000-4000-8000-000000000001",
       })
       .expect(403);
     await request(app.getHttpServer())

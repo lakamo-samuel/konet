@@ -42,6 +42,14 @@ export class UploadsController {
   ) {
     return this.service.avatarTicket(user.userId, body);
   }
+  @Post("provider-cover")
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  providerCoverTicket(
+    @CurrentUser() user: AuthUser,
+    @Body() body: AvatarUploadInput,
+  ) {
+    return this.service.providerCoverTicket(user.userId, body);
+  }
   @Post("avatar/complete")
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   completeAvatar(
@@ -49,6 +57,14 @@ export class UploadsController {
     @Body() body: AvatarUploadCompleteInput,
   ) {
     return this.service.completeAvatar(user.userId, body.publicId);
+  }
+  @Post("provider-cover/complete")
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  completeProviderCover(
+    @CurrentUser() user: AuthUser,
+    @Body() body: AvatarUploadCompleteInput,
+  ) {
+    return this.service.completeProviderCover(user.userId, body.publicId);
   }
   @Post(":id/complete") @HttpCode(202) complete(
     @CurrentUser() user: AuthUser,
