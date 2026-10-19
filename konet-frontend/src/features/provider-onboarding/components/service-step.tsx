@@ -97,11 +97,20 @@ export function ServiceEditor({ service }: { service?: OwnProviderService }) {
         <select
           name="categoryId"
           required
-          disabled={!!service || categories.isPending || categories.isError}
+          disabled={
+            !!service ||
+            categories.isPending ||
+            categories.isError ||
+            !categories.data?.length
+          }
           defaultValue={service?.categoryId ?? ""}
         >
           <option value="" disabled>
-            Select category
+            {categories.isPending
+              ? "Loading categories…"
+              : categories.data?.length
+                ? "Select category"
+                : "No categories available"}
           </option>
           {categories.data?.map((c) => (
             <option key={c.id} value={c.id}>
@@ -111,7 +120,31 @@ export function ServiceEditor({ service }: { service?: OwnProviderService }) {
         </select>
       </label>
       {categories.isError && (
-        <p role="alert">{errorMessage(categories.error)}</p>
+        <div className="field-feedback" role="alert">
+          <span>{errorMessage(categories.error)}</span>
+          <Button
+            type="button"
+            variant="quiet"
+            onClick={() => void categories.refetch()}
+          >
+            Try again
+          </Button>
+        </div>
+      )}
+      {categories.isSuccess && categories.data.length === 0 && (
+        <div className="field-feedback" role="status">
+          <span>
+            No service categories are available yet. Refresh the list or contact
+            support if this continues.
+          </span>
+          <Button
+            type="button"
+            variant="quiet"
+            onClick={() => void categories.refetch()}
+          >
+            Refresh categories
+          </Button>
+        </div>
       )}
       <label className="field">
         Service name
