@@ -56,6 +56,7 @@ export function AdminSecurity({
               setCodes([]);
               setEnrollment(null);
               setQr("");
+              void onVerified?.();
             }}
           >
             I have saved my recovery codes
