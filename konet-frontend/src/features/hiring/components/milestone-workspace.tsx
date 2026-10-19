@@ -3,6 +3,7 @@ import { formatDateTime } from "@/lib/formatters/date";
 import { useState } from "react";
 import { useDataCommand, useDataQuery } from "@/lib/query/hooks";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { errorMessage } from "@/data/access/client";
 import { futureDate } from "@/lib/formatters/money-input";
 import type { HiringJob } from "@/types/hiring";
@@ -29,7 +30,14 @@ export function MilestoneWorkspace({
       {milestones.isError && (
         <p role="alert">{errorMessage(milestones.error)}</p>
       )}
-      {milestones.data?.length === 0 && <p>No milestones have been added.</p>}
+      {milestones.data?.length === 0 && (
+        <EmptyState
+          icon="check"
+          className="milestone-empty-state"
+          title="No milestones yet"
+          description="Delivery steps will appear here when they’re added to this job."
+        />
+      )}
       {milestones.data?.map((m) => (
         <article key={m.id}>
           <strong>{m.title}</strong>

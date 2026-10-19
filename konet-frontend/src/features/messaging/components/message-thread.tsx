@@ -10,6 +10,7 @@ import {
 import { useDataQuery } from "@/lib/query/hooks";
 import { query, errorMessage } from "@/data/access/client";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { DeliveryError } from "@/lib/realtime/connection";
 import {
   historyKey,
@@ -187,7 +188,12 @@ export function MessageThread({ conversationId }: { conversationId: string }) {
         )}
         {history.isError && <p role="alert">{errorMessage(history.error)}</p>}
         {history.isSuccess && !messages.length && (
-          <p>No messages yet. Start the conversation below.</p>
+          <EmptyState
+            icon="message"
+            className="message-empty-state"
+            title="Start the conversation"
+            description="Messages and job updates will appear here."
+          />
         )}
         {messages.map((m) =>
           m.type === "system" ? (

@@ -1,5 +1,4 @@
 import { DisputeList } from "@/features/disputes/components/dispute-workspace";
-import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 export const metadata = { title: "Disputes" };
 export default function Page() {
@@ -9,7 +8,6 @@ export default function Page() {
         eyebrow="Resolution center"
         title="Your disputes"
         description="Follow the review and outcome of cases related to your jobs."
-        action={<Button href="/jobs" variant="secondary">View jobs</Button>}
       />
       <DisputeList />
     </section>
